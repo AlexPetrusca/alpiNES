@@ -1,0 +1,17 @@
+[package]
+name = "alpiNES"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+bitvec = "1.0.1"
+rand = "0.8.5"
+num = "0.4"
+num-derive = "0.3"
+num-traits = "0.2"
+
+[dependencies.sdl2]
+version = "0.35.2"
+default-features = false
+features = ["use_mac_framework"]
