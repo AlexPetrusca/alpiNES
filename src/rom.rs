@@ -1,6 +1,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::Read;
+use crate::mem::Memory;
 
 #[derive(Debug, PartialEq)]
 pub enum Mirroring {
@@ -14,6 +15,7 @@ pub struct ROM {
     pub chr_rom: Vec<u8>,
     pub mapper: u8,
     pub screen_mirroring: Mirroring,
+    pub prg_rom_mirroring: bool
 }
 
 impl ROM {
@@ -57,11 +59,9 @@ impl ROM {
         let prg_rom_start = 16 + if skip_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
-        Ok(ROM {
-            prg_rom: raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec(),
-            chr_rom: raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec(),
-            mapper: mapper,
-            screen_mirroring: screen_mirroring,
-        })
+        let prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
+        let chr_rom = raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec();
+        let prg_rom_mirroring = prg_rom.len() == ROM::PRG_ROM_PAGE_SIZE;
+        Ok(ROM { prg_rom, chr_rom, mapper, screen_mirroring, prg_rom_mirroring })
     }
 }

@@ -272,4 +272,19 @@ mod tests {
         assert_eq!(emu.nes.cpu.status, 0b0011_0011);
         assert_eq!(emu.nes.cpu.program_counter, 0x736);
     }
+
+    #[test]
+    fn test() {
+        let mut emu = Emulator::new();
+        let program = vec![
+            0xa9, 0x5d, 0xc9, 0x5d, 0x00
+        ];
+        emu.load_and_run(&program);
+        assert_eq!(emu.nes.cpu.register_a, 0x5d);
+        assert_eq!(emu.nes.cpu.register_x, 0x00);
+        assert_eq!(emu.nes.cpu.register_y, 0x00);
+        assert_eq!(emu.nes.cpu.stack, 0xff);
+        assert_eq!(emu.nes.cpu.status, 0b00110011);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+    }
 }

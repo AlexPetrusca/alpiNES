@@ -1090,7 +1090,7 @@ CFDF  D0 1F     BNE $D000                       A:5A X:00 Y:69 P:27 SP:FB PPU: 2
 CFE1  E8        INX                             A:5A X:00 Y:69 P:27 SP:FB PPU: 22,169 CYC:2557
 CFE2  E8        INX                             A:5A X:01 Y:69 P:25 SP:FB PPU: 22,175 CYC:2559
 CFE3  A1 80     LDA ($80,X) @ 82 = 0300 = 5B    A:5A X:02 Y:69 P:25 SP:FB PPU: 22,181 CYC:2561
-CFE5  C9 5B     CMP #$5B                        A:5B X:02 Y:69 P:25 SP:FB PPU: 22,199 CYC:2567
+CFE5  C9 5B     B                        A:5B X:02 Y:69 P:25 SP:FB PPU: 22,199 CYC:2567
 CFE7  D0 17     BNE $D000                       A:5B X:02 Y:69 P:27 SP:FB PPU: 22,205 CYC:2569
 CFE9  E8        INX                             A:5B X:02 Y:69 P:27 SP:FB PPU: 22,211 CYC:2571
 CFEA  A1 80     LDA ($80,X) @ 83 = 0303 = 5C    A:5B X:03 Y:69 P:25 SP:FB PPU: 22,217 CYC:2573

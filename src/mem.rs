@@ -3,7 +3,8 @@ use crate::rom::ROM;
 const MEM_LEN: usize = 0x10000 as usize;
 
 pub struct Memory {
-    memory: [u8; MEM_LEN]
+    memory: [u8; MEM_LEN],
+    prg_mirror_enabled: bool
 }
 
 impl Memory {
@@ -20,24 +21,8 @@ impl Memory {
 
     pub fn new() -> Self {
         Memory {
-            memory: [0; MEM_LEN]
-        }
-    }
-
-    pub fn load_at_addr(&mut self, addr: u16, program: &Vec<u8>) {
-        for i in 0..program.len() {
-            self.memory[addr.wrapping_add(i as u16) as usize] = program[i];
-        }
-        let addr_bytes = &u16::to_le_bytes(addr);
-        self.memory[Memory::RESET_INT_VECTOR as usize] = addr_bytes[0];
-        self.memory[Memory::RESET_INT_VECTOR.wrapping_add(1) as usize] = addr_bytes[1];
-    }
-
-    #[inline]
-    pub fn load_rom(&mut self, rom: &ROM) {
-        for i in 0..rom.prg_rom.len() {
-            let idx = Memory::PRG_ROM_START.wrapping_add(i as u16);
-            self.memory[idx as usize] = rom.prg_rom[i];
+            memory: [0; MEM_LEN],
+            prg_mirror_enabled: false
         }
     }
 
@@ -53,7 +38,11 @@ impl Memory {
                 self.memory[mirror_addr as usize]
             }
             Memory::PRG_ROM_START..=Memory::PRG_ROM_END => {
-                self.memory[addr as usize]
+                let mut offset = addr - Memory::PRG_ROM_START;
+                if self.prg_mirror_enabled && addr >= 0x4000 {
+                    offset = offset % 0x4000;
+                }
+                self.memory[(Memory::PRG_ROM_START + offset) as usize]
             },
             _ => {
                 // self.memory[addr as usize]
@@ -99,8 +88,46 @@ impl Memory {
     }
 
     #[inline]
+    pub fn read_addr_zp(&self, addr: u8) -> u16 {
+        u16::from_le_bytes([
+            self.read_byte(addr as u16),
+            self.read_byte(addr.wrapping_add(1) as u16)
+        ])
+    }
+
+    #[inline]
+    pub fn read_addr_in(&self, addr: u16) -> u16 {
+        let upper_addr = addr & 0xff00;
+        let lower_addr = (addr & 0x00ff) as u8;
+        u16::from_le_bytes([
+            self.read_byte(addr),
+            self.read_byte(upper_addr + lower_addr.wrapping_add(1) as u16)
+        ])
+    }
+
+    #[inline]
     pub fn write_addr(&mut self, addr: u16, waddr: u16) {
-        self.write_bulk(addr, &u16::to_le_bytes(waddr));
+        let bytes = u16::to_le_bytes(waddr);
+        self.write_byte(addr, bytes[0]);
+        self.write_byte(addr.wrapping_add(1), bytes[1]);
+    }
+
+    pub fn load_at_addr(&mut self, addr: u16, program: &Vec<u8>) {
+        for i in 0..program.len() {
+            self.memory[addr.wrapping_add(i as u16) as usize] = program[i];
+        }
+        let addr_bytes = &u16::to_le_bytes(addr);
+        self.memory[Memory::RESET_INT_VECTOR as usize] = addr_bytes[0];
+        self.memory[Memory::RESET_INT_VECTOR.wrapping_add(1) as usize] = addr_bytes[1];
+    }
+
+    #[inline]
+    pub fn load_rom(&mut self, rom: &ROM) {
+        self.prg_mirror_enabled = rom.prg_rom_mirroring;
+        for i in 0..rom.prg_rom.len() {
+            let idx = Memory::PRG_ROM_START.wrapping_add(i as u16);
+            self.memory[idx as usize] = rom.prg_rom[i];
+        }
     }
 
     #[inline]
@@ -135,13 +162,13 @@ impl Memory {
 
     #[inline]
     pub fn in_x_read(&self, address: u8, register_x: u8) -> u8 {
-        let pointer = self.read_addr(address.wrapping_add(register_x) as u16);
+        let pointer = self.read_addr_zp(address.wrapping_add(register_x));
         self.read_byte(pointer)
     }
 
     #[inline]
     pub fn in_y_read(&self, address: u8, register_y: u8) -> u8 {
-        let pointer = self.read_addr(address as u16);
+        let pointer = self.read_addr_zp(address);
         self.read_byte(pointer.wrapping_add(register_y as u16))
     }
 
@@ -177,13 +204,13 @@ impl Memory {
 
     #[inline]
     pub fn in_x_write(&mut self, address: u8, register_x: u8, value: u8) {
-        let pointer = self.read_addr(address.wrapping_add(register_x) as u16);
+        let pointer = self.read_addr_zp(address.wrapping_add(register_x));
         self.write_byte(pointer, value);
     }
 
     #[inline]
     pub fn in_y_write(&mut self, address: u8, register_y: u8, value: u8) {
-        let pointer = self.read_addr(address as u16);
+        let pointer = self.read_addr_zp(address);
         self.write_byte(pointer.wrapping_add(register_y as u16), value);
     }
 

@@ -6,7 +6,6 @@ use alpiNES::nes::NES;
 use alpiNES::rom::ROM;
 
 use std::time::Duration;
-use bitvec::macros::internal::funty::Fundamental;
 use rand::Rng;
 use sdl2::event::Event;
 use sdl2::EventPump;
@@ -14,15 +13,10 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::video::Window;
-use alpiNES::logln;
 use alpiNES::logger::Logger;
+use alpiNES::logln;
 
 const SCALE: f32 = 20.0;
-
-fn load_game(emu: &mut Emulator) {
-    let rom = ROM::from_filepath("rom/snake.nes").unwrap();
-    emu.load_rom(&rom);
-}
 
 fn color(byte: u8) -> Color {
     match byte {
@@ -78,7 +72,7 @@ fn handle_user_input(nes: &mut NES, event_pump: &mut EventPump) {
     }
 }
 
-fn main() {
+fn run_snake() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
@@ -90,16 +84,14 @@ fn main() {
     let creator = canvas.texture_creator();
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
 
+    let cartridge_path = "rom/snake.nes";
     let mut emulator = Emulator::new();
-    load_game(&mut emulator);
+    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
 
     let mut screen_state = [0 as u8; 32 * 32 * 3];
     let mut rng = rand::thread_rng();
 
-    let mut logger = Logger::new("rom/log/snake.log");
     emulator.run_with_callback(|nes| {
-        logln!(logger, "opcode: {}", nes.mem.read_byte(nes.cpu.program_counter));
-
         handle_user_input(nes, &mut event_pump);
         nes.mem.write_byte(0xfe, rng.gen_range(1..16));
 
@@ -111,4 +103,26 @@ fn main() {
 
         std::thread::sleep(Duration::new(0, 70_000));
     });
+}
+
+fn run_nestest() {
+    let cartridge_path = "rom/nestest.nes";
+    let mut emulator = Emulator::new();
+    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
+    emulator.nes.cpu.program_counter = 0xC000;
+
+
+    let log_path = cartridge_path.replace(".nes", ".log");
+    let mut logger = Logger::new(&log_path);
+    emulator.run_with_callback(|nes| {
+        let op = nes.mem.read_byte(nes.cpu.program_counter);
+        logln!(logger, "{:0>4X}  {:0>2X}    A:{:0>2X} X:{:0>2X} Y:{:0>2X} P:{:0>2X} SP:{:0>2X}",
+            nes.cpu.program_counter, op, nes.cpu.register_a, nes.cpu.register_x,
+            nes.cpu.register_y, nes.cpu.status, nes.cpu.stack);
+    });
+}
+
+fn main() {
+    // run_snake();
+    run_nestest();
 }
