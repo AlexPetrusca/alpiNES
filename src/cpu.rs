@@ -3,7 +3,7 @@ use bitvec::prelude::*;
 use crate::mem::Memory;
 use crate::nes::NES;
 
-// aaab_bbcc
+const DCP_PATTERN: u8 = 0b1100_0011;
 const LAX_PATTERN: u8 = 0b1010_0011;
 const SAX_PATTERN: u8 = 0b1000_0011;
 
@@ -279,6 +279,14 @@ impl CPU {
     pub const SAX_AB: u8 = 0x8f;
     pub const SAX_IN_X: u8 = 0x83;
 
+    pub const DCP_ZP: u8 = 0xc7;
+    pub const DCP_ZP_X: u8 = 0xd7;
+    pub const DCP_AB: u8 = 0xcf;
+    pub const DCP_AB_X: u8 = 0xdf;
+    pub const DCP_AB_Y: u8 = 0xdb;
+    pub const DCP_IN_X: u8 = 0xc3;
+    pub const DCP_IN_Y: u8 = 0xd3;
+
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -410,13 +418,13 @@ impl CPU {
             CPU::NOP_4 | CPU::NOP_5 | CPU::NOP_6 => {
                 self.nop()
             },
-            CPU::JAM_1 | CPU::JAM_2 | CPU::JAM_3 |
-            CPU::JAM_4 | CPU::JAM_5 | CPU::JAM_6 |
-            CPU::JAM_7 | CPU::JAM_8 | CPU::JAM_9 |
-            CPU::JAM_10 | CPU::JAM_11 | CPU::JAM_12 => {
+            CPU::JAM_1 | CPU::JAM_2 | CPU::JAM_3 | CPU::JAM_4 |
+            CPU::JAM_5 | CPU::JAM_6 | CPU::JAM_7 | CPU::JAM_8 |
+            CPU::JAM_9 | CPU::JAM_10 | CPU::JAM_11 | CPU::JAM_12 => {
                 self.jam();
             },
             _ => match opcode & OP_MASK {
+                DCP_PATTERN => self.dcp(opcode, mem),
                 LAX_PATTERN => self.lax(opcode, mem),
                 SAX_PATTERN => self.sax(opcode, mem),
                 INC_PATTERN => self.inc(opcode, mem),
@@ -1940,6 +1948,97 @@ impl CPU {
         value = value.wrapping_sub(1);
         mem.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+    }
+
+    fn dcp(&mut self, opcode: u8, mem: &mut Memory) {
+        match opcode {
+            CPU::DCP_ZP => {
+                let address = self.fetch_param(mem);
+                self.dcp_zp(address, mem);
+            },
+            CPU::DCP_ZP_X => {
+                let address = self.fetch_param(mem);
+                self.dcp_zp_x(address, mem);
+            },
+            CPU::DCP_AB => {
+                let address = self.fetch_addr_param(mem);
+                self.dcp_ab(address, mem);
+            },
+            CPU::DCP_AB_X => {
+                let address = self.fetch_addr_param(mem);
+                self.dcp_ab_x(address, mem);
+            },
+            CPU::DCP_AB_Y => {
+                let address = self.fetch_addr_param(mem);
+                self.dcp_ab_y(address, mem);
+            },
+            CPU::DCP_IN_X => {
+                let address = self.fetch_param(mem);
+                self.dcp_in_x(address, mem);
+            },
+            CPU::DCP_IN_Y => {
+                let address = self.fetch_param(mem);
+                self.dcp_in_y(address, mem);
+            },
+            _ => panic!("invalid opcode: {:x}", opcode)
+        }
+        self.increment_program_counter()
+    }
+
+    #[inline]
+    fn dcp_zp(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_read(address);
+        value = value.wrapping_sub(1);
+        mem.zp_write(address, value);
+        self.cmp_zp(address, mem);
+    }
+
+    #[inline]
+    fn dcp_zp_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_x_read(address, self.register_x);
+        value = value.wrapping_sub(1);
+        mem.zp_x_write(address, self.register_x, value);
+        self.cmp_zp_x(address, mem);
+    }
+
+    #[inline]
+    fn dcp_ab(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_read(address);
+        value = value.wrapping_sub(1);
+        mem.ab_write(address, value);
+        self.cmp_ab(address, mem);
+    }
+
+    #[inline]
+    fn dcp_ab_x(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_x_read(address, self.register_x);
+        value = value.wrapping_sub(1);
+        mem.ab_x_write(address, self.register_x, value);
+        self.cmp_ab_x(address, mem);
+    }
+
+    #[inline]
+    fn dcp_ab_y(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_y_read(address, self.register_y);
+        value = value.wrapping_sub(1);
+        mem.ab_y_write(address, self.register_y, value);
+        self.cmp_ab_y(address, mem);
+    }
+
+    #[inline]
+    fn dcp_in_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_x_read(address, self.register_x);
+        value = value.wrapping_sub(1);
+        mem.in_x_write(address, self.register_x, value);
+        self.cmp_in_x(address, mem);
+    }
+
+    #[inline]
+    fn dcp_in_y(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_y_read(address, self.register_y);
+        value = value.wrapping_sub(1);
+        mem.in_y_write(address, self.register_y, value);
+        self.cmp_in_y(address, mem);
     }
 
     fn inc(&mut self, opcode: u8, mem: &mut Memory) {
@@ -4199,6 +4298,97 @@ mod tests {
         assert_eq!(cpu.register_y, 1);
         cpu.dey();
         assert_eq!(cpu.register_y, 0);
+    }
+
+    #[test]
+    fn test_dcp_zp() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x10, BYTE_B);
+        cpu.register_a = BYTE_A;
+        cpu.dcp_zp(0x10, &mut mem);
+        assert_eq!(mem.read_byte(0x10), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_zp_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x20, BYTE_B);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x10;
+        cpu.dcp_zp_x(0x10, &mut mem);
+        assert_eq!(mem.read_byte(0x20), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_ab() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, BYTE_B);
+        cpu.register_a = BYTE_A;
+        cpu.dcp_ab(0x1400, &mut mem);
+        assert_eq!(mem.read_byte(0x1400), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_ab_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_B);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x10;
+        cpu.dcp_ab_x(0x1400, &mut mem);
+        assert_eq!(mem.read_byte(0x1410), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_ab_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_B);
+        cpu.register_a = BYTE_A;
+        cpu.register_y = 0x10;
+        cpu.dcp_ab_y(0x1400, &mut mem);
+        assert_eq!(mem.read_byte(0x1410), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_in_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, BYTE_B);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x08;
+        cpu.dcp_in_x(0x08, &mut mem);
+        assert_eq!(mem.read_byte(0x1400), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_dcp_in_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_B);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_A;
+        cpu.register_y = 0x10;
+        cpu.dcp_in_y(0x10, &mut mem);
+        assert_eq!(mem.read_byte(0x1410), BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
 
     #[test]
