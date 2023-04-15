@@ -338,6 +338,7 @@ impl CPU {
     pub const SHA_IN_Y: u8 = 0x93;
     pub const SHX: u8 = 0x9e;
     pub const SHY: u8 = 0x9c;
+    pub const SHS: u8 = 0x9b;
     pub const ALR: u8 = 0x4b;
     pub const ARR: u8 = 0x6b;
     pub const ANE: u8 = 0x8b;
@@ -476,6 +477,9 @@ impl CPU {
                 let address = self.fetch_addr_param(mem);
                 self.las(address, mem);
             },
+            CPU::ANE => {
+
+            },
             CPU::SHA_AB_Y => {
                 let address = self.fetch_addr_param(mem);
                 self.sha_ab_y(address, mem);
@@ -491,6 +495,10 @@ impl CPU {
             CPU::SHY => {
                 let address = self.fetch_addr_param(mem);
                 self.shy(address, mem);
+            }
+            CPU::SHS => {
+                let address = self.fetch_addr_param(mem);
+                self.shs(address, mem);
             }
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
@@ -873,6 +881,14 @@ impl CPU {
         let high_byte = ((address & 0xff00) >> 8) as u8;
         let result = self.register_y & high_byte.wrapping_add(1);
         mem.ab_x_write(address, self.register_x, result);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn shs(&mut self, address: u16, mem: &mut Memory) {
+        let high_byte = ((address & 0xff00) >> 8) as u8;
+        self.stack = self.register_x & self.register_a;
+        mem.ab_y_write(address, self.register_y, self.stack & high_byte.wrapping_add(1));
         self.increment_program_counter();
     }
 
@@ -4024,6 +4040,18 @@ mod tests {
         cpu.shy(0x2480, &mut mem);
         assert_eq!(cpu.register_y, 0b1110_1101);
         assert_eq!(mem.read_byte(0x248a), 0x25);
+    }
+
+    #[test]
+    fn test_shs() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        cpu.register_y = BYTE_A;
+        cpu.register_a = 0b1010_0001;
+        cpu.register_x = 0b1110_1101;
+        cpu.shs(0x2480, &mut mem);
+        assert_eq!(cpu.stack, 0b1010_0001);
+        assert_eq!(mem.read_byte(0x248a), 0x21);
     }
 
     #[test]
