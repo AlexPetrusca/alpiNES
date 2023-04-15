@@ -332,6 +332,9 @@ impl CPU {
     pub const RRA_IN_X: u8 = 0x63;
     pub const RRA_IN_Y: u8 = 0x73;
 
+    pub const SHA_AB_Y: u8 = 0x9f;
+    pub const SHA_IN_Y: u8 = 0x93;
+
     pub const ANC_1: u8 = 0x0b;
     pub const ANC_2: u8 = 0x2b;
     pub const ALR: u8 = 0x4b;
@@ -462,6 +465,18 @@ impl CPU {
             CPU::LXA => {
                 let immediate = self.fetch_param(mem);
                 self.lxa(immediate);
+            }
+            CPU::SBX => {
+                let immediate = self.fetch_param(mem);
+                self.sbx(immediate);
+            }
+            CPU::SHA_AB_Y => {
+                let address = self.fetch_addr_param(mem);
+                self.sha_ab_y(address, mem);
+            }
+            CPU::SHA_IN_Y => {
+                let address = self.fetch_param(mem);
+                self.sha_in_y(address, mem);
             }
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
@@ -793,6 +808,30 @@ impl CPU {
     fn lxa(&mut self, immediate: u8) {
         self.and_im(immediate);
         self.tax();
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn sbx(&mut self, immediate: u8) {
+        self.register_x = self.register_x & self.register_a;
+        let sum = (self.register_x as u16).wrapping_add(immediate.wrapping_neg() as u16);
+        self.register_x = sum as u8;
+        self.update_status_flag(CARRY_FLAG, sum > 0xff);
+        self.update_zero_and_negative_flag(self.register_x);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn sha_ab_y(&mut self, address: u16, mem: &mut Memory) {
+        let result = self.register_x & self.register_a & (address as u8 & 0x80);
+        mem.ab_y_write(address, self.register_y, result);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn sha_in_y(&mut self, address: u8, mem: &mut Memory) {
+        let result = self.register_x & self.register_a & (address & 0x80);
+        mem.in_y_write(address, self.register_y, result);
         self.increment_program_counter();
     }
 
@@ -3804,6 +3843,24 @@ mod tests {
     }
 
     #[test]
+    fn test_and_zero() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 0b0101_1010;
+        cpu.and_im(0b1010_0101);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+    }
+
+    #[test]
+    fn test_and_negative() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 0b1101_1010;
+        cpu.and_im(0b1010_0101);
+        assert_eq!(cpu.register_a, 0x80);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+    }
+
+    #[test]
     fn test_anc() {
         let mut cpu = CPU::new();
         cpu.register_a = 0x9b;
@@ -3865,21 +3922,43 @@ mod tests {
     }
 
     #[test]
-    fn test_and_zero() {
+    fn test_sha_ab_y() {
         let mut cpu = CPU::new();
-        cpu.register_a = 0b0101_1010;
-        cpu.and_im(0b1010_0101);
-        assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        let mut mem = Memory::new();
+        cpu.register_y = BYTE_A;
+        cpu.register_a = 0b1010_0001;
+        cpu.register_x = 0b1110_1101;
+        cpu.sha_ab_y(0x1480, &mut mem);
+        assert_eq!(cpu.register_a, 0b1010_0001);
+        assert_eq!(cpu.register_x, 0b1110_1101);
+        assert_eq!(mem.read_byte(0x148a), 0b1000_0000);
     }
 
     #[test]
-    fn test_and_negative() {
+    fn test_sha_in_y() {
         let mut cpu = CPU::new();
-        cpu.register_a = 0b1101_1010;
-        cpu.and_im(0b1010_0101);
-        assert_eq!(cpu.register_a, 0x80);
+        let mut mem = Memory::new();
+        mem.write_addr(0x80, 0x1480);
+        cpu.register_y = BYTE_A;
+        cpu.register_a = 0b1010_0001;
+        cpu.register_x = 0b1110_1101;
+        cpu.sha_in_y(0x80, &mut mem);
+        assert_eq!(cpu.register_a, 0b1010_0001);
+        assert_eq!(cpu.register_x, 0b1110_1101);
+        assert_eq!(mem.read_byte(0x148a), 0b1000_0000);
+    }
+
+    #[test]
+    fn test_sbx() {
+        let mut cpu = CPU::new();
+        cpu.register_y = BYTE_A;
+        cpu.register_a = 0b1010_0101;
+        cpu.register_x = 0b1110_1101;
+        cpu.sbx(0x04);
+        assert_eq!(cpu.register_x, 0b1010_0001);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
 
     #[test]
