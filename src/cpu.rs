@@ -1,4 +1,5 @@
 use bitvec::prelude::*;
+use rand::Rng;
 
 use crate::mem::Memory;
 use crate::nes::NES;
@@ -368,9 +369,6 @@ impl CPU {
     }
 
     pub fn step(&mut self, mem: &mut Memory) -> Result<bool, bool> {
-        // if self.program_counter == 0xDBB5 {
-        //     println!("HIT");
-        // }
         let opcode = mem.read_byte(self.program_counter);
         match opcode {
             CPU::TAX => self.tax(),
@@ -478,7 +476,8 @@ impl CPU {
                 self.las(address, mem);
             },
             CPU::ANE => {
-
+                let immediate = self.fetch_param(mem);
+                self.ane(immediate);
             },
             CPU::SHA_AB_Y => {
                 let address = self.fetch_addr_param(mem);
@@ -850,6 +849,15 @@ impl CPU {
         self.register_x = result;
         self.stack = result;
         self.update_zero_and_negative_flag(result);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn ane(&mut self, immediate: u8) {
+        let magic_digit = rand::thread_rng().gen_range(0..0xf) as u8;
+        let magic = (magic_digit << 4) | magic_digit;
+        self.register_a = (self.register_a | magic) & self.register_x & immediate;
+        self.update_zero_and_negative_flag(self.register_a);
         self.increment_program_counter();
     }
 
@@ -4065,6 +4073,38 @@ mod tests {
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_ane_zero_immediate() {
+        let mut cpu = CPU::new();
+        cpu.register_a = BYTE_A;
+        cpu.register_x = BYTE_B;
+        cpu.ane(0);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+    }
+
+    #[test]
+    fn test_ane_ff_accumulator() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 0xff;
+        cpu.register_x = BYTE_B;
+        cpu.ane(BYTE_A);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+    }
+
+    #[test]
+    fn test_ane() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 0x11;
+        cpu.register_x = BYTE_B;
+        cpu.ane(BYTE_A);
+        assert_eq!(cpu.register_a == 0x11, false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
     }
 
     #[test]
