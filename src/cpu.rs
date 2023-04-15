@@ -334,6 +334,9 @@ impl CPU {
 
     pub const SBC_IM_U: u8 = 0xeb;
 
+    pub const ANC_1: u8 = 0x0b;
+    pub const ANC_2: u8 = 0x2b;
+
     pub fn new() -> Self {
         CPU {
             register_a: 0,
@@ -444,6 +447,10 @@ impl CPU {
             // undocumented opcodes
             CPU::SBC_IM_U => self.sbc(CPU::SBC_IM, mem),
             CPU::TOP_AB => self.top_ab(),
+            CPU::ANC_1 | CPU::ANC_2 => {
+                let immediate = self.fetch_param(mem);
+                self.anc(immediate);
+            },
             CPU::TOP_AB_X_1 | CPU::TOP_AB_X_2 | CPU::TOP_AB_X_3 |
             CPU::TOP_AB_X_4 | CPU::TOP_AB_X_5 | CPU::TOP_AB_X_6 => {
                 self.top_ab_x();
@@ -747,6 +754,12 @@ impl CPU {
     }
 
     #[inline]
+    fn anc(&mut self, immediate: u8) {
+        self.and_im(immediate);
+        self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 > 0);
+    }
+
+    #[inline]
     fn nop(&mut self) {
         self.increment_program_counter();
     }
@@ -789,7 +802,7 @@ impl CPU {
     }
 
     #[inline]
-    fn jam(&mut self) {
+    fn jam(&self) {
         // do nothing
     }
 
@@ -2819,15 +2832,15 @@ impl CPU {
     #[inline]
     fn update_zero_and_negative_flag(&mut self, value: u8) {
         self.update_status_flag(ZERO_FLAG, value == 0);
-        self.update_status_flag(NEGATIVE_FLAG, (value as i8) < 0);
+        self.update_status_flag(NEGATIVE_FLAG, value & 0x80 > 0);
     }
 
     #[inline]
     fn update_bit_flags(&mut self, value: u8) {
         let test = value & self.register_a;
         self.update_status_flag(ZERO_FLAG, test == 0);
-        self.update_status_flag(NEGATIVE_FLAG, (value as i8) < 0);
-        self.update_status_flag(OVERFLOW_FLAG, ((value << 1) as i8) < 0);
+        self.update_status_flag(NEGATIVE_FLAG, value & 0x80 > 0);
+        self.update_status_flag(OVERFLOW_FLAG, (value << 1) & 0x80 > 0);
     }
 
     #[inline]
@@ -3744,6 +3757,18 @@ mod tests {
         cpu.register_y = 0x10;
         cpu.and_in_y(0x10, &mem);
         assert_eq!(cpu.register_a, 0b0100_0010);
+    }
+
+    #[test]
+    fn test_anc() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        cpu.register_a = 0x9b;
+        cpu.anc(0xf1);
+        assert_eq!(cpu.register_a, 0x91);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
     }
 
     #[test]
