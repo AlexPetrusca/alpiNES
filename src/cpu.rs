@@ -336,6 +336,8 @@ impl CPU {
     pub const ANC_2: u8 = 0x2b;
     pub const SHA_AB_Y: u8 = 0x9f;
     pub const SHA_IN_Y: u8 = 0x93;
+    pub const SHX: u8 = 0x9e;
+    pub const SHY: u8 = 0x9c;
     pub const ALR: u8 = 0x4b;
     pub const ARR: u8 = 0x6b;
     pub const ANE: u8 = 0x8b;
@@ -482,6 +484,14 @@ impl CPU {
                 let address = self.fetch_param(mem);
                 self.sha_in_y(address, mem);
             },
+            CPU::SHX => {
+                let address = self.fetch_addr_param(mem);
+                self.shx(address, mem);
+            }
+            CPU::SHY => {
+                let address = self.fetch_addr_param(mem);
+                self.shy(address, mem);
+            }
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
                 self.anc(immediate);
@@ -837,15 +847,32 @@ impl CPU {
 
     #[inline]
     fn sha_ab_y(&mut self, address: u16, mem: &mut Memory) {
-        let result = self.register_x & self.register_a & (address as u8 & 0x80);
+        let high_byte = ((address & 0xff00) >> 8) as u8;
+        let result = self.register_x & self.register_a & high_byte.wrapping_add(1);
         mem.ab_y_write(address, self.register_y, result);
         self.increment_program_counter();
     }
 
     #[inline]
     fn sha_in_y(&mut self, address: u8, mem: &mut Memory) {
-        let result = self.register_x & self.register_a & (address & 0x80);
+        let result = self.register_x & self.register_a & address.wrapping_add(1);
         mem.in_y_write(address, self.register_y, result);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn shx(&mut self, address: u16, mem: &mut Memory) {
+        let high_byte = ((address & 0xff00) >> 8) as u8;
+        let result = self.register_x & high_byte.wrapping_add(1);
+        mem.ab_y_write(address, self.register_y, result);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn shy(&mut self, address: u16, mem: &mut Memory) {
+        let high_byte = ((address & 0xff00) >> 8) as u8;
+        let result = self.register_y & high_byte.wrapping_add(1);
+        mem.ab_x_write(address, self.register_x, result);
         self.increment_program_counter();
     }
 
@@ -3957,24 +3984,46 @@ mod tests {
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
-        cpu.sha_ab_y(0x1480, &mut mem);
+        cpu.sha_ab_y(0x2480, &mut mem);
         assert_eq!(cpu.register_a, 0b1010_0001);
         assert_eq!(cpu.register_x, 0b1110_1101);
-        assert_eq!(mem.read_byte(0x148a), 0b1000_0000);
+        assert_eq!(mem.read_byte(0x248a), 0x21);
     }
 
     #[test]
     fn test_sha_in_y() {
         let mut cpu = CPU::new();
         let mut mem = Memory::new();
-        mem.write_addr(0x80, 0x1480);
+        mem.write_addr(0x24, 0x2480);
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
-        cpu.sha_in_y(0x80, &mut mem);
+        cpu.sha_in_y(0x24, &mut mem);
         assert_eq!(cpu.register_a, 0b1010_0001);
         assert_eq!(cpu.register_x, 0b1110_1101);
-        assert_eq!(mem.read_byte(0x148a), 0b1000_0000);
+        assert_eq!(mem.read_byte(0x248a), 0x21);
+    }
+
+    #[test]
+    fn test_shx() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        cpu.register_y = BYTE_A;
+        cpu.register_x = 0b1110_1101;
+        cpu.shx(0x2480, &mut mem);
+        assert_eq!(cpu.register_x, 0b1110_1101);
+        assert_eq!(mem.read_byte(0x248a), 0x25);
+    }
+
+    #[test]
+    fn test_shy() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        cpu.register_x = BYTE_A;
+        cpu.register_y = 0b1110_1101;
+        cpu.shy(0x2480, &mut mem);
+        assert_eq!(cpu.register_y, 0b1110_1101);
+        assert_eq!(mem.read_byte(0x248a), 0x25);
     }
 
     #[test]
