@@ -332,16 +332,16 @@ impl CPU {
     pub const RRA_IN_X: u8 = 0x63;
     pub const RRA_IN_Y: u8 = 0x73;
 
-    pub const SHA_AB_Y: u8 = 0x9f;
-    pub const SHA_IN_Y: u8 = 0x93;
-
     pub const ANC_1: u8 = 0x0b;
     pub const ANC_2: u8 = 0x2b;
+    pub const SHA_AB_Y: u8 = 0x9f;
+    pub const SHA_IN_Y: u8 = 0x93;
     pub const ALR: u8 = 0x4b;
     pub const ARR: u8 = 0x6b;
     pub const ANE: u8 = 0x8b;
     pub const LXA: u8 = 0xab;
     pub const SBX: u8 = 0xcb;
+    pub const LAS: u8 = 0xbb;
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -465,19 +465,23 @@ impl CPU {
             CPU::LXA => {
                 let immediate = self.fetch_param(mem);
                 self.lxa(immediate);
-            }
+            },
             CPU::SBX => {
                 let immediate = self.fetch_param(mem);
                 self.sbx(immediate);
-            }
+            },
+            CPU::LAS => {
+                let address = self.fetch_addr_param(mem);
+                self.las(address, mem);
+            },
             CPU::SHA_AB_Y => {
                 let address = self.fetch_addr_param(mem);
                 self.sha_ab_y(address, mem);
-            }
+            },
             CPU::SHA_IN_Y => {
                 let address = self.fetch_param(mem);
                 self.sha_in_y(address, mem);
-            }
+            },
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
                 self.anc(immediate);
@@ -818,6 +822,16 @@ impl CPU {
         self.register_x = sum as u8;
         self.update_status_flag(CARRY_FLAG, sum > 0xff);
         self.update_zero_and_negative_flag(self.register_x);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn las(&mut self, address: u16, mem: &mut Memory) {
+        let result = mem.ab_y_read(address, self.register_y) & self.stack;
+        self.register_a = result;
+        self.register_x = result;
+        self.stack = result;
+        self.update_zero_and_negative_flag(result);
         self.increment_program_counter();
     }
 
@@ -3917,6 +3931,21 @@ mod tests {
         cpu.lxa(0b1110_1011);
         assert_eq!(cpu.register_a, 0b1110_0001);
         assert_eq!(cpu.register_x, 0b1110_0001);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+    }
+
+    #[test]
+    fn test_las() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x140a, 0b1010_1010);
+        cpu.stack = 0b1010_0011;
+        cpu.register_y = BYTE_A;
+        cpu.las(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, 0b1010_0010);
+        assert_eq!(cpu.register_x, 0b1010_0010);
+        assert_eq!(cpu.stack, 0b1010_0010);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
     }
