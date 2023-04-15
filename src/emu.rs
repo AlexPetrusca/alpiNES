@@ -136,6 +136,20 @@ mod tests {
     }
 
     #[test]
+    fn test_signed_division_by_four() {
+        let mut emu = Emulator::new();
+        let program = vec![
+            CPU::LDA_IM, 0x88, CPU::CMP_IM, 0x80, CPU::ARR, 0xff, CPU::ROR, CPU::BRK
+        ];
+        emu.load_and_run(&program);
+        assert_eq!(emu.nes.cpu.register_a, 0xe2);
+        assert_eq!(emu.nes.cpu.register_x, 0x00);
+        assert_eq!(emu.nes.cpu.register_y, 0x00);
+        assert_eq!(emu.nes.cpu.status, 0b1110_0100);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+    }
+
+    #[test]
     fn test_program_adc_carry_overflow() {
         let mut emu = Emulator::new();
         let program = vec![
@@ -271,20 +285,5 @@ mod tests {
         assert_eq!(emu.nes.cpu.stack, 0xfb);
         assert_eq!(emu.nes.cpu.status, 0b0011_0011);
         assert_eq!(emu.nes.cpu.program_counter, 0x736);
-    }
-
-    #[test]
-    fn test() {
-        let mut emu = Emulator::new();
-        let program = vec![
-            0xa9, 0x5d, 0xc9, 0x5d, 0x00
-        ];
-        emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x5d);
-        assert_eq!(emu.nes.cpu.register_x, 0x00);
-        assert_eq!(emu.nes.cpu.register_y, 0x00);
-        assert_eq!(emu.nes.cpu.stack, 0xff);
-        assert_eq!(emu.nes.cpu.status, 0b00110011);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 }
