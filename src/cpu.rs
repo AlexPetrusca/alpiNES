@@ -3,6 +3,7 @@ use bitvec::prelude::*;
 use crate::mem::Memory;
 use crate::nes::NES;
 
+const ISB_PATTERN: u8 = 0b1110_0011;
 const DCP_PATTERN: u8 = 0b1100_0011;
 const LAX_PATTERN: u8 = 0b1010_0011;
 const SAX_PATTERN: u8 = 0b1000_0011;
@@ -287,6 +288,14 @@ impl CPU {
     pub const DCP_IN_X: u8 = 0xc3;
     pub const DCP_IN_Y: u8 = 0xd3;
 
+    pub const ISB_ZP: u8 = 0xe7;
+    pub const ISB_ZP_X: u8 = 0xf7;
+    pub const ISB_AB: u8 = 0xef;
+    pub const ISB_AB_X: u8 = 0xff;
+    pub const ISB_AB_Y: u8 = 0xfb;
+    pub const ISB_IN_X: u8 = 0xe3;
+    pub const ISB_IN_Y: u8 = 0xf3;
+
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -424,6 +433,7 @@ impl CPU {
                 self.jam();
             },
             _ => match opcode & OP_MASK {
+                ISB_PATTERN => self.isb(opcode, mem),
                 DCP_PATTERN => self.dcp(opcode, mem),
                 LAX_PATTERN => self.lax(opcode, mem),
                 SAX_PATTERN => self.sax(opcode, mem),
@@ -2096,6 +2106,97 @@ impl CPU {
         self.update_zero_and_negative_flag(value);
     }
 
+    fn isb(&mut self, opcode: u8, mem: &mut Memory) {
+        match opcode {
+            CPU::ISB_ZP => {
+                let address = self.fetch_param(mem);
+                self.isb_zp(address, mem);
+            },
+            CPU::ISB_ZP_X => {
+                let address = self.fetch_param(mem);
+                self.isb_zp_x(address, mem);
+            },
+            CPU::ISB_AB => {
+                let address = self.fetch_addr_param(mem);
+                self.isb_ab(address, mem);
+            },
+            CPU::ISB_AB_X => {
+                let address = self.fetch_addr_param(mem);
+                self.isb_ab_x(address, mem);
+            },
+            CPU::ISB_AB_Y => {
+                let address = self.fetch_addr_param(mem);
+                self.isb_ab_y(address, mem);
+            },
+            CPU::ISB_IN_X => {
+                let address = self.fetch_param(mem);
+                self.isb_in_x(address, mem);
+            },
+            CPU::ISB_IN_Y => {
+                let address = self.fetch_param(mem);
+                self.isb_in_y(address, mem);
+            },
+            _ => panic!("invalid opcode: {:x}", opcode)
+        }
+        self.increment_program_counter()
+    }
+
+    #[inline]
+    fn isb_zp(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_read(address);
+        value = value.wrapping_add(1);
+        mem.zp_write(address, value);
+        self.sbc_zp(address, mem);
+    }
+
+    #[inline]
+    fn isb_zp_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_x_read(address, self.register_x);
+        value = value.wrapping_add(1);
+        mem.zp_x_write(address, self.register_x, value);
+        self.sbc_zp_x(address, mem);
+    }
+
+    #[inline]
+    fn isb_ab(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_read(address);
+        value = value.wrapping_add(1);
+        mem.ab_write(address, value);
+        self.sbc_ab(address, mem);
+    }
+
+    #[inline]
+    fn isb_ab_x(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_x_read(address, self.register_x);
+        value = value.wrapping_add(1);
+        mem.ab_x_write(address, self.register_x, value);
+        self.sbc_ab_x(address, mem);
+    }
+
+    #[inline]
+    fn isb_ab_y(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_y_read(address, self.register_y);
+        value = value.wrapping_add(1);
+        mem.ab_y_write(address, self.register_y, value);
+        self.sbc_ab_y(address, mem);
+    }
+
+    #[inline]
+    fn isb_in_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_x_read(address, self.register_x);
+        value = value.wrapping_add(1);
+        mem.in_x_write(address, self.register_x, value);
+        self.sbc_in_x(address, mem);
+    }
+
+    #[inline]
+    fn isb_in_y(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_y_read(address, self.register_y);
+        value = value.wrapping_add(1);
+        mem.in_y_write(address, self.register_y, value);
+        self.sbc_in_y(address, mem);
+    }
+
     fn _cmp(&mut self, opcode: u8, mem: &mut Memory) {
         match opcode {
             CPU::CMP_IM => {
@@ -2328,6 +2429,7 @@ impl CPU {
 
 #[cfg(test)]
 mod tests {
+    use sdl2::sys::register_t;
     use super::*;
 
     const BYTE_A: u8 = 0x0a;
@@ -4222,6 +4324,113 @@ mod tests {
         assert_eq!(cpu.register_y, 1);
         cpu.iny();
         assert_eq!(cpu.register_y, 2);
+    }
+
+    // todo: isb
+
+    #[test]
+    fn test_isb_zp() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x10, BYTE_A);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.isb_zp(0x10, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x10), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_zp_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x20, BYTE_A);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x10;
+        cpu.isb_zp_x(0x10, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x20), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_ab() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, BYTE_A);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.isb_ab(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x1400), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_ab_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_A);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x10;
+        cpu.isb_ab_x(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x1410), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_ab_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_A);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.register_y = 0x10;
+        cpu.isb_ab_y(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x1410), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_in_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, BYTE_A);
+        mem.write_addr(0x10, 0x1400);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x08;
+        cpu.isb_in_x(0x08, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x1400), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_isb_in_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, BYTE_A);
+        mem.write_addr(0x10, 0x1400);
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = BYTE_B;
+        cpu.register_y = 0x10;
+        cpu.isb_in_y(0x10, &mut mem);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(mem.read_byte(0x1410), BYTE_B);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
 
     #[test]
