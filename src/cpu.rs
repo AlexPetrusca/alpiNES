@@ -332,12 +332,11 @@ impl CPU {
     pub const RRA_IN_X: u8 = 0x63;
     pub const RRA_IN_Y: u8 = 0x73;
 
-    pub const SBC_IM_U: u8 = 0xeb;
-
     pub const ANC_1: u8 = 0x0b;
     pub const ANC_2: u8 = 0x2b;
-
+    pub const ALR: u8 = 0x4b;
     pub const ARR: u8 = 0x6b;
+    pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
         CPU {
@@ -452,6 +451,10 @@ impl CPU {
             CPU::ARR => {
                 let immediate = self.fetch_param(mem);
                 self.arr(immediate);
+            },
+            CPU::ALR => {
+                let immediate = self.fetch_param(mem);
+                self.alr(immediate);
             },
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
@@ -769,6 +772,13 @@ impl CPU {
         let bit_5 = (self.register_a & 0x20 > 0) as u8;
         self.update_status_flag(CARRY_FLAG, bit_6 > 0);
         self.update_status_flag(OVERFLOW_FLAG, bit_6 ^ bit_5 > 0);
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn alr(&mut self, immediate: u8) {
+        self.and_im(immediate);
+        self.lsr_a();
         self.increment_program_counter();
     }
 
@@ -3814,6 +3824,18 @@ mod tests {
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
         assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+    }
+
+    #[test]
+    fn test_alr() {
+        let mut cpu = CPU::new();
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = 0b1110_0001;
+        cpu.alr(0b1110_1011);
+        assert_eq!(cpu.register_a, 0b0111_0000);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
 
     #[test]
