@@ -336,6 +336,9 @@ impl CPU {
     pub const ANC_2: u8 = 0x2b;
     pub const ALR: u8 = 0x4b;
     pub const ARR: u8 = 0x6b;
+    pub const ANE: u8 = 0x8b;
+    pub const LXA: u8 = 0xab;
+    pub const SBX: u8 = 0xcb;
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -456,6 +459,10 @@ impl CPU {
                 let immediate = self.fetch_param(mem);
                 self.alr(immediate);
             },
+            CPU::LXA => {
+                let immediate = self.fetch_param(mem);
+                self.lxa(immediate);
+            }
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param(mem);
                 self.anc(immediate);
@@ -779,6 +786,13 @@ impl CPU {
     fn alr(&mut self, immediate: u8) {
         self.and_im(immediate);
         self.lsr_a();
+        self.increment_program_counter();
+    }
+
+    #[inline]
+    fn lxa(&mut self, immediate: u8) {
+        self.and_im(immediate);
+        self.tax();
         self.increment_program_counter();
     }
 
@@ -3836,6 +3850,18 @@ mod tests {
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_lxa() {
+        let mut cpu = CPU::new();
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = 0b1110_0001;
+        cpu.lxa(0b1110_1011);
+        assert_eq!(cpu.register_a, 0b1110_0001);
+        assert_eq!(cpu.register_x, 0b1110_0001);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
     }
 
     #[test]
