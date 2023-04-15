@@ -7,6 +7,7 @@ const ISB_PATTERN: u8 = 0b1110_0011;
 const DCP_PATTERN: u8 = 0b1100_0011;
 const LAX_PATTERN: u8 = 0b1010_0011;
 const SAX_PATTERN: u8 = 0b1000_0011;
+const RRA_PATTERN: u8 = 0b0110_0011;
 const SRE_PATTERN: u8 = 0b0100_0011;
 const RLA_PATTERN: u8 = 0b0010_0011;
 const SLO_PATTERN: u8 = 0b0000_0011;
@@ -323,6 +324,14 @@ impl CPU {
     pub const SRE_IN_X: u8 = 0x43;
     pub const SRE_IN_Y: u8 = 0x53;
 
+    pub const RRA_ZP: u8 = 0x67;
+    pub const RRA_ZP_X: u8 = 0x77;
+    pub const RRA_AB: u8 = 0x6F;
+    pub const RRA_AB_X: u8 = 0x7F;
+    pub const RRA_AB_Y: u8 = 0x7B;
+    pub const RRA_IN_X: u8 = 0x63;
+    pub const RRA_IN_Y: u8 = 0x73;
+
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -464,6 +473,7 @@ impl CPU {
                 DCP_PATTERN => self.dcp(opcode, mem),
                 LAX_PATTERN => self.lax(opcode, mem),
                 SAX_PATTERN => self.sax(opcode, mem),
+                RRA_PATTERN => self.rra(opcode, mem),
                 SRE_PATTERN => self.sre(opcode, mem),
                 RLA_PATTERN => self.rla(opcode, mem),
                 SLO_PATTERN => self.slo(opcode, mem),
@@ -1600,6 +1610,111 @@ impl CPU {
         value = (value >> 1) | (old_carry << 7);
         mem.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+    }
+
+    fn rra(&mut self, opcode: u8, mem: &mut Memory) {
+        match opcode {
+            CPU::RRA_ZP => {
+                let address = self.fetch_param(mem);
+                self.rra_zp(address, mem);
+            },
+            CPU::RRA_ZP_X => {
+                let address = self.fetch_param(mem);
+                self.rra_zp_x(address, mem);
+            },
+            CPU::RRA_AB => {
+                let address = self.fetch_addr_param(mem);
+                self.rra_ab(address, mem);
+            },
+            CPU::RRA_AB_X => {
+                let address = self.fetch_addr_param(mem);
+                self.rra_ab_x(address, mem);
+            },
+            CPU::RRA_AB_Y => {
+                let address = self.fetch_addr_param(mem);
+                self.rra_ab_y(address, mem);
+            },
+            CPU::RRA_IN_X => {
+                let address = self.fetch_param(mem);
+                self.rra_in_x(address, mem);
+            },
+            CPU::RRA_IN_Y => {
+                let address = self.fetch_param(mem);
+                self.rra_in_y(address, mem);
+            },
+            _ => panic!("invalid opcode: {:x}", opcode)
+        }
+        self.increment_program_counter()
+    }
+
+    #[inline]
+    fn rra_zp(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_read(address);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.zp_write(address, value);
+        self.adc_zp(address, mem);
+    }
+
+    #[inline]
+    fn rra_zp_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_x_read(address, self.register_x);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.zp_x_write(address, self.register_x, value);
+        self.adc_zp_x(address, mem);
+    }
+
+    #[inline]
+    fn rra_ab(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_read(address);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.ab_write(address, value);
+        self.adc_ab(address, mem);
+    }
+
+    #[inline]
+    fn rra_ab_x(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_x_read(address, self.register_x);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.ab_x_write(address, self.register_x, value);
+        self.adc_ab_x(address, mem);
+    }
+
+    #[inline]
+    fn rra_ab_y(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_y_read(address, self.register_y);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.ab_y_write(address, self.register_y, value);
+        self.adc_ab_y(address, mem);
+    }
+
+    #[inline]
+    fn rra_in_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_x_read(address, self.register_x);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.in_x_write(address, self.register_x, value);
+        self.adc_in_x(address, mem);
+    }
+
+    #[inline]
+    fn rra_in_y(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_y_read(address, self.register_y);
+        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = (value >> 1) | (old_carry << 7);
+        mem.in_y_write(address, self.register_y, value);
+        self.adc_in_y(address, mem);
     }
 
     fn rol(&mut self, opcode: u8, mem: &mut Memory) {
@@ -4178,6 +4293,90 @@ mod tests {
         }
         assert_eq!(cpu.register_a, 0b0000_1111);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_rra_zp() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x10, 1);
+        cpu.register_a = BYTE_A;
+        cpu.rra_zp(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x10), 0);
+    }
+
+    #[test]
+    fn test_rra_zp_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x20, 1);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x10;
+        cpu.rra_zp_x(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x20), 0);
+    }
+
+    #[test]
+    fn test_rra_ab() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, 1);
+        cpu.register_a = BYTE_A;
+        cpu.rra_ab(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x1400), 0);
+    }
+
+    #[test]
+    fn test_rra_ab_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 1);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x10;
+        cpu.rra_ab_x(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x1410), 0);
+    }
+
+    #[test]
+    fn test_rra_ab_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 1);
+        cpu.register_a = BYTE_A;
+        cpu.register_y = 0x10;
+        cpu.rra_ab_y(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x1410), 0);
+    }
+
+    #[test]
+    fn test_rra_in_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, 1);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_A;
+        cpu.register_x = 0x08;
+        cpu.rra_in_x(0x08, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x1400), 0);
+    }
+
+    #[test]
+    fn test_rra_in_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 1);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_A;
+        cpu.register_y = 0x10;
+        cpu.rra_in_y(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_B);
+        assert_eq!(mem.read_byte(0x1410), 0);
     }
 
     #[test]

@@ -46,7 +46,7 @@ impl Memory {
             },
             _ => {
                 // self.memory[addr as usize]
-                panic!("Attempt to read from unmapped memory: {}", addr);
+                panic!("Attempt to read from unmapped memory: 0x{:0>4X}", addr);
             }
         }
     }
@@ -63,11 +63,11 @@ impl Memory {
                 self.memory[mirror_addr as usize] = data;
             }
             Memory::PRG_ROM_START..=Memory::PRG_ROM_END => {
-                panic!("Attempt to write to Cartridge ROM space: {}", addr)
+                panic!("Attempt to write to Cartridge ROM space: 0x{:0>4X}", addr)
             },
             _ => {
                 // self.memory[addr as usize] = data;
-                panic!("Attempt to write to unmapped memory: {}", addr);
+                panic!("Attempt to write to unmapped memory: 0x{:0>4X}", addr);
             }
         }
     }
