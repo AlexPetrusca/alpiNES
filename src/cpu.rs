@@ -7,6 +7,7 @@ const ISB_PATTERN: u8 = 0b1110_0011;
 const DCP_PATTERN: u8 = 0b1100_0011;
 const LAX_PATTERN: u8 = 0b1010_0011;
 const SAX_PATTERN: u8 = 0b1000_0011;
+const SRE_PATTERN: u8 = 0b0100_0011;
 const RLA_PATTERN: u8 = 0b0010_0011;
 const SLO_PATTERN: u8 = 0b0000_0011;
 
@@ -314,6 +315,14 @@ impl CPU {
     pub const RLA_IN_X: u8 = 0x23;
     pub const RLA_IN_Y: u8 = 0x33;
 
+    pub const SRE_ZP: u8 = 0x47;
+    pub const SRE_ZP_X: u8 = 0x57;
+    pub const SRE_AB: u8 = 0x4F;
+    pub const SRE_AB_X: u8 = 0x5F;
+    pub const SRE_AB_Y: u8 = 0x5B;
+    pub const SRE_IN_X: u8 = 0x43;
+    pub const SRE_IN_Y: u8 = 0x53;
+
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
@@ -455,6 +464,7 @@ impl CPU {
                 DCP_PATTERN => self.dcp(opcode, mem),
                 LAX_PATTERN => self.lax(opcode, mem),
                 SAX_PATTERN => self.sax(opcode, mem),
+                SRE_PATTERN => self.sre(opcode, mem),
                 RLA_PATTERN => self.rla(opcode, mem),
                 SLO_PATTERN => self.slo(opcode, mem),
                 INC_PATTERN => self.inc(opcode, mem),
@@ -1251,6 +1261,104 @@ impl CPU {
         value = value >> 1;
         mem.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+    }
+
+    fn sre(&mut self, opcode: u8, mem: &mut Memory) {
+        match opcode {
+            CPU::SRE_ZP => {
+                let address = self.fetch_param(mem);
+                self.sre_zp(address, mem);
+            },
+            CPU::SRE_ZP_X => {
+                let address = self.fetch_param(mem);
+                self.sre_zp_x(address, mem);
+            },
+            CPU::SRE_AB => {
+                let address = self.fetch_addr_param(mem);
+                self.sre_ab(address, mem);
+            },
+            CPU::SRE_AB_X => {
+                let address = self.fetch_addr_param(mem);
+                self.sre_ab_x(address, mem);
+            },
+            CPU::SRE_AB_Y => {
+                let address = self.fetch_addr_param(mem);
+                self.sre_ab_y(address, mem);
+            },
+            CPU::SRE_IN_X => {
+                let address = self.fetch_param(mem);
+                self.sre_in_x(address, mem);
+            },
+            CPU::SRE_IN_Y => {
+                let address = self.fetch_param(mem);
+                self.sre_in_y(address, mem);
+            },
+            _ => panic!("invalid opcode: {:x}", opcode)
+        }
+        self.increment_program_counter()
+    }
+
+    #[inline]
+    fn sre_zp(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_read(address);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.zp_write(address, value);
+        self.eor_zp(address, mem);
+    }
+
+    #[inline]
+    fn sre_zp_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.zp_x_read(address, self.register_x);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.zp_x_write(address, self.register_x, value);
+        self.eor_zp_x(address, mem);
+    }
+
+    #[inline]
+    fn sre_ab(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_read(address);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.ab_write(address, value);
+        self.eor_ab(address, mem);
+    }
+
+    #[inline]
+    fn sre_ab_x(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_x_read(address, self.register_x);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.ab_x_write(address, self.register_x, value);
+        self.eor_ab_x(address, mem);
+    }
+
+    #[inline]
+    fn sre_ab_y(&mut self, address: u16, mem: &mut Memory) {
+        let mut value = mem.ab_y_read(address, self.register_y);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.ab_y_write(address, self.register_y, value);
+        self.eor_ab_y(address, mem);
+    }
+
+    #[inline]
+    fn sre_in_x(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_x_read(address, self.register_x);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.in_x_write(address, self.register_x, value);
+        self.eor_in_x(address, mem);
+    }
+
+    #[inline]
+    fn sre_in_y(&mut self, address: u8, mem: &mut Memory) {
+        let mut value = mem.in_y_read(address, self.register_y);
+        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        value = value >> 1;
+        mem.in_y_write(address, self.register_y, value);
+        self.eor_in_y(address, mem);
     }
 
     fn asl(&mut self, opcode: u8, mem: &mut Memory) {
@@ -3730,6 +3838,90 @@ mod tests {
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_sre_zp() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x10, 2);
+        cpu.register_a = BYTE_B;
+        cpu.sre_zp(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x10), 1);
+    }
+
+    #[test]
+    fn test_sre_zp_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x20, 2);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x10;
+        cpu.sre_zp_x(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x20), 1);
+    }
+
+    #[test]
+    fn test_sre_ab() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, 2);
+        cpu.register_a = BYTE_B;
+        cpu.sre_ab(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x1400), 1);
+    }
+
+    #[test]
+    fn test_sre_ab_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 2);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x10;
+        cpu.sre_ab_x(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x1410), 1);
+    }
+
+    #[test]
+    fn test_sre_ab_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 2);
+        cpu.register_a = BYTE_B;
+        cpu.register_y = 0x10;
+        cpu.sre_ab_y(0x1400, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x1410), 1);
+    }
+
+    #[test]
+    fn test_sre_in_x() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1400, 2);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_B;
+        cpu.register_x = 0x08;
+        cpu.sre_in_x(0x08, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x1400), 1);
+    }
+
+    #[test]
+    fn test_sre_in_y() {
+        let mut cpu = CPU::new();
+        let mut mem = Memory::new();
+        mem.write_byte(0x1410, 2);
+        mem.write_addr(0x10, 0x1400);
+        cpu.register_a = BYTE_B;
+        cpu.register_y = 0x10;
+        cpu.sre_in_y(0x10, &mut mem);
+        assert_eq!(cpu.register_a, BYTE_A);
+        assert_eq!(mem.read_byte(0x1410), 1);
     }
 
     #[test]
