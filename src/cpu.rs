@@ -3795,9 +3795,25 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b1110_0000;
-        cpu.anc(0b1110_1010);
+        cpu.arr(0b1110_1010);
         assert_eq!(cpu.register_a, 0b1111_0000);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+    }
+
+    #[test]
+    fn test_arr_overflow() {
+        let mut cpu = CPU::new();
+        cpu.set_status_flag(CARRY_FLAG);
+        cpu.register_a = 0b1011_0000;
+        cpu.arr(0b1110_1010);
+        assert_eq!(cpu.register_a, 0b1101_0000);
+        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
     }
 
     #[test]
