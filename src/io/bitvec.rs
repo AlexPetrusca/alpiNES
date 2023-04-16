@@ -18,8 +18,4 @@ pub trait BitVector {
             self.clear(flag);
         };
     }
-
-    fn get_value(&self) -> u8;
-
-    fn set_value(&mut self, value: u8);
 }

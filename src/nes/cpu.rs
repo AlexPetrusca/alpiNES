@@ -1,4 +1,5 @@
 pub mod mem;
+mod registers;
 
 use bitvec::prelude::*;
 use rand::Rng;
@@ -46,18 +47,19 @@ const UNUSED_FLAG: u8 = 5;
 const OVERFLOW_FLAG: u8 = 6;
 const NEGATIVE_FLAG: u8 = 7;
 
-const OP_MASK: u8 = 0b1110_0011;
 const B_FLAG_MASK: u8 = 0b0011_0000;
 const B_FLAG_SET_MASK: u8 = 0b0010_0000;
 const B_FLAG_CLEAR_MASK: u8 = 0b1110_1111;
+
+const OP_MASK: u8 = 0b1110_0011;
 
 pub struct CPU {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
     pub stack: u8,
-    pub status: u8,
-    pub program_counter: u16,
+    pub status: u8, // todo: use StatusRegister struct instead
+    pub program_counter: u16, // todo: use ProgramCounter struct instead
     pub memory: Memory
 }
 
@@ -3009,7 +3011,7 @@ impl CPU {
     fn fetch_addr_param(&mut self) -> u16 {
         self.increment_program_counter();
         self.increment_program_counter();
-        self.memory.read_addr(self.program_counter.wrapping_sub(1)) // todo: wraparound issue?
+        self.memory.read_addr(self.program_counter.wrapping_sub(1))
     }
 
     #[inline]

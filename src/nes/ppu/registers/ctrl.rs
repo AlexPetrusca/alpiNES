@@ -21,8 +21,8 @@ use crate::io::bitvec::BitVector;
 //            vertical blanking interval (0: off; 1: on)
 
 pub enum ControlFlag {
-    NameTableHigh = 1,
-    NameTableLow,
+    NameTableAddrHigh,
+    NameTableAddrLow,
     VramAddIncrement,
     SpritePatternAddr,
     BackgroundPatternAddr,
@@ -39,18 +39,33 @@ impl BitVector for ControlRegister {
     type Flag = ControlFlag;
 
     #[inline]
-    fn is_set(&self, flag: ControlFlag) -> bool {
+    fn is_set(&self, flag: Self::Flag) -> bool {
         self.value.view_bits::<Lsb0>()[flag as usize]
     }
 
     #[inline]
-    fn set(&mut self, flag: ControlFlag) {
+    fn set(&mut self, flag: Self::Flag) {
         self.value.view_bits_mut::<Lsb0>().set(flag as usize, true);
     }
 
     #[inline]
-    fn clear(&mut self, flag: ControlFlag) {
+    fn clear(&mut self, flag: Self::Flag) {
         self.value.view_bits_mut::<Lsb0>().set(flag as usize, false);
+    }
+}
+
+impl ControlRegister {
+    pub fn new() -> Self {
+        ControlRegister { value: 0 }
+    }
+
+    pub fn from(value :u8) -> Self {
+        ControlRegister { value }
+    }
+
+    #[inline]
+    pub fn get_vram_addr_increment(&self) -> u8 {
+        if self.is_set(ControlFlag::VramAddIncrement) { 32 } else { 1 }
     }
 
     #[inline]
@@ -61,18 +76,5 @@ impl BitVector for ControlRegister {
     #[inline]
     fn set_value(&mut self, value: u8) {
         self.value = value;
-    }
-}
-
-impl ControlRegister {
-    pub fn new() -> Self {
-        ControlRegister {
-            value: 0
-        }
-    }
-
-    #[inline]
-    pub fn get_vram_addr_increment(&self) -> u8 {
-        if self.is_set(ControlFlag::VramAddIncrement) { 32 } else { 1 }
     }
 }
