@@ -1,7 +1,6 @@
 use std::fs;
 use std::fs::File;
 use std::io::Read;
-use crate::mem::Memory;
 
 #[derive(Debug, PartialEq)]
 pub enum Mirroring {

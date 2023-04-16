@@ -9,14 +9,12 @@ macro_rules! logln {
 }
 
 pub struct Logger {
-    filepath: String,
     file: File,
 }
 
 impl Logger {
     pub fn new(filepath: &str) -> Self {
-        let mut f = File::create(filepath).unwrap();
-        Self { filepath: String::from(filepath), file: f }
+        Self { file: File::create(filepath).unwrap() }
     }
 
     pub fn log(&mut self, text: &str) {

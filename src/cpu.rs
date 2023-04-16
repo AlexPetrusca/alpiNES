@@ -3036,7 +3036,6 @@ impl CPU {
 
 #[cfg(test)]
 mod tests {
-    use sdl2::sys::register_t;
     use super::*;
 
     const BYTE_A: u8 = 0x0a;
