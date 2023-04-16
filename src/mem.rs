@@ -20,7 +20,6 @@ macro_rules! name_table_2_range {() => {0x2800..=0x2BFF}}
 macro_rules! name_table_3_range {() => {0x2C00..=0x2FFF}}
 macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
 
-// todo: make cpu_memory and ppu_memory index-able
 pub struct Memory {
     cpu_memory: CPUMemory,
     ppu_memory: PPUMemory,
@@ -34,21 +33,17 @@ impl Memory {
         }
     }
 
-    pub fn load_at_addr(&mut self, address: u16, program: &Vec<u8>) {
-        for i in 0..program.len() {
-            self.cpu_memory.memory[address.wrapping_add(i as u16) as usize] = program[i];
-        }
-        let addr_bytes = &u16::to_le_bytes(address);
-        self.cpu_memory.memory[CPUMemory::RESET_INT_VECTOR as usize] = addr_bytes[0];
-        self.cpu_memory.memory[CPUMemory::RESET_INT_VECTOR.wrapping_add(1) as usize] = addr_bytes[1];
-    }
-
     pub fn load_rom(&mut self, rom: &ROM) {
         self.cpu_memory.prg_mirror_enabled = rom.prg_rom_mirroring;
         for i in 0..rom.prg_rom.len() {
             let idx = CPUMemory::PRG_ROM_START.wrapping_add(i as u16);
             self.cpu_memory.memory[idx as usize] = rom.prg_rom[i];
         }
+    }
+
+    #[inline]
+    pub fn load_at_addr(&mut self, address: u16, program: &Vec<u8>) {
+        self.cpu_memory.load_at_addr(address, program);
     }
 
     #[inline]
@@ -165,6 +160,16 @@ impl Memory {
     pub fn in_y_write(&mut self, address: u8, register_y: u8, value: u8) {
         self.cpu_memory.in_y_write(address, register_y, value);
     }
+
+    #[inline]
+    pub fn ppu_read_byte(&self, address: u16) -> u8 {
+        self.ppu_memory.read_byte(address)
+    }
+
+    #[inline]
+    pub fn ppu_write_byte(&mut self, address: u16, data: u8) {
+        self.ppu_memory.write_byte(address, data);
+    }
 }
 
 pub struct CPUMemory {
@@ -183,6 +188,15 @@ impl CPUMemory {
             memory: [0; CPU_MEM_LEN],
             prg_mirror_enabled: false
         }
+    }
+
+    pub fn load_at_addr(&mut self, address: u16, program: &Vec<u8>) {
+        for i in 0..program.len() {
+            self.memory[address.wrapping_add(i as u16) as usize] = program[i];
+        }
+        let addr_bytes = &u16::to_le_bytes(address);
+        self.memory[CPUMemory::RESET_INT_VECTOR as usize] = addr_bytes[0];
+        self.memory[CPUMemory::RESET_INT_VECTOR.wrapping_add(1) as usize] = addr_bytes[1];
     }
 
     #[inline]
@@ -368,7 +382,7 @@ impl PPUMemory {
     }
 
     #[inline]
-    pub fn ppu_read_byte(&self, address: u16) -> u8 {
+    pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             _ => {
                 panic!("Attempt to read from unmapped ppu memory: 0x{:0>4X}", address);
@@ -377,7 +391,7 @@ impl PPUMemory {
     }
 
     #[inline]
-    pub fn ppu_write_byte(&mut self, address: u16, data: u8) {
+    pub fn write_byte(&mut self, address: u16, data: u8) {
         match address {
             _ => {
                 panic!("Attempt to write to unmapped ppu memory: 0x{:0>4X}", address);
