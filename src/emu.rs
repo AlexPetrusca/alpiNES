@@ -118,7 +118,7 @@ mod tests {
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_a, 0x08);
         assert_eq!(emu.nes.mem.read_byte(0x0202), 0x08);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0000);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -131,7 +131,7 @@ mod tests {
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_a, 0x84);
         assert_eq!(emu.nes.cpu.register_x, 0xc1);
-        assert_eq!(emu.nes.cpu.status, 0b1011_0001);
+        assert_eq!(emu.nes.cpu.status, 0b1010_0101);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -157,7 +157,7 @@ mod tests {
         ];
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_a, 0x80);
-        assert_eq!(emu.nes.cpu.status, 0b1111_0000);
+        assert_eq!(emu.nes.cpu.status, 0b1110_0100);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -170,7 +170,7 @@ mod tests {
         ];
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_x, 0x03);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0011);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -184,8 +184,8 @@ mod tests {
         emu.load_at_addr(0x600, &program);
         emu.run();
         assert_eq!(emu.nes.cpu.register_x, 0x05);
-        assert_eq!(emu.nes.cpu.stack, 0xfd);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0011);
+        assert_eq!(emu.nes.cpu.stack, 0xfb);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
         assert_eq!(emu.nes.cpu.program_counter, 0x600 + program.len() as u16);
     }
 
@@ -200,7 +200,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_a, 0x0a);
         assert_eq!(emu.nes.cpu.register_x, 0x01);
         assert_eq!(emu.nes.cpu.register_y, 0x0a);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0000);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -215,7 +215,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_a, 0x0a);
         assert_eq!(emu.nes.cpu.register_x, 0x0a);
         assert_eq!(emu.nes.cpu.register_y, 0x01);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0000);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -235,8 +235,8 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_a, 0x00);
         assert_eq!(emu.nes.cpu.register_x, 0x10);
         assert_eq!(emu.nes.cpu.register_y, 0x20);
-        assert_eq!(emu.nes.cpu.stack, 0xff);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0011);
+        assert_eq!(emu.nes.cpu.stack, 0xfd);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
         assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -282,8 +282,8 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_a, 0x1f);
         assert_eq!(emu.nes.cpu.register_x, 0xff);
         assert_eq!(emu.nes.cpu.register_y, 0x00);
-        assert_eq!(emu.nes.cpu.stack, 0xfb);
-        assert_eq!(emu.nes.cpu.status, 0b0011_0011);
+        assert_eq!(emu.nes.cpu.stack, 0xf9);
+        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
         assert_eq!(emu.nes.cpu.program_counter, 0x736);
     }
 }

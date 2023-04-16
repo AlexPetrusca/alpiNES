@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(nes.cpu.register_a, 0x02);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 3);
         nes.step().unwrap_or_default();
-        assert_eq!(nes.cpu.status, 0b0011_0001);
+        assert_eq!(nes.cpu.status, 0b0010_0101);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 4);
     }
 }

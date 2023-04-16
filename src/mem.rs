@@ -227,6 +227,8 @@ mod tests {
     const BYTE_A: u8 = 0x0a;
     const BYTE_B: u8 = 0x0b;
 
+    // todo: add more tests for memory
+
     #[test]
     fn test_read_write() {
         let mut mem = Memory::new();
