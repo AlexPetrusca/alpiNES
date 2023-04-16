@@ -1,16 +1,14 @@
 use crate::io::rom::ROM;
 use crate::nes::cpu::CPU;
-use crate::nes::mem::{CPUMemory, Memory};
+use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;
 
 pub mod cpu;
-pub mod mem;
 pub mod ppu;
 
 pub struct NES {
     pub cpu: CPU,
     pub ppu: PPU,
-    pub mem: Memory,
 }
 
 impl NES {
@@ -18,37 +16,35 @@ impl NES {
         NES {
             cpu: CPU::new(),
             ppu: PPU::new(),
-            mem: Memory::new(),
         }
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        self.cpu.step(&mut self.mem)
+        self.cpu.step()
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {
-        self.load_at_addr(CPUMemory::PRG_ROM_START, program);
+        self.load_at_addr(Memory::PRG_ROM_START, program);
     }
 
     pub fn load_at_addr(&mut self, addr: u16, program: &Vec<u8>) {
-        self.mem.load_at_addr(addr, program);
+        self.cpu.memory.load_at_addr(addr, program);
         self.reset();
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
-        self.mem.load_rom(rom);
+        self.cpu.memory.load_rom(rom);
         self.reset();
     }
 
     pub fn reset(&mut self) {
         self.cpu.reset();
-        self.cpu.program_counter = self.mem.read_addr(CPUMemory::RESET_INT_VECTOR);
+        self.cpu.program_counter = self.cpu.memory.read_addr(Memory::RESET_INT_VECTOR);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::nes::mem::CPUMemory;
     use super::*;
 
     #[test]
@@ -56,7 +52,7 @@ mod tests {
         let mut nes = NES::new();
         assert_eq!(nes.cpu.program_counter, 0);
         nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START);
     }
 
     #[test]
@@ -64,9 +60,9 @@ mod tests {
         let mut nes = NES::new();
         nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
         nes.step().unwrap();
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START + 2);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 2);
         nes.reset();
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START);
     }
 
     #[test]
@@ -75,12 +71,12 @@ mod tests {
         nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
         nes.step().unwrap();
         assert_eq!(nes.cpu.register_a, 0x05);
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START + 2);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 2);
         nes.step().unwrap();
         assert_eq!(nes.cpu.register_a, 0x02);
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START + 3);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 3);
         nes.step().unwrap_or_default();
         assert_eq!(nes.cpu.status, 0b0010_0101);
-        assert_eq!(nes.cpu.program_counter, CPUMemory::PRG_ROM_START + 4);
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 4);
     }
 }

@@ -1,6 +1,4 @@
 use crate::nes::NES;
-use crate::nes::cpu::CPU;
-use crate::nes::mem::CPUMemory;
 use crate::io::rom::ROM;
 
 pub struct Emulator {
@@ -50,13 +48,15 @@ impl Emulator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nes::cpu::CPU;
+    use crate::nes::cpu::mem::Memory;
 
     #[test]
     fn test_load_and_reset() {
         let mut emu = Emulator::new();
         emu.load(&vec![0xff]);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START);
-        assert_eq!(emu.nes.mem.read_byte(CPUMemory::PRG_ROM_START), 0xff);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START);
+        assert_eq!(emu.nes.cpu.memory.read_byte(Memory::PRG_ROM_START), 0xff);
     }
 
     #[test]
@@ -117,9 +117,9 @@ mod tests {
         ];
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_a, 0x08);
-        assert_eq!(emu.nes.mem.read_byte(0x0202), 0x08);
+        assert_eq!(emu.nes.cpu.memory.read_byte(0x0202), 0x08);
         assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -132,7 +132,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_a, 0x84);
         assert_eq!(emu.nes.cpu.register_x, 0xc1);
         assert_eq!(emu.nes.cpu.status, 0b1010_0101);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_x, 0x00);
         assert_eq!(emu.nes.cpu.register_y, 0x00);
         assert_eq!(emu.nes.cpu.status, 0b1110_0100);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -158,7 +158,7 @@ mod tests {
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_a, 0x80);
         assert_eq!(emu.nes.cpu.status, 0b1110_0100);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
         emu.load_and_run(&program);
         assert_eq!(emu.nes.cpu.register_x, 0x03);
         assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_x, 0x01);
         assert_eq!(emu.nes.cpu.register_y, 0x0a);
         assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(emu.nes.cpu.register_x, 0x0a);
         assert_eq!(emu.nes.cpu.register_y, 0x01);
         assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -229,15 +229,15 @@ mod tests {
         ];
         emu.load_and_run(&program);
         for i in 0..16 {
-            assert_eq!(emu.nes.mem.read_byte(0x200 + i), i as u8);
-            assert_eq!(emu.nes.mem.read_byte(0x200 + (31 - i)), i as u8);
+            assert_eq!(emu.nes.cpu.memory.read_byte(0x200 + i), i as u8);
+            assert_eq!(emu.nes.cpu.memory.read_byte(0x200 + (31 - i)), i as u8);
         }
         assert_eq!(emu.nes.cpu.register_a, 0x00);
         assert_eq!(emu.nes.cpu.register_x, 0x10);
         assert_eq!(emu.nes.cpu.register_y, 0x20);
         assert_eq!(emu.nes.cpu.stack, 0xfd);
         assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, CPUMemory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]

@@ -1,3 +1,5 @@
+pub mod mem;
+
 pub struct PPU {
 }
 

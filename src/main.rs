@@ -1,20 +1,17 @@
-use std::fs;
-use std::fs::File;
-use std::io::Read;
-use alpiNES::emu::Emulator;
-use alpiNES::nes::NES;
-use alpiNES::rom::ROM;
-
 use std::time::Duration;
 use rand::Rng;
+
 use sdl2::event::Event;
 use sdl2::EventPump;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
-use sdl2::video::Window;
-use alpiNES::logger::Logger;
-use alpiNES::logln;
+
+use alpines::emu::Emulator;
+use alpines::nes::NES;
+use alpines::io::rom::ROM;
+use alpines::io::logger::Logger;
+use alpines::logln;
 
 const SCALE: f32 = 20.0;
 
@@ -35,8 +32,8 @@ fn color(byte: u8) -> Color {
 fn read_screen_state(nes: &NES, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
-    for i in 0x0200..0x600 {
-        let color_idx = nes.mem.read_byte(i as u16);
+    for i in 0x200..0x600 {
+        let color_idx = nes.cpu.memory.read_byte(i as u16);
         let (b1, b2, b3) = color(color_idx).rgb();
         if frame[frame_idx] != b1 || frame[frame_idx + 1] != b2 || frame[frame_idx + 2] != b3 {
             frame[frame_idx] = b1;
@@ -56,16 +53,16 @@ fn handle_user_input(nes: &mut NES, event_pump: &mut EventPump) {
                 std::process::exit(0);
             },
             Event::KeyDown { keycode: Some(Keycode::W | Keycode::Up), .. } => {
-                nes.mem.write_byte(0xff, 0x77);
+                nes.cpu.memory.write_byte(0xff, 0x77);
             },
             Event::KeyDown { keycode: Some(Keycode::S | Keycode::Down), .. } => {
-                nes.mem.write_byte(0xff, 0x73);
+                nes.cpu.memory.write_byte(0xff, 0x73);
             },
             Event::KeyDown { keycode: Some(Keycode::A | Keycode::Left), .. } => {
-                nes.mem.write_byte(0xff, 0x61);
+                nes.cpu.memory.write_byte(0xff, 0x61);
             },
             Event::KeyDown { keycode: Some(Keycode::D | Keycode::Right), .. } => {
-                nes.mem.write_byte(0xff, 0x64);
+                nes.cpu.memory.write_byte(0xff, 0x64);
             }
             _ => {}
         }
@@ -93,7 +90,7 @@ fn run_snake() {
 
     emulator.run_with_callback(|nes| {
         handle_user_input(nes, &mut event_pump);
-        nes.mem.write_byte(0xfe, rng.gen_range(1..16));
+        nes.cpu.memory.write_byte(0xfe, rng.gen_range(1..16));
 
         if read_screen_state(nes, &mut screen_state) {
             texture.update(None, &screen_state, 32 * 3).unwrap();
@@ -115,7 +112,7 @@ fn run_nestest() {
     let log_path = cartridge_path.replace(".nes", ".log");
     let mut logger = Logger::new(&log_path);
     emulator.run_with_callback(|nes| {
-        let op = nes.mem.read_byte(nes.cpu.program_counter);
+        let op = nes.cpu.memory.read_byte(nes.cpu.program_counter);
         logln!(logger, "{:0>4X}  {:0>2X}    A:{:0>2X} X:{:0>2X} Y:{:0>2X} P:{:0>2X} SP:{:0>2X}",
             nes.cpu.program_counter, op, nes.cpu.register_a, nes.cpu.register_x,
             nes.cpu.register_y, nes.cpu.status, nes.cpu.stack);
@@ -123,6 +120,6 @@ fn run_nestest() {
 }
 
 fn main() {
-    // run_snake();
-    run_nestest();
+    run_snake();
+    // run_nestest();
 }
