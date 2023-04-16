@@ -1,8 +1,5 @@
 use crate::rom::ROM;
 
-const CPU_MEM_LEN: usize = 0x10000 as usize; // 64kB
-const PPU_MEM_LEN: usize = 0x4000 as usize; // 16kB
-
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
 macro_rules! ppu_registers_range {() => {0x2000..=0x3FFF}}
@@ -173,11 +170,13 @@ impl Memory {
 }
 
 pub struct CPUMemory {
-    memory: [u8; CPU_MEM_LEN],
+    memory: [u8; CPUMemory::MEM_LEN],
     prg_mirror_enabled: bool
 }
 
 impl CPUMemory {
+    const MEM_LEN: usize = 0x10000 as usize; // 64kB
+
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
     pub const RESET_INT_VECTOR: u16 = 0xFFFC;
@@ -185,7 +184,7 @@ impl CPUMemory {
 
     pub fn new() -> Self {
         CPUMemory {
-            memory: [0; CPU_MEM_LEN],
+            memory: [0; CPUMemory::MEM_LEN],
             prg_mirror_enabled: false
         }
     }
@@ -371,32 +370,49 @@ impl CPUMemory {
 }
 
 pub struct PPUMemory {
-    memory: [u8; PPU_MEM_LEN],
+    memory: [u8; PPUMemory::MEM_LEN],
+    oam: [u8; PPUMemory::OAM_LEN]
 }
 
 impl PPUMemory {
+    const MEM_LEN: usize = 0x4000 as usize; // 16kB
+    const OAM_LEN: usize = 0x100 as usize; // 256B
+
     pub fn new() -> Self {
         PPUMemory {
-            memory: [0; PPU_MEM_LEN],
+            memory: [0; PPUMemory::MEM_LEN],
+            oam: [0; PPUMemory::OAM_LEN],
         }
     }
 
     #[inline]
     pub fn read_byte(&self, address: u16) -> u8 {
-        match address {
+        let ppu_address = address % PPUMemory::MEM_LEN;
+        match ppu_address {
             _ => {
-                panic!("Attempt to read from unmapped ppu memory: 0x{:0>4X}", address);
+                panic!("Attempt to read from unmapped ppu memory: 0x{:0>4X}", ppu_address);
             }
         }
     }
 
     #[inline]
     pub fn write_byte(&mut self, address: u16, data: u8) {
-        match address {
+        let ppu_address = address % PPUMemory::MEM_LEN;
+        match ppu_address {
             _ => {
-                panic!("Attempt to write to unmapped ppu memory: 0x{:0>4X}", address);
+                panic!("Attempt to write to unmapped ppu memory: 0x{:0>4X}", ppu_address);
             }
         }
+    }
+
+    #[inline]
+    pub fn oam_read_byte(&self, address: u8) -> u8 {
+        todo!();
+    }
+
+    #[inline]
+    pub fn oam_write_byte(&mut self, address: u8, data: u8) {
+        todo!();
     }
 }
 
