@@ -10,24 +10,21 @@ macro_rules! name_table_3_range {() => {0x2C00..=0x2FFF}}
 macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
 
 pub struct Memory {
-    memory: [u8; Memory::MEM_LEN],
-    oam: [u8; Memory::OAM_LEN]
+    memory: [u8; Memory::MEM_SIZE],
 }
 
 impl Memory {
-    const MEM_LEN: usize = 0x4000 as usize; // 16kB
-    const OAM_LEN: usize = 0x100 as usize; // 256B
+    const MEM_SIZE: usize = 0x4000 as usize; // 16kB
 
     pub fn new() -> Self {
         Memory {
-            memory: [0; Memory::MEM_LEN],
-            oam: [0; Memory::OAM_LEN],
+            memory: [0; Memory::MEM_SIZE],
         }
     }
 
     #[inline]
     pub fn read_byte(&self, address: u16) -> u8 {
-        let ppu_address = address % Memory::MEM_LEN as u16;
+        let ppu_address = address % Memory::MEM_SIZE as u16;
         match ppu_address {
             _ => {
                 panic!("Attempt to read from unmapped ppu memory: 0x{:0>4X}", ppu_address);
@@ -37,7 +34,7 @@ impl Memory {
 
     #[inline]
     pub fn write_byte(&mut self, address: u16, data: u8) {
-        let ppu_address = address % Memory::MEM_LEN as u16;
+        let ppu_address = address % Memory::MEM_SIZE as u16;
         match ppu_address {
             _ => {
                 panic!("Attempt to write to unmapped ppu memory: 0x{:0>4X}", ppu_address);

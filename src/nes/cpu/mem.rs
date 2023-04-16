@@ -7,12 +7,12 @@ macro_rules! apu_registers_range {() => {0x4000..=0x4017}}
 macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
-    memory: [u8; Memory::MEM_LEN],
+    memory: [u8; Memory::MEM_SIZE],
     prg_mirror_enabled: bool
 }
 
 impl Memory {
-    const MEM_LEN: usize = 0x10000 as usize; // 64kB
+    const MEM_SIZE: usize = 0x10000 as usize; // 64kB
 
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
@@ -21,7 +21,7 @@ impl Memory {
 
     pub fn new() -> Self {
         Memory {
-            memory: [0; Memory::MEM_LEN],
+            memory: [0; Memory::MEM_SIZE],
             prg_mirror_enabled: false
         }
     }
