@@ -1,8 +1,8 @@
 use bitvec::prelude::*;
 use rand::Rng;
 
-use crate::mem::Memory;
 use crate::nes::NES;
+use crate::nes::mem::Memory;
 
 const ISB_PATTERN: u8 = 0b1110_0011;
 const DCP_PATTERN: u8 = 0b1100_0011;

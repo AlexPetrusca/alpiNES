@@ -1,7 +1,11 @@
-use crate::cpu::CPU;
-use crate::mem::{Memory, CPUMemory};
-use crate::ppu::PPU;
-use crate::rom::ROM;
+use crate::io::rom::ROM;
+use crate::nes::cpu::CPU;
+use crate::nes::mem::{CPUMemory, Memory};
+use crate::nes::ppu::PPU;
+
+pub mod cpu;
+pub mod mem;
+pub mod ppu;
 
 pub struct NES {
     pub cpu: CPU,
@@ -44,6 +48,7 @@ impl NES {
 
 #[cfg(test)]
 mod tests {
+    use crate::nes::mem::CPUMemory;
     use super::*;
 
     #[test]

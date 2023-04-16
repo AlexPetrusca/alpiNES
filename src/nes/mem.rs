@@ -1,4 +1,4 @@
-use crate::rom::ROM;
+use crate::io::rom::ROM;
 
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
@@ -387,7 +387,7 @@ impl PPUMemory {
 
     #[inline]
     pub fn read_byte(&self, address: u16) -> u8 {
-        let ppu_address = address % PPUMemory::MEM_LEN;
+        let ppu_address = address % PPUMemory::MEM_LEN as u16;
         match ppu_address {
             _ => {
                 panic!("Attempt to read from unmapped ppu memory: 0x{:0>4X}", ppu_address);
@@ -397,7 +397,7 @@ impl PPUMemory {
 
     #[inline]
     pub fn write_byte(&mut self, address: u16, data: u8) {
-        let ppu_address = address % PPUMemory::MEM_LEN;
+        let ppu_address = address % PPUMemory::MEM_LEN as u16;
         match ppu_address {
             _ => {
                 panic!("Attempt to write to unmapped ppu memory: 0x{:0>4X}", ppu_address);

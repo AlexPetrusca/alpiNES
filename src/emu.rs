@@ -1,7 +1,7 @@
 use crate::nes::NES;
-use crate::cpu::CPU;
-use crate::mem::CPUMemory;
-use crate::rom::ROM;
+use crate::nes::cpu::CPU;
+use crate::nes::mem::CPUMemory;
+use crate::io::rom::ROM;
 
 pub struct Emulator {
     pub nes: NES
