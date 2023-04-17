@@ -709,13 +709,15 @@ impl CPU {
 
     #[inline]
     fn bit_zp(&mut self, address: u8) {
-        self.update_bit_flags(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.update_bit_flags(value);
         self.increment_program_counter();
     }
 
     #[inline]
     fn bit_ab(&mut self, address: u16) {
-        self.update_bit_flags(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.update_bit_flags(value);
         self.increment_program_counter();
     }
 
@@ -1018,37 +1020,44 @@ impl CPU {
 
     #[inline]
     fn adc_zp(&mut self, address: u8) {
-        self.adc_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_zp_x(&mut self, address: u8) {
-        self.adc_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_ab(&mut self, address: u16) {
-        self.adc_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_ab_x(&mut self, address: u16) {
-        self.adc_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_ab_y(&mut self, address: u16) {
-        self.adc_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_in_x(&mut self, address: u8) {
-        self.adc_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.adc_im(value);
     }
 
     #[inline]
     fn adc_in_y(&mut self, address: u8) {
-        self.adc_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.adc_im(value);
     }
 
     fn sbc(&mut self, opcode: u8) {
@@ -1097,37 +1106,44 @@ impl CPU {
 
     #[inline]
     fn sbc_zp(&mut self, address: u8) {
-        self.sbc_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_zp_x(&mut self, address: u8) {
-        self.sbc_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_ab(&mut self, address: u16) {
-        self.sbc_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_ab_x(&mut self, address: u16) {
-        self.sbc_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_ab_y(&mut self, address: u16) {
-        self.sbc_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_in_x(&mut self, address: u8) {
-        self.sbc_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.sbc_im(value);
     }
 
     #[inline]
     fn sbc_in_y(&mut self, address: u8) {
-        self.sbc_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.sbc_im(value);
     }
 
     fn eor(&mut self, opcode: u8) {
@@ -1177,37 +1193,44 @@ impl CPU {
 
     #[inline]
     fn eor_zp(&mut self, address: u8) {
-        self.eor_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_zp_x(&mut self, address: u8) {
-        self.eor_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_ab(&mut self, address: u16) {
-        self.eor_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_ab_x(&mut self, address: u16) {
-        self.eor_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_ab_y(&mut self, address: u16) {
-        self.eor_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_in_x(&mut self, address: u8) {
-        self.eor_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.eor_im(value);
     }
 
     #[inline]
     fn eor_in_y(&mut self, address: u8) {
-        self.eor_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.eor_im(value);
     }
 
     fn and(&mut self, opcode: u8) {
@@ -1257,37 +1280,44 @@ impl CPU {
 
     #[inline]
     fn and_zp(&mut self, address: u8) {
-        self.and_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_zp_x(&mut self, address: u8) {
-        self.and_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_ab(&mut self, address: u16) {
-        self.and_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_ab_x(&mut self, address: u16) {
-        self.and_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_ab_y(&mut self, address: u16) {
-        self.and_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_in_x(&mut self, address: u8) {
-        self.and_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.and_im(value);
     }
 
     #[inline]
     fn and_in_y(&mut self, address: u8) {
-        self.and_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.and_im(value);
     }
 
     fn ora(&mut self, opcode: u8) {
@@ -1337,37 +1367,44 @@ impl CPU {
 
     #[inline]
     fn ora_zp(&mut self, address: u8) {
-        self.ora_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_zp_x(&mut self, address: u8) {
-        self.ora_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_ab(&mut self, address: u16) {
-        self.ora_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_ab_x(&mut self, address: u16) {
-        self.ora_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_ab_y(&mut self, address: u16) {
-        self.ora_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_in_x(&mut self, address: u8) {
-        self.ora_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.ora_im(value);
     }
 
     #[inline]
     fn ora_in_y(&mut self, address: u8) {
-        self.ora_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.ora_im(value);
     }
 
     fn lsr(&mut self, opcode: u8) {
@@ -2857,37 +2894,44 @@ impl CPU {
 
     #[inline]
     fn cmp_zp(&mut self, address: u8) {
-        self.cmp_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_zp_x(&mut self, address: u8) {
-        self.cmp_im(self.memory.zp_x_read(address, self.register_x));
+        let value = self.memory.zp_x_read(address, self.register_x);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_ab(&mut self, address: u16) {
-        self.cmp_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_ab_x(&mut self, address: u16) {
-        self.cmp_im(self.memory.ab_x_read(address, self.register_x));
+        let value = self.memory.ab_x_read(address, self.register_x);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_ab_y(&mut self, address: u16) {
-        self.cmp_im(self.memory.ab_y_read(address, self.register_y));
+        let value = self.memory.ab_y_read(address, self.register_y);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_in_x(&mut self, address: u8) {
-        self.cmp_im(self.memory.in_x_read(address, self.register_x));
+        let value = self.memory.in_x_read(address, self.register_x);
+        self.cmp_im(value);
     }
 
     #[inline]
     fn cmp_in_y(&mut self, address: u8) {
-        self.cmp_im(self.memory.in_y_read(address, self.register_y));
+        let value = self.memory.in_y_read(address, self.register_y);
+        self.cmp_im(value);
     }
 
     fn cpx(&mut self, opcode: u8) {
@@ -2918,12 +2962,14 @@ impl CPU {
 
     #[inline]
     fn cpx_zp(&mut self, address: u8) {
-        self.cpx_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.cpx_im(value);
     }
 
     #[inline]
     fn cpx_ab(&mut self, address: u16) {
-        self.cpx_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.cpx_im(value);
     }
 
     fn cpy(&mut self, opcode: u8) {
@@ -2954,12 +3000,14 @@ impl CPU {
 
     #[inline]
     fn cpy_zp(&mut self, address: u8) {
-        self.cpy_im(self.memory.zp_read(address));
+        let value = self.memory.zp_read(address);
+        self.cpy_im(value);
     }
 
     #[inline]
     fn cpy_ab(&mut self, address: u16) {
-        self.cpy_im(self.memory.ab_read(address));
+        let value = self.memory.ab_read(address);
+        self.cpy_im(value);
     }
 
     #[inline]
@@ -3954,7 +4002,7 @@ mod tests {
         cpu.memory.write_byte(0x140a, 0b1010_1010);
         cpu.stack = 0b1010_0011;
         cpu.register_y = BYTE_A;
-        cpu.las(0x1400, );
+        cpu.las(0x1400);
         assert_eq!(cpu.register_a, 0b1010_0010);
         assert_eq!(cpu.register_x, 0b1010_0010);
         assert_eq!(cpu.stack, 0b1010_0010);
@@ -3968,23 +4016,23 @@ mod tests {
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
-        cpu.sha_ab_y(0x2480, );
+        cpu.sha_ab_y(0x1480);
         assert_eq!(cpu.register_a, 0b1010_0001);
         assert_eq!(cpu.register_x, 0b1110_1101);
-        assert_eq!(cpu.memory.read_byte(0x248a), 0x21);
+        assert_eq!(cpu.memory.read_byte(0x148a), 0x01);
     }
 
     #[test]
     fn test_sha_in_y() {
         let mut cpu = CPU::new();
-        cpu.memory.write_addr(0x24, 0x2480);
+        cpu.memory.write_addr(0x24, 0x1480);
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
-        cpu.sha_in_y(0x24, );
+        cpu.sha_in_y(0x24);
         assert_eq!(cpu.register_a, 0b1010_0001);
         assert_eq!(cpu.register_x, 0b1110_1101);
-        assert_eq!(cpu.memory.read_byte(0x248a), 0x21);
+        assert_eq!(cpu.memory.read_byte(0x148a), 0x21);
     }
 
     #[test]
@@ -3992,9 +4040,9 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_y = BYTE_A;
         cpu.register_x = 0b1110_1101;
-        cpu.shx(0x2480, );
+        cpu.shx(0x1480);
         assert_eq!(cpu.register_x, 0b1110_1101);
-        assert_eq!(cpu.memory.read_byte(0x248a), 0x25);
+        assert_eq!(cpu.memory.read_byte(0x148a), 0x05);
     }
 
     #[test]
@@ -4002,9 +4050,9 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = BYTE_A;
         cpu.register_y = 0b1110_1101;
-        cpu.shy(0x2480, );
+        cpu.shy(0x1480);
         assert_eq!(cpu.register_y, 0b1110_1101);
-        assert_eq!(cpu.memory.read_byte(0x248a), 0x25);
+        assert_eq!(cpu.memory.read_byte(0x148a), 0x05);
     }
 
     #[test]
@@ -4013,9 +4061,9 @@ mod tests {
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
-        cpu.shs(0x2480, );
+        cpu.shs(0x1480);
         assert_eq!(cpu.stack, 0b1010_0001);
-        assert_eq!(cpu.memory.read_byte(0x248a), 0x21);
+        assert_eq!(cpu.memory.read_byte(0x148a), 0x01);
     }
 
     #[test]
@@ -4174,7 +4222,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
-        cpu.lsr_zp(0x10, );
+        cpu.lsr_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b0000_0111);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4185,7 +4233,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.lsr_zp_x(0x10, );
+        cpu.lsr_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b0000_0111);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4195,7 +4243,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
-        cpu.lsr_ab(0x1400, );
+        cpu.lsr_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b0000_0111);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4206,7 +4254,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.lsr_ab_x(0x1400, );
+        cpu.lsr_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b0000_0111);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4248,7 +4296,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, 2);
         cpu.register_a = BYTE_B;
-        cpu.sre_zp(0x10, );
+        cpu.sre_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x10), 1);
     }
@@ -4259,7 +4307,7 @@ mod tests {
         cpu.memory.write_byte(0x20, 2);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
-        cpu.sre_zp_x(0x10, );
+        cpu.sre_zp_x(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x20), 1);
     }
@@ -4269,7 +4317,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, 2);
         cpu.register_a = BYTE_B;
-        cpu.sre_ab(0x1400, );
+        cpu.sre_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1400), 1);
     }
@@ -4280,7 +4328,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 2);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
-        cpu.sre_ab_x(0x1400, );
+        cpu.sre_ab_x(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), 1);
     }
@@ -4291,7 +4339,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 2);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
-        cpu.sre_ab_y(0x1400, );
+        cpu.sre_ab_y(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), 1);
     }
@@ -4303,7 +4351,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x08;
-        cpu.sre_in_x(0x08, );
+        cpu.sre_in_x(0x08);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1400), 1);
     }
@@ -4315,7 +4363,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
-        cpu.sre_in_y(0x10, );
+        cpu.sre_in_y(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), 1);
     }
@@ -4334,7 +4382,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b1111_0000);
-        cpu.asl_zp(0x10, );
+        cpu.asl_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b1110_0000);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4345,7 +4393,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b1111_0000);
         cpu.register_x = 0x10;
-        cpu.asl_zp_x(0x10, );
+        cpu.asl_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b1110_0000);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4355,7 +4403,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b1111_0000);
-        cpu.asl_ab(0x1400, );
+        cpu.asl_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b1110_0000);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4366,7 +4414,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b1111_0000);
         cpu.register_x = 0x10;
-        cpu.asl_ab_x(0x1400, );
+        cpu.asl_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b1110_0000);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
@@ -4408,7 +4456,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, 0x08);
         cpu.register_a = 0x20;
-        cpu.slo_zp(0x10, );
+        cpu.slo_zp(0x10);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x10), 0x10);
     }
@@ -4419,7 +4467,7 @@ mod tests {
         cpu.memory.write_byte(0x20, 0x08);
         cpu.register_a = 0x20;
         cpu.register_x = 0x10;
-        cpu.slo_zp_x(0x10, );
+        cpu.slo_zp_x(0x10);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x20), 0x10);
     }
@@ -4429,7 +4477,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, 0x08);
         cpu.register_a = 0x20;
-        cpu.slo_ab(0x1400, );
+        cpu.slo_ab(0x1400);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x1400), 0x10);
     }
@@ -4440,7 +4488,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 0x08);
         cpu.register_a = 0x20;
         cpu.register_x = 0x10;
-        cpu.slo_ab_x(0x1400, );
+        cpu.slo_ab_x(0x1400);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x1410), 0x10);
     }
@@ -4451,7 +4499,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 0x08);
         cpu.register_a = 0x20;
         cpu.register_y = 0x10;
-        cpu.slo_ab_y(0x1400, );
+        cpu.slo_ab_y(0x1400);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x1410), 0x10);
     }
@@ -4463,7 +4511,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = 0x20;
         cpu.register_x = 0x08;
-        cpu.slo_in_x(0x08, );
+        cpu.slo_in_x(0x08);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x1400), 0x10);
     }
@@ -4475,7 +4523,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = 0x20;
         cpu.register_y = 0x10;
-        cpu.slo_in_y(0x10, );
+        cpu.slo_in_y(0x10);
         assert_eq!(cpu.register_a, 0x30);
         assert_eq!(cpu.memory.read_byte(0x1410), 0x10);
     }
@@ -4496,7 +4544,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
-        cpu.ror_zp(0x10, );
+        cpu.ror_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b1000_0111);
     }
 
@@ -4506,7 +4554,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.ror_zp_x(0x10, );
+        cpu.ror_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b1000_0111);
     }
 
@@ -4515,7 +4563,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
-        cpu.ror_ab(0x1400, );
+        cpu.ror_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b1000_0111);
     }
 
@@ -4525,7 +4573,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.ror_ab_x(0x1400, );
+        cpu.ror_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b1000_0111);
     }
 
@@ -4566,7 +4614,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, 1);
         cpu.register_a = BYTE_A;
-        cpu.rra_zp(0x10, );
+        cpu.rra_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x10), 0);
     }
@@ -4577,7 +4625,7 @@ mod tests {
         cpu.memory.write_byte(0x20, 1);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.rra_zp_x(0x10, );
+        cpu.rra_zp_x(0x10);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x20), 0);
     }
@@ -4587,7 +4635,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, 1);
         cpu.register_a = BYTE_A;
-        cpu.rra_ab(0x1400, );
+        cpu.rra_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1400), 0);
     }
@@ -4598,7 +4646,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 1);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.rra_ab_x(0x1400, );
+        cpu.rra_ab_x(0x1400);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1410), 0);
     }
@@ -4609,7 +4657,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 1);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.rra_ab_y(0x1400, );
+        cpu.rra_ab_y(0x1400);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1410), 0);
     }
@@ -4621,7 +4669,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
-        cpu.rra_in_x(0x08, );
+        cpu.rra_in_x(0x08);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1400), 0);
     }
@@ -4633,7 +4681,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.rra_in_y(0x10, );
+        cpu.rra_in_y(0x10);
         assert_eq!(cpu.register_a, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1410), 0);
     }
@@ -4652,7 +4700,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
-        cpu.rol_zp(0x10, );
+        cpu.rol_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b0001_1111);
     }
 
@@ -4662,7 +4710,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.rol_zp_x(0x10, );
+        cpu.rol_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b0001_1111);
     }
 
@@ -4671,7 +4719,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
-        cpu.rol_ab(0x1400, );
+        cpu.rol_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b0001_1111);
     }
 
@@ -4681,7 +4729,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
-        cpu.rol_ab_x(0x1400, );
+        cpu.rol_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b0001_1111);
     }
 
@@ -4722,7 +4770,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, 0x05);
         cpu.register_a = BYTE_A;
-        cpu.rla_zp(0x10, );
+        cpu.rla_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
     }
@@ -4733,7 +4781,7 @@ mod tests {
         cpu.memory.write_byte(0x20, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.rla_zp_x(0x10, );
+        cpu.rla_zp_x(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
     }
@@ -4743,7 +4791,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, 0x05);
         cpu.register_a = BYTE_A;
-        cpu.rla_ab(0x1400, );
+        cpu.rla_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
@@ -4754,7 +4802,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.rla_ab_x(0x1400, );
+        cpu.rla_ab_x(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
@@ -4765,7 +4813,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.rla_ab_y(0x1400, );
+        cpu.rla_ab_y(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
@@ -4777,7 +4825,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
-        cpu.rla_in_x(0x08, );
+        cpu.rla_in_x(0x08);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
@@ -4789,7 +4837,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.rla_in_y(0x10, );
+        cpu.rla_in_y(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
@@ -4877,7 +4925,7 @@ mod tests {
     fn test_ldx_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_A);
-        cpu.ldx_zp(0x10, );
+        cpu.ldx_zp(0x10);
         assert_eq!(cpu.register_x, BYTE_A);
     }
 
@@ -4886,7 +4934,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_y = 0x10;
-        cpu.ldx_zp_y(0x10, );
+        cpu.ldx_zp_y(0x10);
         assert_eq!(cpu.register_x, BYTE_A);
     }
 
@@ -4894,7 +4942,7 @@ mod tests {
     fn test_ldx_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
-        cpu.ldx_ab(0x1400, );
+        cpu.ldx_ab(0x1400);
         assert_eq!(cpu.register_x, BYTE_A);
     }
 
@@ -4903,7 +4951,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_y = 0x10;
-        cpu.ldx_ab_y(0x1400, );
+        cpu.ldx_ab_y(0x1400);
         assert_eq!(cpu.register_x, BYTE_A);
     }
 
@@ -4918,7 +4966,7 @@ mod tests {
     fn test_ldy_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_A);
-        cpu.ldy_zp(0x10, );
+        cpu.ldy_zp(0x10);
         assert_eq!(cpu.register_y, BYTE_A);
     }
 
@@ -4927,7 +4975,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_x = 0x10;
-        cpu.ldy_zp_x(0x10, );
+        cpu.ldy_zp_x(0x10);
         assert_eq!(cpu.register_y, BYTE_A);
     }
 
@@ -4935,7 +4983,7 @@ mod tests {
     fn test_ldy_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
-        cpu.ldy_ab(0x1400, );
+        cpu.ldy_ab(0x1400);
         assert_eq!(cpu.register_y, BYTE_A);
     }
 
@@ -4944,7 +4992,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
-        cpu.ldy_ab_x(0x1400, );
+        cpu.ldy_ab_x(0x1400);
         assert_eq!(cpu.register_y, BYTE_A);
     }
 
@@ -4952,7 +5000,7 @@ mod tests {
     fn test_lax_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_A);
-        cpu.lax_zp(0x10, );
+        cpu.lax_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_A);
     }
@@ -4962,7 +5010,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_y = 0x10;
-        cpu.lax_zp_y(0x10, );
+        cpu.lax_zp_y(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_A);
     }
@@ -4971,7 +5019,7 @@ mod tests {
     fn test_lax_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
-        cpu.lax_ab(0x1400, );
+        cpu.lax_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_A);
     }
@@ -5028,7 +5076,7 @@ mod tests {
     fn test_sta_zp() {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
-        cpu.sta_zp(0x10, );
+        cpu.sta_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
     }
 
@@ -5037,7 +5085,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.sta_zp_x(0x10, );
+        cpu.sta_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
     }
 
@@ -5045,7 +5093,7 @@ mod tests {
     fn test_sta_ab() {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
-        cpu.sta_ab(0x1400, );
+        cpu.sta_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
 
@@ -5054,7 +5102,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.sta_ab_x(0x1400, );
+        cpu.sta_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
 
@@ -5063,7 +5111,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.sta_ab_y(0x1400, );
+        cpu.sta_ab_y(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
 
@@ -5073,7 +5121,7 @@ mod tests {
         cpu.memory.write_addr(0x20, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.sta_in_x(0x10, );
+        cpu.sta_in_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
 
@@ -5083,7 +5131,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.sta_in_y(0x10, );
+        cpu.sta_in_y(0x10);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
 
@@ -5091,7 +5139,7 @@ mod tests {
     fn test_stx_zp() {
         let mut cpu = CPU::new();
         cpu.register_x = BYTE_A;
-        cpu.stx_zp(0x10, );
+        cpu.stx_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
     }
 
@@ -5100,7 +5148,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.stx_zp_y(0x10, );
+        cpu.stx_zp_y(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
     }
 
@@ -5108,7 +5156,7 @@ mod tests {
     fn test_stx_ab() {
         let mut cpu = CPU::new();
         cpu.register_x = BYTE_A;
-        cpu.stx_ab(0x1400, );
+        cpu.stx_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
 
@@ -5116,7 +5164,7 @@ mod tests {
     fn test_sty_zp() {
         let mut cpu = CPU::new();
         cpu.register_y = BYTE_A;
-        cpu.sty_zp(0x10, );
+        cpu.sty_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
     }
 
@@ -5125,7 +5173,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_y = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.sty_zp_x(0x10, );
+        cpu.sty_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
     }
 
@@ -5133,7 +5181,7 @@ mod tests {
     fn test_sty_ab() {
         let mut cpu = CPU::new();
         cpu.register_y = BYTE_A;
-        cpu.sty_ab(0x1400, );
+        cpu.sty_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
 
@@ -5142,7 +5190,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
-        cpu.sax_zp(0x10, );
+        cpu.sax_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
@@ -5154,7 +5202,7 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.register_y = 0x10;
-        cpu.sax_zp_y(0x10, );
+        cpu.sax_zp_y(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
@@ -5165,7 +5213,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
-        cpu.sax_ab(0x1400, );
+        cpu.sax_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5177,7 +5225,7 @@ mod tests {
         cpu.memory.write_addr(0x1b, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
-        cpu.sax_in_x(0x10, );
+        cpu.sax_in_x(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
         assert_eq!(cpu.register_x, BYTE_B);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5266,7 +5314,7 @@ mod tests {
     fn test_inc_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_A);
-        cpu.inc_zp(0x10, );
+        cpu.inc_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_B);
     }
 
@@ -5275,7 +5323,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_x = 0x10;
-        cpu.inc_zp_x(0x10, );
+        cpu.inc_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_B);
     }
 
@@ -5283,7 +5331,7 @@ mod tests {
     fn test_inc_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
-        cpu.inc_ab(0x1400, );
+        cpu.inc_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
     }
 
@@ -5292,7 +5340,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
-        cpu.inc_ab_x(0x1400, );
+        cpu.inc_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
     }
 
@@ -5320,7 +5368,7 @@ mod tests {
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
-        cpu.isb_zp(0x10, );
+        cpu.isb_zp(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5334,7 +5382,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
-        cpu.isb_zp_x(0x10, );
+        cpu.isb_zp_x(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5347,7 +5395,7 @@ mod tests {
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
-        cpu.isb_ab(0x1400, );
+        cpu.isb_ab(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5361,7 +5409,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
-        cpu.isb_ab_x(0x1400, );
+        cpu.isb_ab_x(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5375,7 +5423,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
-        cpu.isb_ab_y(0x1400, );
+        cpu.isb_ab_y(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5390,7 +5438,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x08;
-        cpu.isb_in_x(0x08, );
+        cpu.isb_in_x(0x08);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5405,7 +5453,7 @@ mod tests {
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
-        cpu.isb_in_y(0x10, );
+        cpu.isb_in_y(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5434,7 +5482,7 @@ mod tests {
     fn test_dec_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_B);
-        cpu.dec_zp(0x10, );
+        cpu.dec_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
     }
 
@@ -5443,7 +5491,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_B);
         cpu.register_x = 0x10;
-        cpu.dec_zp_x(0x10, );
+        cpu.dec_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
     }
 
@@ -5451,7 +5499,7 @@ mod tests {
     fn test_dec_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_B);
-        cpu.dec_ab(0x1400, );
+        cpu.dec_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
     }
 
@@ -5460,7 +5508,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_x = 0x10;
-        cpu.dec_ab_x(0x1400, );
+        cpu.dec_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
     }
 
@@ -5489,7 +5537,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_B);
         cpu.register_a = BYTE_A;
-        cpu.dcp_zp(0x10, );
+        cpu.dcp_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5501,7 +5549,7 @@ mod tests {
         cpu.memory.write_byte(0x20, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.dcp_zp_x(0x10, );
+        cpu.dcp_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5512,7 +5560,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_B);
         cpu.register_a = BYTE_A;
-        cpu.dcp_ab(0x1400, );
+        cpu.dcp_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5524,7 +5572,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
-        cpu.dcp_ab_x(0x1400, );
+        cpu.dcp_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5536,7 +5584,7 @@ mod tests {
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.dcp_ab_y(0x1400, );
+        cpu.dcp_ab_y(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5549,7 +5597,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
-        cpu.dcp_in_x(0x08, );
+        cpu.dcp_in_x(0x08);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5562,7 +5610,7 @@ mod tests {
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
-        cpu.dcp_in_y(0x10, );
+        cpu.dcp_in_y(0x10);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -5776,7 +5824,7 @@ mod tests {
     fn test_jsr() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x1234;
-        cpu.jsr(0x2000, );
+        cpu.jsr(0x2000);
         assert_eq!(cpu.program_counter, 0x2000);
         assert_eq!(cpu.stack, 0xfd);
         assert_eq!(cpu.memory.read_addr(0x01fe), 0x1234);
@@ -5786,7 +5834,7 @@ mod tests {
     fn test_rts() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x1234;
-        cpu.jsr(0x2000, );
+        cpu.jsr(0x2000);
         cpu.rts();
         assert_eq!(cpu.program_counter, 0x1234 + 1);
         assert_eq!(cpu.stack, 0xff);
@@ -5798,8 +5846,8 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.status = 0b1011_1010;
         cpu.program_counter = 0x1234;
-        cpu.push_addr(cpu.program_counter, );
-        cpu.push_byte(cpu.status, );
+        cpu.push_addr(cpu.program_counter);
+        cpu.push_byte(cpu.status);
         cpu.rti();
         assert_eq!(cpu.status, 0b1010_1010);
         assert_eq!(cpu.program_counter, 0x1234);

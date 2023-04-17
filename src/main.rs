@@ -29,7 +29,7 @@ fn color(byte: u8) -> Color {
     }
 }
 
-fn read_screen_state(nes: &NES, frame: &mut [u8; 32 * 3 * 32]) -> bool {
+fn read_screen_state(nes: &mut NES, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     let mut frame_idx = 0;
     let mut update = false;
     for i in 0x200..0x600 {

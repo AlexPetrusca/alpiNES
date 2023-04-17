@@ -2,6 +2,7 @@ pub mod mem;
 mod oam;
 mod registers;
 
+use crate::io::rom::Mirroring;
 use crate::nes::ppu::mem::Memory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
@@ -12,8 +13,8 @@ pub struct PPU {
     pub data: u8,
     pub ctrl: ControlRegister,
     pub memory: Memory,
-    oam: OAM,
-    buffer: u8,
+    pub buffer: u8, // todo: should be private
+    pub oam: OAM, // todo: should be private
 }
 
 impl PPU {
@@ -32,7 +33,11 @@ impl PPU {
         Ok(true)
     }
 
-    fn read_byte(&mut self) -> u8 {
+    pub fn write_addr_register(&mut self, value: u8) {
+        self.addr.write(value);
+    }
+
+    pub fn read_data_register(&mut self) -> u8 {
         let addr = self.addr.get();
         self.increment_vram_addr();
 

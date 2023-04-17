@@ -12,19 +12,16 @@ impl AddressRegister {
             hi_ptr: true,
         }
     }
-    fn set(&mut self, data: u16) {
-        self.value.0 = (data >> 8) as u8;
-        self.value.1 = (data & 0xff) as u8;
-    }
 
-    pub fn update(&mut self, data: u8) {
+    pub fn write(&mut self, data: u8) {
         if self.hi_ptr {
             self.value.0 = data;
         } else {
             self.value.1 = data;
         }
 
-        if self.get() > 0x3fff { // mirror down addr above 0x3fff
+        if self.get() > 0x3fff {
+            // mirror down addr above 0x3fff
             self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
         self.hi_ptr = !self.hi_ptr;
@@ -37,7 +34,8 @@ impl AddressRegister {
             self.value.0 = self.value.0.wrapping_add(1);
         }
         if self.get() > 0x3fff {
-            self.set(self.get() & AddressRegister::MIRROR_MASK); // mirror down addr above 0x3fff
+            // mirror down addr above 0x3fff
+            self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
     }
 
@@ -47,5 +45,10 @@ impl AddressRegister {
 
     pub fn get(&self) -> u16 {
         ((self.value.0 as u16) << 8) | (self.value.1 as u16)
+    }
+
+    fn set(&mut self, data: u16) {
+        self.value.0 = (data >> 8) as u8;
+        self.value.1 = (data & 0xff) as u8;
     }
 }

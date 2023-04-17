@@ -8,20 +8,17 @@ use crate::nes::ppu::PPU;
 
 pub struct NES {
     pub cpu: CPU,
-    pub ppu: PPU,
 }
 
 impl NES {
     pub fn new() -> Self {
         NES {
             cpu: CPU::new(),
-            ppu: PPU::new(),
         }
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        self.cpu.step()?;
-        self.ppu.step()
+        self.cpu.step()
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {
@@ -79,5 +76,39 @@ mod tests {
         nes.step().unwrap_or_default();
         assert_eq!(nes.cpu.status, 0b0010_0101);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 4);
+    }
+
+    #[test]
+    fn test_nes_read_ppu_ram() {
+        let mut nes = NES::new();
+        nes.cpu.memory.ppu.memory.write_byte(0x26ab, 0xff);
+        nes.cpu.memory.ppu.buffer = 0xaa;
+        let program = vec![
+            // write addr 0x0600 to addr register
+            CPU::LDA_IM, 0x26, CPU::STA_AB, 0x06, 0x20,
+            CPU::LDA_IM, 0xab, CPU::STA_AB, 0x06, 0x20,
+            // read data register twice to get value at 0x0600
+            CPU::LDA_AB, 0x07, 0x20,
+            CPU::LDA_AB, 0x07, 0x20,
+            CPU::BRK
+        ];
+        nes.load(&program);
+
+        nes.step().unwrap();
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.memory.ppu.addr.get(), 0x2600);
+
+        nes.step().unwrap();
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.memory.ppu.addr.get(), 0x26ab);
+
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.register_a, 0xaa);
+
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.register_a, 0xff);
+
+        nes.step().unwrap_or_default();
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 }

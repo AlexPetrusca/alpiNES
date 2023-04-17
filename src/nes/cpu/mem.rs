@@ -1,4 +1,5 @@
 use crate::io::rom::ROM;
+use crate::nes::ppu::PPU;
 
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
@@ -8,6 +9,7 @@ macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
+    pub ppu: PPU,
     pub prg_mirror_enabled: bool,
 }
 
@@ -24,12 +26,14 @@ impl Memory {
     pub fn new() -> Self {
         Memory {
             memory: [0; Memory::MEM_SIZE],
+            ppu: PPU::new(),
             prg_mirror_enabled: false,
         }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
         self.prg_mirror_enabled = rom.prg_rom_mirroring;
+        self.ppu.memory.screen_mirroring = rom.screen_mirroring.clone();
         for i in 0..rom.prg_rom.len() {
             let idx = Memory::PRG_ROM_START.wrapping_add(i as u16);
             self.memory[idx as usize] = rom.prg_rom[i];
@@ -46,7 +50,7 @@ impl Memory {
     }
 
     #[inline]
-    pub fn read_byte(&self, address: u16) -> u8 {
+    pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             ram_range!() => {
                 let mirror_addr = address & 0b0000_0111_1111_1111;
@@ -54,7 +58,17 @@ impl Memory {
             }
             ppu_registers_range!() => {
                 let mirror_addr = address & 0b0010_0000_0000_0111;
-                self.memory[mirror_addr as usize] // todo: account for write-only registers
+                match mirror_addr {
+                    0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
+                        panic!("Attempt to read from write-only PPU address {:x}", mirror_addr);
+                    },
+                    Memory::PPU_DATA_REGISTER => {
+                        self.ppu.read_data_register()
+                    },
+                    _ => {
+                        panic!("Attempt to read from unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
+                    }
+                }
             }
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
@@ -78,7 +92,17 @@ impl Memory {
             }
             ppu_registers_range!() => {
                 let mirror_addr = address & 0b0010_0000_0000_0111;
-                self.memory[mirror_addr as usize] = data;
+                match mirror_addr {
+                    // 0x => {
+                    //     panic!("Attempt to write to read-only PPU address {:x}", mirror_addr);
+                    // },
+                    Memory::PPU_ADDR_REGISTER => {
+                        self.ppu.write_addr_register(data);
+                    },
+                    _ => {
+                        panic!("Attempt to write to unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
+                    }
+                }
             }
             prg_rom_range!() => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
@@ -97,7 +121,7 @@ impl Memory {
     }
 
     #[inline]
-    pub fn read_addr(&self, address: u16) -> u16 {
+    pub fn read_addr(&mut self, address: u16) -> u16 {
         u16::from_le_bytes([
             self.read_byte(address),
             self.read_byte(address.wrapping_add(1))
@@ -105,7 +129,7 @@ impl Memory {
     }
 
     #[inline]
-    pub fn read_addr_zp(&self, address: u8) -> u16 {
+    pub fn read_addr_zp(&mut self, address: u8) -> u16 {
         u16::from_le_bytes([
             self.read_byte(address as u16),
             self.read_byte(address.wrapping_add(1) as u16)
@@ -113,7 +137,7 @@ impl Memory {
     }
 
     #[inline]
-    pub fn read_addr_in(&self, address: u16) -> u16 {
+    pub fn read_addr_in(&mut self, address: u16) -> u16 {
         let upper_addr = address & 0xff00;
         let lower_addr = (address & 0x00ff) as u8;
         u16::from_le_bytes([
@@ -130,43 +154,43 @@ impl Memory {
     }
 
     #[inline]
-    pub fn zp_read(&self, address: u8) -> u8 {
+    pub fn zp_read(&mut self, address: u8) -> u8 {
         self.read_byte(address as u16)
     }
 
     #[inline]
-    pub fn zp_x_read(&self, address: u8, register_x: u8) -> u8 {
+    pub fn zp_x_read(&mut self, address: u8, register_x: u8) -> u8 {
         self.read_byte(address.wrapping_add(register_x) as u16)
     }
 
     #[inline]
-    pub fn zp_y_read(&self, address: u8, register_y: u8) -> u8 {
+    pub fn zp_y_read(&mut self, address: u8, register_y: u8) -> u8 {
         self.read_byte(address.wrapping_add(register_y) as u16)
     }
 
     #[inline]
-    pub fn ab_read(&self, address: u16) -> u8 {
+    pub fn ab_read(&mut self, address: u16) -> u8 {
         self.read_byte(address)
     }
 
     #[inline]
-    pub fn ab_x_read(&self, address: u16, register_x: u8) -> u8 {
+    pub fn ab_x_read(&mut self, address: u16, register_x: u8) -> u8 {
         self.read_byte(address.wrapping_add(register_x as u16))
     }
 
     #[inline]
-    pub fn ab_y_read(&self, address: u16, register_y: u8) -> u8 {
+    pub fn ab_y_read(&mut self, address: u16, register_y: u8) -> u8 {
         self.read_byte(address.wrapping_add(register_y as u16))
     }
 
     #[inline]
-    pub fn in_x_read(&self, address: u8, register_x: u8) -> u8 {
+    pub fn in_x_read(&mut self, address: u8, register_x: u8) -> u8 {
         let pointer = self.read_addr_zp(address.wrapping_add(register_x));
         self.read_byte(pointer)
     }
 
     #[inline]
-    pub fn in_y_read(&self, address: u8, register_y: u8) -> u8 {
+    pub fn in_y_read(&mut self, address: u8, register_y: u8) -> u8 {
         let pointer = self.read_addr_zp(address);
         self.read_byte(pointer.wrapping_add(register_y as u16))
     }
