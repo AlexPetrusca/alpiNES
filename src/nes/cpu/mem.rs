@@ -7,14 +7,16 @@ macro_rules! apu_registers_range {() => {0x4000..=0x4017}}
 macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
-    memory: [u8; Memory::MEM_SIZE],
-    prg_mirror_enabled: bool
+    pub memory: [u8; Memory::MEM_SIZE],
+    pub prg_mirror_enabled: bool,
 }
 
 impl Memory {
     const MEM_SIZE: usize = 0x10000 as usize; // 64kB
 
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
+    pub const PPU_ADDR_REGISTER: u16 = 0x2006;
+    pub const PPU_DATA_REGISTER: u16 = 0x2007;
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
     pub const RESET_INT_VECTOR: u16 = 0xFFFC;
     pub const NMI_INT_VECTOR: u16 = 0xFFFA;
@@ -22,7 +24,7 @@ impl Memory {
     pub fn new() -> Self {
         Memory {
             memory: [0; Memory::MEM_SIZE],
-            prg_mirror_enabled: false
+            prg_mirror_enabled: false,
         }
     }
 
@@ -47,12 +49,12 @@ impl Memory {
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             ram_range!() => {
-                let mirror_addr = address & 0b00000111_11111111;
+                let mirror_addr = address & 0b0000_0111_1111_1111;
                 self.memory[mirror_addr as usize]
             }
             ppu_registers_range!() => {
-                let mirror_addr = address & 0b00100000_00000111;
-                self.memory[mirror_addr as usize]
+                let mirror_addr = address & 0b0010_0000_0000_0111;
+                self.memory[mirror_addr as usize] // todo: account for write-only registers
             }
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
@@ -62,7 +64,6 @@ impl Memory {
                 self.memory[(Memory::PRG_ROM_START + offset) as usize]
             },
             _ => {
-                // self.memory[address as usize]
                 panic!("Attempt to read from unmapped memory: 0x{:0>4X}", address);
             }
         }
@@ -72,18 +73,17 @@ impl Memory {
     pub fn write_byte(&mut self, address: u16, data: u8) {
         match address {
             ram_range!() => {
-                let mirror_addr = address & 0b00000111_11111111;
+                let mirror_addr = address & 0b0000_0111_1111_1111;
                 self.memory[mirror_addr as usize] = data;
             }
             ppu_registers_range!() => {
-                let mirror_addr = address & 0b00100000_00000111;
+                let mirror_addr = address & 0b0010_0000_0000_0111;
                 self.memory[mirror_addr as usize] = data;
             }
             prg_rom_range!() => {
-                panic!("Attempt to write to Cartridge ROM space: 0x{:0>4X}", address)
+                panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
             },
             _ => {
-                // self.memory[address as usize] = data;
                 panic!("Attempt to write to unmapped memory: 0x{:0>4X}", address);
             }
         }

@@ -1,5 +1,9 @@
 use crate::nes::NES;
 use crate::io::rom::ROM;
+use crate::nes::cpu::CPU;
+use crate::nes::cpu::mem::Memory;
+use crate::nes::ppu::PPU;
+
 
 pub struct Emulator {
     pub nes: NES
@@ -55,8 +59,10 @@ mod tests {
     fn test_load_and_reset() {
         let mut emu = Emulator::new();
         emu.load(&vec![0xff]);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START);
-        assert_eq!(emu.nes.cpu.memory.read_byte(Memory::PRG_ROM_START), 0xff);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START);
+        assert_eq!(cpu.memory.read_byte(Memory::PRG_ROM_START), 0xff);
     }
 
     #[test]
@@ -64,48 +70,60 @@ mod tests {
         let mut emu = Emulator::new();
         emu.load(&vec![CPU::LDA_IM, 5, CPU::BRK]);
         emu.run();
-        assert_eq!(emu.nes.cpu.register_a, 0x05);
-        assert_eq!(emu.nes.cpu.status & 0b0000_0010, 0);
-        assert_eq!(emu.nes.cpu.status & 0b1000_0000, 0);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x05);
+        assert_eq!(cpu.status & 0b0000_0010, 0);
+        assert_eq!(cpu.status & 0b1000_0000, 0);
     }
 
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut emu = Emulator::new();
         emu.load_and_run(&vec![CPU::LDA_IM, 0, CPU::BRK]);
-        assert_eq!(emu.nes.cpu.status & 0b0000_0010, 0b0000_0010);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(cpu.status & 0b0000_0010, 0b0000_0010);
     }
 
     #[test]
     fn test_0xa9_lda_negative_flag() {
         let mut emu = Emulator::new();
         emu.load_and_run(&vec![CPU::LDA_IM, 0xff, CPU::BRK]);
-        assert_eq!(emu.nes.cpu.status & 0b1000_0000, 0b1000_0000);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0xff);
+        assert_eq!(cpu.status & 0b1000_0000, 0b1000_0000);
     }
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut emu = Emulator::new();
-        emu.load(&vec![CPU::TAX, CPU::BRK]);
-        emu.nes.cpu.register_a = 10;
-        emu.run();
-        assert_eq!(emu.nes.cpu.register_x, 10)
+        emu.load_and_run(&vec![CPU::LDA_IM, 0x10, CPU::TAX, CPU::BRK]);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x10);
+        assert_eq!(cpu.register_x, 0x10);
     }
 
     #[test]
     fn test_inx_overflow() {
         let mut emu = Emulator::new();
-        emu.load(&vec![CPU::INX, CPU::INX, CPU::BRK]);
-        emu.nes.cpu.register_x = 0xff;
-        emu.run();
-        assert_eq!(emu.nes.cpu.register_x, 1)
+        emu.load_and_run(&vec![CPU::LDX_IM, 0xff, CPU::INX, CPU::INX, CPU::BRK]);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_x, 1);
     }
 
     #[test]
     fn test_5_ops() {
         let mut emu = Emulator::new();
         emu.load_and_run(&vec![CPU::LDA_IM, 0xc0, CPU::TAX, CPU::INX, CPU::BRK]);
-        assert_eq!(emu.nes.cpu.register_x, 0xc1)
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0xc0);
+        assert_eq!(cpu.register_x, 0xc1);
     }
 
     #[test]
@@ -116,10 +134,12 @@ mod tests {
             0xa9, 0x08, 0x8d, 0x02, 0x02, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x08);
-        assert_eq!(emu.nes.cpu.memory.read_byte(0x0202), 0x08);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x08);
+        assert_eq!(cpu.memory.read_byte(0x0202), 0x08);
+        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -129,10 +149,12 @@ mod tests {
             0xa9, 0xc0, 0xaa, 0xe8, 0x69, 0xc4, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x84);
-        assert_eq!(emu.nes.cpu.register_x, 0xc1);
-        assert_eq!(emu.nes.cpu.status, 0b1010_0101);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x84);
+        assert_eq!(cpu.register_x, 0xc1);
+        assert_eq!(cpu.status, 0b1010_0101);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -142,11 +164,13 @@ mod tests {
             CPU::LDA_IM, 0x88, CPU::CMP_IM, 0x80, CPU::ARR, 0xff, CPU::ROR, CPU::BRK
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0xe2);
-        assert_eq!(emu.nes.cpu.register_x, 0x00);
-        assert_eq!(emu.nes.cpu.register_y, 0x00);
-        assert_eq!(emu.nes.cpu.status, 0b1110_0100);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0xe2);
+        assert_eq!(cpu.register_x, 0x00);
+        assert_eq!(cpu.register_y, 0x00);
+        assert_eq!(cpu.status, 0b1110_0100);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -156,9 +180,11 @@ mod tests {
             0xa9, 0xff, 0x69, 0xff, 0xa9, 0x0f, 0x69, 0x70, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x80);
-        assert_eq!(emu.nes.cpu.status, 0b1110_0100);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x80);
+        assert_eq!(cpu.status, 0b1110_0100);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -169,9 +195,11 @@ mod tests {
             0x8e, 0x01, 0x02, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_x, 0x03);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_x, 0x03);
+        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -183,10 +211,12 @@ mod tests {
         ];
         emu.load_at_addr(0x600, &program);
         emu.run();
-        assert_eq!(emu.nes.cpu.register_x, 0x05);
-        assert_eq!(emu.nes.cpu.stack, 0xfb);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, 0x600 + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_x, 0x05);
+        assert_eq!(cpu.stack, 0xfb);
+        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.program_counter, 0x600 + program.len() as u16);
     }
 
     #[test]
@@ -197,11 +227,13 @@ mod tests {
             0xa0, 0x0a, 0x8c, 0x05, 0x07, 0xa1, 0x00, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x0a);
-        assert_eq!(emu.nes.cpu.register_x, 0x01);
-        assert_eq!(emu.nes.cpu.register_y, 0x0a);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x0a);
+        assert_eq!(cpu.register_x, 0x01);
+        assert_eq!(cpu.register_y, 0x0a);
+        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -212,11 +244,13 @@ mod tests {
             0xa2, 0x0a, 0x8e, 0x04, 0x07, 0xb1, 0x01, 0x00
         ];
         emu.load_and_run(&program);
-        assert_eq!(emu.nes.cpu.register_a, 0x0a);
-        assert_eq!(emu.nes.cpu.register_x, 0x0a);
-        assert_eq!(emu.nes.cpu.register_y, 0x01);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0100);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x0a);
+        assert_eq!(cpu.register_x, 0x0a);
+        assert_eq!(cpu.register_y, 0x01);
+        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -228,16 +262,18 @@ mod tests {
             0xc0, 0x20, 0xd0, 0xf7, 0x00
         ];
         emu.load_and_run(&program);
+
+        let cpu = emu.nes.cpu;
         for i in 0..16 {
-            assert_eq!(emu.nes.cpu.memory.read_byte(0x200 + i), i as u8);
-            assert_eq!(emu.nes.cpu.memory.read_byte(0x200 + (31 - i)), i as u8);
+            assert_eq!(cpu.memory.read_byte(0x200 + i), i as u8);
+            assert_eq!(cpu.memory.read_byte(0x200 + (31 - i)), i as u8);
         }
-        assert_eq!(emu.nes.cpu.register_a, 0x00);
-        assert_eq!(emu.nes.cpu.register_x, 0x10);
-        assert_eq!(emu.nes.cpu.register_y, 0x20);
-        assert_eq!(emu.nes.cpu.stack, 0xfd);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
+        assert_eq!(cpu.register_a, 0x00);
+        assert_eq!(cpu.register_x, 0x10);
+        assert_eq!(cpu.register_y, 0x20);
+        assert_eq!(cpu.stack, 0xfd);
+        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
@@ -279,11 +315,12 @@ mod tests {
         emu.load_at_addr(0x600, &program);
         emu.run();
 
-        assert_eq!(emu.nes.cpu.register_a, 0x1f);
-        assert_eq!(emu.nes.cpu.register_x, 0xff);
-        assert_eq!(emu.nes.cpu.register_y, 0x00);
-        assert_eq!(emu.nes.cpu.stack, 0xf9);
-        assert_eq!(emu.nes.cpu.status, 0b0010_0111);
-        assert_eq!(emu.nes.cpu.program_counter, 0x736);
+        let cpu = emu.nes.cpu;
+        assert_eq!(cpu.register_a, 0x1f);
+        assert_eq!(cpu.register_x, 0xff);
+        assert_eq!(cpu.register_y, 0x00);
+        assert_eq!(cpu.stack, 0xf9);
+        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.program_counter, 0x0736);
     }
 }

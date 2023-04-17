@@ -20,7 +20,8 @@ impl NES {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        self.cpu.step()
+        self.cpu.step()?;
+        self.ppu.step()
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {

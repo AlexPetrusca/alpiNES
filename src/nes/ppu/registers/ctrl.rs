@@ -1,4 +1,3 @@
-use std::ops;
 use bitvec::prelude::*;
 use bitvec::view::BitView;
 use crate::io::bitvec::BitVector;

@@ -3042,7 +3042,6 @@ impl CPU {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nes::NES;
 
     const BYTE_A: u8 = 0x0a;
     const BYTE_B: u8 = 0x0b;

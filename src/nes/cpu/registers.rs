@@ -1,2 +1,2 @@
-mod status;
-mod pc;
+pub mod status;
+pub mod pc;

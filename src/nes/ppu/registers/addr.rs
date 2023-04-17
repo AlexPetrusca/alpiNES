@@ -1,13 +1,13 @@
-pub struct AddrRegister {
+pub struct AddressRegister {
     value: (u8, u8),
     hi_ptr: bool,
 }
 
-impl AddrRegister {
+impl AddressRegister {
     const MIRROR_MASK: u16 = 0x8FFF; // todo: refactor away
 
     pub fn new() -> Self {
-        AddrRegister {
+        AddressRegister {
             value: (0, 0), // high byte first, lo byte second
             hi_ptr: true,
         }
@@ -25,7 +25,7 @@ impl AddrRegister {
         }
 
         if self.get() > 0x3fff { // mirror down addr above 0x3fff
-            self.set(self.get() & AddrRegister::MIRROR_MASK);
+            self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
         self.hi_ptr = !self.hi_ptr;
     }
@@ -37,7 +37,7 @@ impl AddrRegister {
             self.value.0 = self.value.0.wrapping_add(1);
         }
         if self.get() > 0x3fff {
-            self.set(self.get() & AddrRegister::MIRROR_MASK); // mirror down addr above 0x3fff
+            self.set(self.get() & AddressRegister::MIRROR_MASK); // mirror down addr above 0x3fff
         }
     }
 
