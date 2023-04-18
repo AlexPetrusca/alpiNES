@@ -4,7 +4,6 @@ use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;
 
-
 pub struct Emulator {
     pub nes: NES
 }

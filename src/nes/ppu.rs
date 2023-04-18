@@ -15,6 +15,8 @@ pub struct PPU {
     pub memory: Memory,
     pub buffer: u8, // todo: should be private
     pub oam: OAM, // todo: should be private
+    pub scanline: u16,
+    pub cycles: usize,
 }
 
 impl PPU {
@@ -26,11 +28,34 @@ impl PPU {
             memory: Memory::new(),
             oam: OAM::new(),
             buffer: 0,
+            scanline: 0,
+            cycles: 0
         }
     }
 
+    pub fn tick(&mut self, cycles: u8) {
+        self.cycles += cycles as usize;
+    }
+
     pub fn step(&mut self) -> Result<bool, bool> {
-        Ok(true)
+        // if self.cycles >= 341 {
+        //     self.cycles = self.cycles - 341;
+        //     self.scanline += 1;
+        //
+        //     if self.scanline == 241 {
+        //         if self.ctrl.generate_vblank_nmi() {
+        //             self.status.set_vblank_status(true);
+        //             todo!("Should trigger NMI interrupt")
+        //         }
+        //     }
+        //
+        //     if self.scanline >= 262 {
+        //         self.scanline = 0;
+        //         self.status.reset_vblank_status();
+        //         OK(true);
+        //     }
+        // }
+        Ok(false)
     }
 
     pub fn write_addr_register(&mut self, value: u8) {

@@ -60,6 +60,7 @@ pub struct CPU {
     pub stack: u8,
     pub status: u8, // todo: use StatusRegister struct instead
     pub program_counter: u16, // todo: use ProgramCounter struct instead
+    pub cycles: usize,
     pub memory: Memory
 }
 
@@ -360,6 +361,7 @@ impl CPU {
             stack: 0xff,
             status: 0b0011_0000,
             program_counter: 0,
+            cycles: 0,
             memory: Memory::new(),
         }
     }
@@ -375,7 +377,7 @@ impl CPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         let opcode = self.memory.read_byte(self.program_counter);
-        match opcode {
+        let cycles: u8 = match opcode {
             CPU::TAX => self.tax(),
             CPU::TAY => self.tay(),
             CPU::TSX => self.tsx(),
@@ -410,47 +412,47 @@ impl CPU {
             },
             CPU::JMP_AB => {
                 let address = self.fetch_addr_param();
-                self.jmp_ab(address);
+                self.jmp_ab(address)
             },
             CPU::JMP_IN => {
                 let address = self.fetch_addr_param();
-                self.jmp_in(address);
+                self.jmp_in(address)
             },
             CPU::JSR => {
                 let address = self.fetch_addr_param();
-                self.jsr(address);
+                self.jsr(address)
             },
             CPU::BEQ => {
                 let offset = self.fetch_param();
-                self.beq(offset as i8);
+                self.beq(offset as i8)
             }
             CPU::BNE => {
                 let offset = self.fetch_param();
-                self.bne(offset as i8);
+                self.bne(offset as i8)
             },
             CPU::BCC => {
                 let offset = self.fetch_param();
-                self.bcc(offset as i8);
+                self.bcc(offset as i8)
             },
             CPU::BCS => {
                 let offset = self.fetch_param();
-                self.bcs(offset as i8);
+                self.bcs(offset as i8)
             },
             CPU::BMI => {
                 let offset = self.fetch_param();
-                self.bmi(offset as i8);
+                self.bmi(offset as i8)
             },
             CPU::BPL => {
                 let offset = self.fetch_param();
-                self.bpl(offset as i8);
+                self.bpl(offset as i8)
             },
             CPU::BVS => {
                 let offset = self.fetch_param();
-                self.bvs(offset as i8);
+                self.bvs(offset as i8)
             },
             CPU::BVC => {
                 let offset = self.fetch_param();
-                self.bvc(offset as i8);
+                self.bvc(offset as i8)
             },
             CPU::BRK => {
                 // todo: this implementation of BRK is not correct (lol)
@@ -459,69 +461,76 @@ impl CPU {
             },
             // undocumented opcodes
             CPU::SBC_IM_U => self.sbc(CPU::SBC_IM),
-            CPU::TOP_AB => self.top_ab(),
             CPU::ARR => {
                 let immediate = self.fetch_param();
-                self.arr(immediate);
+                self.arr(immediate)
             },
             CPU::ALR => {
                 let immediate = self.fetch_param();
-                self.alr(immediate);
+                self.alr(immediate)
             },
             CPU::LXA => {
                 let immediate = self.fetch_param();
-                self.lxa(immediate);
+                self.lxa(immediate)
             },
             CPU::SBX => {
                 let immediate = self.fetch_param();
-                self.sbx(immediate);
+                self.sbx(immediate)
             },
             CPU::LAS => {
                 let address = self.fetch_addr_param();
-                self.las(address);
+                self.las(address)
             },
             CPU::ANE => {
                 let immediate = self.fetch_param();
-                self.ane(immediate);
+                self.ane(immediate)
             },
             CPU::SHA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.sha_ab_y(address);
+                self.sha_ab_y(address)
             },
             CPU::SHA_IN_Y => {
                 let address = self.fetch_param();
-                self.sha_in_y(address);
+                self.sha_in_y(address)
             },
             CPU::SHX => {
                 let address = self.fetch_addr_param();
-                self.shx(address);
+                self.shx(address)
             }
             CPU::SHY => {
                 let address = self.fetch_addr_param();
-                self.shy(address);
+                self.shy(address)
             }
             CPU::SHS => {
                 let address = self.fetch_addr_param();
-                self.shs(address);
+                self.shs(address)
             }
             CPU::ANC_1 | CPU::ANC_2 => {
                 let immediate = self.fetch_param();
-                self.anc(immediate);
+                self.anc(immediate)
+            },
+            CPU::TOP_AB => {
+                let address = self.fetch_addr_param();
+                self.top_ab(address)
             },
             CPU::TOP_AB_X_1 | CPU::TOP_AB_X_2 | CPU::TOP_AB_X_3 |
             CPU::TOP_AB_X_4 | CPU::TOP_AB_X_5 | CPU::TOP_AB_X_6 => {
-                self.top_ab_x();
+                let address = self.fetch_addr_param();
+                self.top_ab_x(address)
             },
             CPU::DOP_IM_1 | CPU::DOP_IM_2 | CPU::DOP_IM_3 |
             CPU::DOP_IM_4 | CPU::DOP_IM_5 => {
-                self.dop_im();
+                let immediate = self.fetch_param();
+                self.dop_im(immediate)
             },
             CPU::DOP_ZP_1 | CPU::DOP_ZP_2 | CPU::DOP_ZP_3 => {
-                self.dop_zp();
+                let address = self.fetch_param();
+                self.dop_zp(address)
             },
             CPU::DOP_ZP_X_1 | CPU::DOP_ZP_X_2 | CPU::DOP_ZP_X_3 |
             CPU::DOP_ZP_X_4 | CPU::DOP_ZP_X_5 | CPU::DOP_ZP_X_6 => {
-                self.dop_zp_x();
+                let address = self.fetch_param();
+                self.dop_zp_x(address)
             },
             CPU::NOP_1 | CPU::NOP_2 | CPU::NOP_3 |
             CPU::NOP_4 | CPU::NOP_5 | CPU::NOP_6 => {
@@ -530,7 +539,7 @@ impl CPU {
             CPU::JAM_1 | CPU::JAM_2 | CPU::JAM_3 | CPU::JAM_4 |
             CPU::JAM_5 | CPU::JAM_6 | CPU::JAM_7 | CPU::JAM_8 |
             CPU::JAM_9 | CPU::JAM_10 | CPU::JAM_11 | CPU::JAM_12 => {
-                self.jam();
+                self.jam()
             },
             _ => match opcode & OP_MASK {
                 ISB_PATTERN => self.isb(opcode),
@@ -563,259 +572,309 @@ impl CPU {
                 STY_PATTERN => self.sty(opcode),
                 _ =>  panic!("invalid opcode: {:x}", opcode)
             }
-        }
+        };
+        self.tick(cycles);
         return Ok(true);
     }
 
+    pub fn tick(&mut self, cycles: u8) {
+        self.cycles += cycles as usize;
+        self.memory.ppu.tick(cycles * 3);
+    }
+
     #[inline]
-    fn tax(&mut self) {
+    fn tax(&mut self) -> u8 {
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_x);
         /* todo: increment_program_counter should probably be moved outside of opcodes
             implementations, so as to allow for reuse in other opcode implementations */
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn tay(&mut self) {
+    fn tay(&mut self) -> u8 {
         self.register_y = self.register_a;
         self.update_zero_and_negative_flag(self.register_y);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn tsx(&mut self) {
+    fn tsx(&mut self) -> u8 {
         self.register_x = self.stack;
         self.update_zero_and_negative_flag(self.register_x);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn txa(&mut self) {
+    fn txa(&mut self) -> u8 {
         self.register_a = self.register_x;
         self.update_zero_and_negative_flag(self.register_a);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn txs(&mut self) {
+    fn txs(&mut self) -> u8 {
         self.stack = self.register_x;
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn tya(&mut self) {
+    fn tya(&mut self) -> u8 {
         self.register_a = self.register_y;
         self.update_zero_and_negative_flag(self.register_a);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn inx(&mut self) {
+    fn inx(&mut self) -> u8 {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flag(self.register_x);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn iny(&mut self) {
+    fn iny(&mut self) -> u8 {
         self.register_y = self.register_y.wrapping_add(1);
         self.update_zero_and_negative_flag(self.register_y);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn dex(&mut self) {
+    fn dex(&mut self) -> u8 {
         self.register_x = self.register_x.wrapping_sub(1);
         self.update_zero_and_negative_flag(self.register_x);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn dey(&mut self) {
+    fn dey(&mut self) -> u8 {
         self.register_y = self.register_y.wrapping_sub(1);
         self.update_zero_and_negative_flag(self.register_y);
         self.increment_program_counter();
+        return 2;
     }
     
     #[inline]
-    fn sec(&mut self) {
+    fn sec(&mut self) -> u8 {
         self.set_status_flag(CARRY_FLAG);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn clc(&mut self) {
+    fn clc(&mut self) -> u8 {
         self.clear_status_flag(CARRY_FLAG);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn sed(&mut self) {
+    fn sed(&mut self) -> u8 {
         self.set_status_flag(DECIMAL_MODE_FLAG);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn cld(&mut self) {
+    fn cld(&mut self) -> u8 {
         self.clear_status_flag(DECIMAL_MODE_FLAG);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn sei(&mut self) {
+    fn sei(&mut self) -> u8 {
         self.set_status_flag(INTERRUPT_DISABLE);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn cli(&mut self) {
+    fn cli(&mut self) -> u8 {
         self.clear_status_flag(INTERRUPT_DISABLE);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn clv(&mut self) {
+    fn clv(&mut self) -> u8 {
         self.clear_status_flag(OVERFLOW_FLAG);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn pha(&mut self) {
+    fn pha(&mut self) -> u8 {
         self.push_byte(self.register_a);
         self.increment_program_counter();
+        return 3;
     }
 
     #[inline]
-    fn pla(&mut self) {
+    fn pla(&mut self) -> u8 {
         self.register_a = self.pop_byte();
         self.update_zero_and_negative_flag(self.register_a);
         self.increment_program_counter();
+        return 4;
     }
 
     #[inline]
-    fn php(&mut self) {
+    fn php(&mut self) -> u8 {
         self.push_byte(self.status | B_FLAG_MASK);
         self.increment_program_counter();
+        return 3;
     }
 
     #[inline]
-    fn plp(&mut self) {
+    fn plp(&mut self) -> u8 {
         self.status = self.pop_byte();
         self.status = self.status | B_FLAG_SET_MASK;
         self.status = self.status & B_FLAG_CLEAR_MASK;
         self.increment_program_counter();
+        return 4;
     }
 
     #[inline]
-    fn bit_zp(&mut self, address: u8) {
+    fn bit_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.update_bit_flags(value);
         self.increment_program_counter();
+        return 3;
     }
 
     #[inline]
-    fn bit_ab(&mut self, address: u16) {
+    fn bit_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.update_bit_flags(value);
         self.increment_program_counter();
+        return 4;
     }
 
     #[inline]
-    fn jmp_ab(&mut self, address: u16) {
+    fn jmp_ab(&mut self, address: u16) -> u8 {
         self.program_counter = address;
+        return 3;
     }
 
     #[inline]
-    fn jmp_in(&mut self, address: u16) {
+    fn jmp_in(&mut self, address: u16) -> u8 {
         let addr = self.memory.read_addr_in(address);
         self.program_counter = addr;
+        return 5;
     }
 
     #[inline]
-    fn jsr(&mut self, address: u16) {
+    fn jsr(&mut self, address: u16) -> u8 {
         self.push_addr(self.program_counter);
         self.jmp_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn rts(&mut self) {
+    fn rts(&mut self) -> u8 {
         self.program_counter = self.pop_addr();
         self.increment_program_counter();
+        return 6;
     }
 
     #[inline]
-    fn rti(&mut self) {
+    fn rti(&mut self) -> u8 {
         self.plp();
         self.program_counter = self.pop_addr();
+        return 6;
     }
 
     #[inline]
-    fn beq(&mut self, offset: i8) {
+    fn beq(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if self.get_status_flag(ZERO_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        return cycles;
     }
 
     #[inline]
-    fn bne(&mut self, offset: i8) {
+    fn bne(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if !self.get_status_flag(ZERO_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        return cycles;
     }
 
     #[inline]
-    fn bcs(&mut self, offset: i8) {
+    fn bcs(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if self.get_status_flag(CARRY_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        return cycles;
     }
 
     #[inline]
-    fn bcc(&mut self, offset: i8) {
+    fn bcc(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if !self.get_status_flag(CARRY_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        return cycles;
     }
 
     #[inline]
-    fn bmi(&mut self, offset: i8) {
+    fn bmi(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if self.get_status_flag(NEGATIVE_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        cycles
     }
 
     #[inline]
-    fn bpl(&mut self, offset: i8) {
+    fn bpl(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if !self.get_status_flag(NEGATIVE_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        cycles
     }
 
     #[inline]
-    fn bvs(&mut self, offset: i8) {
+    fn bvs(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if self.get_status_flag(OVERFLOW_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        cycles
     }
 
     #[inline]
-    fn bvc(&mut self, offset: i8) {
+    fn bvc(&mut self, offset: i8) -> u8 {
+        let mut cycles = 2;
         self.increment_program_counter();
         if !self.get_status_flag(OVERFLOW_FLAG) {
-            self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+            cycles += self.jmp_offset(offset);
         }
+        cycles
     }
 
     #[inline]
-    fn arr(&mut self, immediate: u8) {
+    fn arr(&mut self, immediate: u8) -> u8 {
         self.and_im(immediate);
         self.ror_a();
         let bit_6 = (self.register_a & 0x40 > 0) as u8;
@@ -823,188 +882,196 @@ impl CPU {
         self.update_status_flag(CARRY_FLAG, bit_6 > 0);
         self.update_status_flag(OVERFLOW_FLAG, bit_6 ^ bit_5 > 0);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn alr(&mut self, immediate: u8) {
+    fn alr(&mut self, immediate: u8) -> u8 {
         self.and_im(immediate);
         self.lsr_a();
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn lxa(&mut self, immediate: u8) {
+    fn lxa(&mut self, immediate: u8) -> u8 {
         self.and_im(immediate);
         self.tax();
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn sbx(&mut self, immediate: u8) {
+    fn sbx(&mut self, immediate: u8) -> u8 {
         self.register_x = self.register_x & self.register_a;
         let sum = (self.register_x as u16).wrapping_add(immediate.wrapping_neg() as u16);
         self.register_x = sum as u8;
         self.update_status_flag(CARRY_FLAG, sum > 0xff);
         self.update_zero_and_negative_flag(self.register_x);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn las(&mut self, address: u16) {
+    fn las(&mut self, address: u16) -> u8 {
         let result = self.memory.ab_y_read(address, self.register_y) & self.stack;
         self.register_a = result;
         self.register_x = result;
         self.stack = result;
         self.update_zero_and_negative_flag(result);
         self.increment_program_counter();
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn ane(&mut self, immediate: u8) {
+    fn ane(&mut self, immediate: u8) -> u8 {
         let magic_digit = rand::thread_rng().gen_range(0..0xf) as u8;
         let magic = (magic_digit << 4) | magic_digit;
         self.register_a = (self.register_a | magic) & self.register_x & immediate;
         self.update_zero_and_negative_flag(self.register_a);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn sha_ab_y(&mut self, address: u16) {
+    fn sha_ab_y(&mut self, address: u16) -> u8 {
         let high_byte = ((address & 0xff00) >> 8) as u8;
         let result = self.register_x & self.register_a & high_byte.wrapping_add(1);
         self.memory.ab_y_write(address, self.register_y, result);
         self.increment_program_counter();
+        return 5;
     }
 
     #[inline]
-    fn sha_in_y(&mut self, address: u8) {
+    fn sha_in_y(&mut self, address: u8) -> u8 {
         let result = self.register_x & self.register_a & address.wrapping_add(1);
         self.memory.in_y_write(address, self.register_y, result);
         self.increment_program_counter();
+        return 6;
     }
 
     #[inline]
-    fn shx(&mut self, address: u16) {
+    fn shx(&mut self, address: u16) -> u8 {
         let high_byte = ((address & 0xff00) >> 8) as u8;
         let result = self.register_x & high_byte.wrapping_add(1);
         self.memory.ab_y_write(address, self.register_y, result);
         self.increment_program_counter();
+        return 5;
     }
 
     #[inline]
-    fn shy(&mut self, address: u16) {
+    fn shy(&mut self, address: u16) -> u8 {
         let high_byte = ((address & 0xff00) >> 8) as u8;
         let result = self.register_y & high_byte.wrapping_add(1);
         self.memory.ab_x_write(address, self.register_x, result);
         self.increment_program_counter();
+        return 5;
     }
 
     #[inline]
-    fn shs(&mut self, address: u16) {
+    fn shs(&mut self, address: u16) -> u8 {
         let high_byte = ((address & 0xff00) >> 8) as u8;
         self.stack = self.register_x & self.register_a;
         self.memory.ab_y_write(address, self.register_y, self.stack & high_byte.wrapping_add(1));
         self.increment_program_counter();
+        return 5;
     }
 
     #[inline]
-    fn anc(&mut self, immediate: u8) {
+    fn anc(&mut self, immediate: u8) -> u8 {
         self.and_im(immediate);
         self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 > 0);
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn nop(&mut self) {
+    fn nop(&mut self) -> u8 {
         self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn dop(&mut self) {
-        self.nop();
-        self.nop();
+    fn dop_im(&mut self, _immediate: u8) -> u8 {
+        self.increment_program_counter();
+        return 2;
     }
 
     #[inline]
-    fn dop_im(&mut self) {
-        self.dop();
+    fn dop_zp(&mut self, _address: u8) -> u8 {
+        self.increment_program_counter();
+        return 3;
     }
 
     #[inline]
-    fn dop_zp(&mut self) {
-        self.dop();
+    fn dop_zp_x(&mut self, _address: u8) -> u8 {
+        self.increment_program_counter();
+        return 4;
     }
 
     #[inline]
-    fn dop_zp_x(&mut self) {
-        self.dop();
+    fn top_ab(&mut self, _address: u16) -> u8 {
+        self.increment_program_counter();
+        return 4;
     }
 
     #[inline]
-    fn top(&mut self) {
-        self.dop();
-        self.nop();
+    fn top_ab_x(&mut self, address: u16) -> u8 {
+        self.increment_program_counter();
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn top_ab(&mut self) {
-        self.top();
-    }
-
-    #[inline]
-    fn top_ab_x(&mut self) {
-        self.top();
-    }
-
-    #[inline]
-    fn jam(&self) {
+    fn jam(&self) -> u8 {
         // do nothing
+        return 0;
     }
 
     /* todo: other commands with IMMEDIATE addressing support can have their opcodes defined in
         terms of their "_IM" variant
      */
-    fn adc(&mut self, opcode: u8) {
-        match opcode {
+    fn adc(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ADC_IM => {
                 let immediate = self.fetch_param();
-                self.adc_im(immediate);
+                self.adc_im(immediate)
             },
             CPU::ADC_ZP => {
                 let address = self.fetch_param();
-                self.adc_zp(address);
+                self.adc_zp(address)
             },
             CPU::ADC_ZP_X => {
                 let address = self.fetch_param();
-                self.adc_zp_x(address);
+                self.adc_zp_x(address)
             },
             CPU::ADC_AB => {
                 let address = self.fetch_addr_param();
-                self.adc_ab(address);
+                self.adc_ab(address)
             },
             CPU::ADC_AB_X => {
                 let address = self.fetch_addr_param();
-                self.adc_ab_x(address);
+                self.adc_ab_x(address)
             },
             CPU::ADC_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.adc_ab_y(address);
+                self.adc_ab_y(address)
             },
             CPU::ADC_IN_X => {
                 let address = self.fetch_param();
-                self.adc_in_x(address);
+                self.adc_in_x(address)
             },
             CPU::ADC_IN_Y => {
                 let address = self.fetch_param();
-                self.adc_in_y(address);
+                self.adc_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn adc_im(&mut self, immediate: u8) {
+    fn adc_im(&mut self, immediate: u8) -> u8 {
         let mut sum = (self.register_a as u16).wrapping_add(immediate as u16);
         let mut overflow = (self.register_a ^ (sum as u8)) & (immediate ^ (sum as u8)) & 0x80 != 0;
         if self.get_status_flag(CARRY_FLAG) {
@@ -1016,1998 +1083,2190 @@ impl CPU {
         self.update_status_flag(OVERFLOW_FLAG, overflow);
         self.update_status_flag(CARRY_FLAG, sum > 0xff);
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn adc_zp(&mut self, address: u8) {
+    fn adc_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.adc_im(value);
+        return 3;
     }
 
     #[inline]
-    fn adc_zp_x(&mut self, address: u8) {
+    fn adc_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.adc_im(value);
+        return 4;
     }
 
     #[inline]
-    fn adc_ab(&mut self, address: u16) {
+    fn adc_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.adc_im(value);
+        return 4;
     }
 
     #[inline]
-    fn adc_ab_x(&mut self, address: u16) {
+    fn adc_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.adc_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn adc_ab_y(&mut self, address: u16) {
+    fn adc_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.adc_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn adc_in_x(&mut self, address: u8) {
+    fn adc_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.adc_im(value);
+        return 6;
     }
 
     #[inline]
-    fn adc_in_y(&mut self, address: u8) {
+    fn adc_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.adc_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn sbc(&mut self, opcode: u8) {
-        match opcode {
+    fn sbc(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::SBC_IM => {
                 let immediate = self.fetch_param();
-                self.sbc_im(immediate);
+                self.sbc_im(immediate)
             },
             CPU::SBC_ZP => {
                 let address = self.fetch_param();
-                self.sbc_zp(address);
+                self.sbc_zp(address)
             },
             CPU::SBC_ZP_X => {
                 let address = self.fetch_param();
-                self.sbc_zp_x(address);
+                self.sbc_zp_x(address)
             },
             CPU::SBC_AB => {
                 let address = self.fetch_addr_param();
-                self.sbc_ab(address);
+                self.sbc_ab(address)
             },
             CPU::SBC_AB_X => {
                 let address = self.fetch_addr_param();
-                self.sbc_ab_x(address);
+                self.sbc_ab_x(address)
             },
             CPU::SBC_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.sbc_ab_y(address);
+                self.sbc_ab_y(address)
             },
             CPU::SBC_IN_X => {
                 let address = self.fetch_param();
-                self.sbc_in_x(address);
+                self.sbc_in_x(address)
             },
             CPU::SBC_IN_Y => {
                 let address = self.fetch_param();
-                self.sbc_in_y(address);
+                self.sbc_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn sbc_im(&mut self, immediate: u8) {
+    fn sbc_im(&mut self, immediate: u8) -> u8 {
         self.adc_im(!immediate);
+        return 2;
     }
 
     #[inline]
-    fn sbc_zp(&mut self, address: u8) {
+    fn sbc_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.sbc_im(value);
+        return 3;
     }
 
     #[inline]
-    fn sbc_zp_x(&mut self, address: u8) {
+    fn sbc_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.sbc_im(value);
+        return 4;
     }
 
     #[inline]
-    fn sbc_ab(&mut self, address: u16) {
+    fn sbc_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.sbc_im(value);
+        return 4;
     }
 
     #[inline]
-    fn sbc_ab_x(&mut self, address: u16) {
+    fn sbc_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.sbc_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn sbc_ab_y(&mut self, address: u16) {
+    fn sbc_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.sbc_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn sbc_in_x(&mut self, address: u8) {
+    fn sbc_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.sbc_im(value);
+        return 6;
     }
 
     #[inline]
-    fn sbc_in_y(&mut self, address: u8) {
+    fn sbc_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.sbc_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn eor(&mut self, opcode: u8) {
-        match opcode {
+    fn eor(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::EOR_IM => {
                 let immediate = self.fetch_param();
-                self.eor_im(immediate);
+                self.eor_im(immediate)
             },
             CPU::EOR_ZP => {
                 let address = self.fetch_param();
-                self.eor_zp(address);
+                self.eor_zp(address)
             },
             CPU::EOR_ZP_X => {
                 let address = self.fetch_param();
-                self.eor_zp_x(address);
+                self.eor_zp_x(address)
             },
             CPU::EOR_AB => {
                 let address = self.fetch_addr_param();
-                self.eor_ab(address);
+                self.eor_ab(address)
             },
             CPU::EOR_AB_X => {
                 let address = self.fetch_addr_param();
-                self.eor_ab_x(address);
+                self.eor_ab_x(address)
             },
             CPU::EOR_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.eor_ab_y(address);
+                self.eor_ab_y(address)
             },
             CPU::EOR_IN_X => {
                 let address = self.fetch_param();
-                self.eor_in_x(address);
+                self.eor_in_x(address)
             },
             CPU::EOR_IN_Y => {
                 let address = self.fetch_param();
-                self.eor_in_y(address);
+                self.eor_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn eor_im(&mut self, immediate: u8) {
+    fn eor_im(&mut self, immediate: u8) -> u8 {
         self.register_a = self.register_a ^ immediate;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn eor_zp(&mut self, address: u8) {
+    fn eor_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.eor_im(value);
+        return 3;
     }
 
     #[inline]
-    fn eor_zp_x(&mut self, address: u8) {
+    fn eor_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.eor_im(value);
+        return 4;
     }
 
     #[inline]
-    fn eor_ab(&mut self, address: u16) {
+    fn eor_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.eor_im(value);
+        return 4;
     }
 
     #[inline]
-    fn eor_ab_x(&mut self, address: u16) {
+    fn eor_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.eor_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn eor_ab_y(&mut self, address: u16) {
+    fn eor_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.eor_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn eor_in_x(&mut self, address: u8) {
+    fn eor_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.eor_im(value);
+        return 6;
     }
 
     #[inline]
-    fn eor_in_y(&mut self, address: u8) {
+    fn eor_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.eor_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn and(&mut self, opcode: u8) {
-        match opcode {
+    fn and(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::AND_IM => {
                 let immediate = self.fetch_param();
-                self.and_im(immediate);
+                self.and_im(immediate)
             },
             CPU::AND_ZP => {
                 let address = self.fetch_param();
-                self.and_zp(address);
+                self.and_zp(address)
             },
             CPU::AND_ZP_X => {
                 let address = self.fetch_param();
-                self.and_zp_x(address);
+                self.and_zp_x(address)
             },
             CPU::AND_AB => {
                 let address = self.fetch_addr_param();
-                self.and_ab(address);
+                self.and_ab(address)
             },
             CPU::AND_AB_X => {
                 let address = self.fetch_addr_param();
-                self.and_ab_x(address);
+                self.and_ab_x(address)
             },
             CPU::AND_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.and_ab_y(address);
+                self.and_ab_y(address)
             },
             CPU::AND_IN_X => {
                 let address = self.fetch_param();
-                self.and_in_x(address);
+                self.and_in_x(address)
             },
             CPU::AND_IN_Y => {
                 let address = self.fetch_param();
-                self.and_in_y(address);
+                self.and_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn and_im(&mut self, immediate: u8) {
+    fn and_im(&mut self, immediate: u8) -> u8 {
         self.register_a = self.register_a & immediate;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn and_zp(&mut self, address: u8) {
+    fn and_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.and_im(value);
+        return 3;
     }
 
     #[inline]
-    fn and_zp_x(&mut self, address: u8) {
+    fn and_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.and_im(value);
+        return 4;
     }
 
     #[inline]
-    fn and_ab(&mut self, address: u16) {
+    fn and_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.and_im(value);
+        return 4;
     }
 
     #[inline]
-    fn and_ab_x(&mut self, address: u16) {
+    fn and_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.and_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn and_ab_y(&mut self, address: u16) {
+    fn and_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.and_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn and_in_x(&mut self, address: u8) {
+    fn and_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.and_im(value);
+        return 6;
     }
 
     #[inline]
-    fn and_in_y(&mut self, address: u8) {
+    fn and_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.and_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn ora(&mut self, opcode: u8) {
-        match opcode {
+    fn ora(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ORA_IM => {
                 let immediate = self.fetch_param();
-                self.ora_im(immediate);
+                self.ora_im(immediate)
             },
             CPU::ORA_ZP => {
                 let address = self.fetch_param();
-                self.ora_zp(address);
+                self.ora_zp(address)
             },
             CPU::ORA_ZP_X => {
                 let address = self.fetch_param();
-                self.ora_zp_x(address);
+                self.ora_zp_x(address)
             },
             CPU::ORA_AB => {
                 let address = self.fetch_addr_param();
-                self.ora_ab(address);
+                self.ora_ab(address)
             },
             CPU::ORA_AB_X => {
                 let address = self.fetch_addr_param();
-                self.ora_ab_x(address);
+                self.ora_ab_x(address)
             },
             CPU::ORA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.ora_ab_y(address);
+                self.ora_ab_y(address)
             },
             CPU::ORA_IN_X => {
                 let address = self.fetch_param();
-                self.ora_in_x(address);
+                self.ora_in_x(address)
             },
             CPU::ORA_IN_Y => {
                 let address = self.fetch_param();
-                self.ora_in_y(address);
+                self.ora_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn ora_im(&mut self, immediate: u8) {
+    fn ora_im(&mut self, immediate: u8) -> u8 {
         self.register_a = self.register_a | immediate;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn ora_zp(&mut self, address: u8) {
+    fn ora_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.ora_im(value);
+        return 3;
     }
 
     #[inline]
-    fn ora_zp_x(&mut self, address: u8) {
+    fn ora_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.ora_im(value);
+        return 4;
     }
 
     #[inline]
-    fn ora_ab(&mut self, address: u16) {
+    fn ora_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.ora_im(value);
+        return 4;
     }
 
     #[inline]
-    fn ora_ab_x(&mut self, address: u16) {
+    fn ora_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.ora_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn ora_ab_y(&mut self, address: u16) {
+    fn ora_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.ora_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn ora_in_x(&mut self, address: u8) {
+    fn ora_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.ora_im(value);
+        return 6;
     }
 
     #[inline]
-    fn ora_in_y(&mut self, address: u8) {
+    fn ora_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.ora_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn lsr(&mut self, opcode: u8) {
-        match opcode {
+    fn lsr(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::LSR => {
-                self.lsr_a();
+                self.lsr_a()
             },
             CPU::LSR_ZP => {
                 let address = self.fetch_param();
-                self.lsr_zp(address);
+                self.lsr_zp(address)
             },
             CPU::LSR_ZP_X => {
                 let address = self.fetch_param();
-                self.lsr_zp_x(address);
+                self.lsr_zp_x(address)
             },
             CPU::LSR_AB => {
                 let address = self.fetch_addr_param();
-                self.lsr_ab(address);
+                self.lsr_ab(address)
             },
             CPU::LSR_AB_X => {
                 let address = self.fetch_addr_param();
-                self.lsr_ab_x(address);
+                self.lsr_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn lsr_a(&mut self) {
+    fn lsr_a(&mut self) -> u8 {
         self.update_status_flag(CARRY_FLAG, self.register_a & 1 != 0);
         self.register_a = self.register_a >> 1;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn lsr_zp(&mut self, address: u8) {
+    fn lsr_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn lsr_zp_x(&mut self, address: u8) {
+    fn lsr_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn lsr_ab(&mut self, address: u16) {
+    fn lsr_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn lsr_ab_x(&mut self, address: u16) {
+    fn lsr_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn sre(&mut self, opcode: u8) {
-        match opcode {
+    fn sre(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::SRE_ZP => {
                 let address = self.fetch_param();
-                self.sre_zp(address);
+                self.sre_zp(address)
             },
             CPU::SRE_ZP_X => {
                 let address = self.fetch_param();
-                self.sre_zp_x(address);
+                self.sre_zp_x(address)
             },
             CPU::SRE_AB => {
                 let address = self.fetch_addr_param();
-                self.sre_ab(address);
+                self.sre_ab(address)
             },
             CPU::SRE_AB_X => {
                 let address = self.fetch_addr_param();
-                self.sre_ab_x(address);
+                self.sre_ab_x(address)
             },
             CPU::SRE_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.sre_ab_y(address);
+                self.sre_ab_y(address)
             },
             CPU::SRE_IN_X => {
                 let address = self.fetch_param();
-                self.sre_in_x(address);
+                self.sre_in_x(address)
             },
             CPU::SRE_IN_Y => {
                 let address = self.fetch_param();
-                self.sre_in_y(address);
+                self.sre_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn sre_zp(&mut self, address: u8) {
+    fn sre_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_write(address, value);
         self.eor_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn sre_zp_x(&mut self, address: u8) {
+    fn sre_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.eor_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn sre_ab(&mut self, address: u16) {
+    fn sre_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_write(address, value);
         self.eor_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn sre_ab_x(&mut self, address: u16) {
+    fn sre_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.eor_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn sre_ab_y(&mut self, address: u16) {
+    fn sre_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_y_write(address, self.register_y, value);
         self.eor_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn sre_in_x(&mut self, address: u8) {
+    fn sre_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.in_x_write(address, self.register_x, value);
         self.eor_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn sre_in_y(&mut self, address: u8) {
+    fn sre_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = value >> 1;
         self.memory.in_y_write(address, self.register_y, value);
         self.eor_in_y(address);
+        return 8;
     }
 
-    fn asl(&mut self, opcode: u8) {
-        match opcode {
+    fn asl(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ASL => {
-                self.asl_a();
+                self.asl_a()
             },
             CPU::ASL_ZP => {
                 let address = self.fetch_param();
-                self.asl_zp(address);
+                self.asl_zp(address)
             },
             CPU::ASL_ZP_X => {
                 let address = self.fetch_param();
-                self.asl_zp_x(address);
+                self.asl_zp_x(address)
             },
             CPU::ASL_AB => {
                 let address = self.fetch_addr_param();
-                self.asl_ab(address);
+                self.asl_ab(address)
             },
             CPU::ASL_AB_X => {
                 let address = self.fetch_addr_param();
-                self.asl_ab_x(address);
+                self.asl_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn asl_a(&mut self) {
+    fn asl_a(&mut self) -> u8 {
         self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 != 0);
         self.register_a = self.register_a << 1;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn asl_zp(&mut self, address: u8) {
+    fn asl_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn asl_zp_x(&mut self, address: u8) {
+    fn asl_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn asl_ab(&mut self, address: u16) {
+    fn asl_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn asl_ab_x(&mut self, address: u16) {
+    fn asl_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn slo(&mut self, opcode: u8) {
-        match opcode {
+    fn slo(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::SLO_ZP => {
                 let address = self.fetch_param();
-                self.slo_zp(address);
+                self.slo_zp(address)
             },
             CPU::SLO_ZP_X => {
                 let address = self.fetch_param();
-                self.slo_zp_x(address);
+                self.slo_zp_x(address)
             },
             CPU::SLO_AB => {
                 let address = self.fetch_addr_param();
-                self.slo_ab(address);
+                self.slo_ab(address)
             },
             CPU::SLO_AB_X => {
                 let address = self.fetch_addr_param();
-                self.slo_ab_x(address);
+                self.slo_ab_x(address)
             },
             CPU::SLO_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.slo_ab_y(address);
+                self.slo_ab_y(address)
             },
             CPU::SLO_IN_X => {
                 let address = self.fetch_param();
-                self.slo_in_x(address);
+                self.slo_in_x(address)
             },
             CPU::SLO_IN_Y => {
                 let address = self.fetch_param();
-                self.slo_in_y(address);
+                self.slo_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn slo_zp(&mut self, address: u8) {
+    fn slo_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_write(address, value);
         self.ora_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn slo_zp_x(&mut self, address: u8) {
+    fn slo_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.ora_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn slo_ab(&mut self, address: u16) {
+    fn slo_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_write(address, value);
         self.ora_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn slo_ab_x(&mut self, address: u16) {
+    fn slo_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.ora_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn slo_ab_y(&mut self, address: u16) {
+    fn slo_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_y_write(address, self.register_y, value);
         self.ora_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn slo_in_x(&mut self, address: u8) {
+    fn slo_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.in_x_write(address, self.register_x, value);
         self.ora_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn slo_in_y(&mut self, address: u8) {
+    fn slo_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = value << 1;
         self.memory.in_y_write(address, self.register_y, value);
         self.ora_in_y(address);
+        return 8;
     }
 
-    fn ror(&mut self, opcode: u8) {
-        match opcode {
+    fn ror(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ROR => {
-                self.ror_a();
+                self.ror_a()
             },
             CPU::ROR_ZP => {
                 let address = self.fetch_param();
-                self.ror_zp(address);
+                self.ror_zp(address)
             },
             CPU::ROR_ZP_X => {
                 let address = self.fetch_param();
-                self.ror_zp_x(address);
+                self.ror_zp_x(address)
             },
             CPU::ROR_AB => {
                 let address = self.fetch_addr_param();
-                self.ror_ab(address);
+                self.ror_ab(address)
             },
             CPU::ROR_AB_X => {
                 let address = self.fetch_addr_param();
-                self.ror_ab_x(address);
+                self.ror_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn ror_a(&mut self) {
+    fn ror_a(&mut self) -> u8 {
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, self.register_a & 1 != 0);
         self.register_a = (self.register_a >> 1) | (old_carry << 7);
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn ror_zp(&mut self, address: u8) {
+    fn ror_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn ror_zp_x(&mut self, address: u8) {
+    fn ror_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn ror_ab(&mut self, address: u16) {
+    fn ror_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn ror_ab_x(&mut self, address: u16) {
+    fn ror_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn rra(&mut self, opcode: u8) {
-        match opcode {
+    fn rra(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::RRA_ZP => {
                 let address = self.fetch_param();
-                self.rra_zp(address);
+                self.rra_zp(address)
             },
             CPU::RRA_ZP_X => {
                 let address = self.fetch_param();
-                self.rra_zp_x(address);
+                self.rra_zp_x(address)
             },
             CPU::RRA_AB => {
                 let address = self.fetch_addr_param();
-                self.rra_ab(address);
+                self.rra_ab(address)
             },
             CPU::RRA_AB_X => {
                 let address = self.fetch_addr_param();
-                self.rra_ab_x(address);
+                self.rra_ab_x(address)
             },
             CPU::RRA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.rra_ab_y(address);
+                self.rra_ab_y(address)
             },
             CPU::RRA_IN_X => {
                 let address = self.fetch_param();
-                self.rra_in_x(address);
+                self.rra_in_x(address)
             },
             CPU::RRA_IN_Y => {
                 let address = self.fetch_param();
-                self.rra_in_y(address);
+                self.rra_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn rra_zp(&mut self, address: u8) {
+    fn rra_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_write(address, value);
         self.adc_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn rra_zp_x(&mut self, address: u8) {
+    fn rra_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_x_write(address, self.register_x, value);
         self.adc_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn rra_ab(&mut self, address: u16) {
+    fn rra_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_write(address, value);
         self.adc_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn rra_ab_x(&mut self, address: u16) {
+    fn rra_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_x_write(address, self.register_x, value);
         self.adc_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn rra_ab_y(&mut self, address: u16) {
+    fn rra_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_y_write(address, self.register_y, value);
         self.adc_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn rra_in_x(&mut self, address: u8) {
+    fn rra_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.in_x_write(address, self.register_x, value);
         self.adc_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn rra_in_y(&mut self, address: u8) {
+    fn rra_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.in_y_write(address, self.register_y, value);
         self.adc_in_y(address);
+        return 8;
     }
 
-    fn rol(&mut self, opcode: u8) {
-        match opcode {
+    fn rol(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ROL => {
-                self.rol_a();
+                self.rol_a()
             },
             CPU::ROL_ZP => {
                 let address = self.fetch_param();
-                self.rol_zp(address);
+                self.rol_zp(address)
             },
             CPU::ROL_ZP_X => {
                 let address = self.fetch_param();
-                self.rol_zp_x(address);
+                self.rol_zp_x(address)
             },
             CPU::ROL_AB => {
                 let address = self.fetch_addr_param();
-                self.rol_ab(address);
+                self.rol_ab(address)
             },
             CPU::ROL_AB_X => {
                 let address = self.fetch_addr_param();
-                self.rol_ab_x(address);
+                self.rol_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn rol_a(&mut self) {
+    fn rol_a(&mut self) -> u8 {
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 != 0);
         self.register_a = (self.register_a << 1) | old_carry;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn rol_zp(&mut self, address: u8) {
+    fn rol_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn rol_zp_x(&mut self, address: u8) {
+    fn rol_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn rol_ab(&mut self, address: u16) {
+    fn rol_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn rol_ab_x(&mut self, address: u16) {
+    fn rol_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn rla(&mut self, opcode: u8) {
-        match opcode {
+    fn rla(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::RLA_ZP => {
                 let address = self.fetch_param();
-                self.rla_zp(address);
+                self.rla_zp(address)
             },
             CPU::RLA_ZP_X => {
                 let address = self.fetch_param();
-                self.rla_zp_x(address);
+                self.rla_zp_x(address)
             },
             CPU::RLA_AB => {
                 let address = self.fetch_addr_param();
-                self.rla_ab(address);
+                self.rla_ab(address)
             },
             CPU::RLA_AB_X => {
                 let address = self.fetch_addr_param();
-                self.rla_ab_x(address);
+                self.rla_ab_x(address)
             },
             CPU::RLA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.rla_ab_y(address);
+                self.rla_ab_y(address)
             },
             CPU::RLA_IN_X => {
                 let address = self.fetch_param();
-                self.rla_in_x(address);
+                self.rla_in_x(address)
             },
             CPU::RLA_IN_Y => {
                 let address = self.fetch_param();
-                self.rla_in_y(address);
+                self.rla_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn rla_zp(&mut self, address: u8) {
+    fn rla_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_write(address, value);
         self.and_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn rla_zp_x(&mut self, address: u8) {
+    fn rla_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_x_write(address, self.register_x, value);
         self.and_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn rla_ab(&mut self, address: u16) {
+    fn rla_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_write(address, value);
         self.and_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn rla_ab_x(&mut self, address: u16) {
+    fn rla_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_x_write(address, self.register_x, value);
         self.and_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn rla_ab_y(&mut self, address: u16) {
+    fn rla_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_y_write(address, self.register_y, value);
         self.and_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn rla_in_x(&mut self, address: u8) {
+    fn rla_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.in_x_write(address, self.register_x, value);
         self.and_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn rla_in_y(&mut self, address: u8) {
+    fn rla_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
         self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.in_y_write(address, self.register_y, value);
         self.and_in_y(address);
+        return 8;
     }
 
-    fn lda(&mut self, opcode: u8) {
-        match opcode {
+    fn lda(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::LDA_IM => {
                 let immediate = self.fetch_param();
-                self.lda_im(immediate);
+                self.lda_im(immediate)
             },
             CPU::LDA_ZP => {
                 let address = self.fetch_param();
-                self.lda_zp(address);
+                self.lda_zp(address)
             },
             CPU::LDA_ZP_X => {
                 let address = self.fetch_param();
-                self.lda_zp_x(address);
+                self.lda_zp_x(address)
             },
             CPU::LDA_AB => {
                 let address = self.fetch_addr_param();
-                self.lda_ab(address);
+                self.lda_ab(address)
             },
             CPU::LDA_AB_X => {
                 let address = self.fetch_addr_param();
-                self.lda_ab_x(address);
+                self.lda_ab_x(address)
             },
             CPU::LDA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.lda_ab_y(address);
+                self.lda_ab_y(address)
             },
             CPU::LDA_IN_X => {
                 let address = self.fetch_param();
-                self.lda_in_x(address);
+                self.lda_in_x(address)
             },
             CPU::LDA_IN_Y => {
                 let address = self.fetch_param();
-                self.lda_in_y(address);
+                self.lda_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn lda_im(&mut self, immediate: u8) {
+    fn lda_im(&mut self, immediate: u8) -> u8 {
         self.register_a = immediate;
         self.update_zero_and_negative_flag(self.register_a);
+        return 2;
     }
 
     #[inline]
-    fn lda_zp(&mut self, address: u8) {
+    fn lda_zp(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.zp_read(address);
         self.update_zero_and_negative_flag(self.register_a);
+        return 3;
     }
 
     #[inline]
-    fn lda_zp_x(&mut self, address: u8) {
+    fn lda_zp_x(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.zp_x_read(address, self.register_x);
         self.update_zero_and_negative_flag(self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn lda_ab(&mut self, address: u16) {
+    fn lda_ab(&mut self, address: u16) -> u8 {
         self.register_a = self.memory.ab_read(address);
         self.update_zero_and_negative_flag(self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn lda_ab_x(&mut self, address: u16) {
+    fn lda_ab_x(&mut self, address: u16) -> u8 {
         self.register_a = self.memory.ab_x_read(address, self.register_x);
         self.update_zero_and_negative_flag(self.register_a);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn lda_ab_y(&mut self, address: u16) {
+    fn lda_ab_y(&mut self, address: u16) -> u8 {
         self.register_a = self.memory.ab_y_read(address, self.register_y);
         self.update_zero_and_negative_flag(self.register_a);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn lda_in_x(&mut self, address: u8) {
+    fn lda_in_x(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.in_x_read(address, self.register_x);
         self.update_zero_and_negative_flag(self.register_a);
+        return 6;
     }
 
     #[inline]
-    fn lda_in_y(&mut self, address: u8) {
+    fn lda_in_y(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.in_y_read(address, self.register_y);
         self.update_zero_and_negative_flag(self.register_a);
+        return 4 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn ldx(&mut self, opcode: u8) {
-        match opcode {
+    fn ldx(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::LDX_IM => {
                 let immediate = self.fetch_param();
-                self.ldx_im(immediate);
+                self.ldx_im(immediate)
             },
             CPU::LDX_ZP => {
                 let address = self.fetch_param();
-                self.ldx_zp(address);
+                self.ldx_zp(address)
             },
             CPU::LDX_ZP_Y => {
                 let address = self.fetch_param();
-                self.ldx_zp_y(address);
+                self.ldx_zp_y(address)
             },
             CPU::LDX_AB => {
                 let address = self.fetch_addr_param();
-                self.ldx_ab(address);
+                self.ldx_ab(address)
             },
             CPU::LDX_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.ldx_ab_y(address);
+                self.ldx_ab_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn ldx_im(&mut self, immediate: u8) {
+    fn ldx_im(&mut self, immediate: u8) -> u8 {
         self.register_x = immediate;
         self.update_zero_and_negative_flag(self.register_x);
+        return 2;
     }
 
     #[inline]
-    fn ldx_zp(&mut self, address: u8) {
+    fn ldx_zp(&mut self, address: u8) -> u8 {
         self.register_x = self.memory.zp_read(address);
         self.update_zero_and_negative_flag(self.register_x);
+        return 3;
     }
 
     #[inline]
-    fn ldx_zp_y(&mut self, address: u8) {
+    fn ldx_zp_y(&mut self, address: u8) -> u8 {
         self.register_x = self.memory.zp_y_read(address, self.register_y);
         self.update_zero_and_negative_flag(self.register_x);
+        return 4;
     }
 
     #[inline]
-    fn ldx_ab(&mut self, address: u16) {
+    fn ldx_ab(&mut self, address: u16) -> u8 {
         self.register_x = self.memory.ab_read(address);
         self.update_zero_and_negative_flag(self.register_x);
+        return 4;
     }
 
     #[inline]
-    fn ldx_ab_y(&mut self, address: u16) {
+    fn ldx_ab_y(&mut self, address: u16) -> u8 {
         self.register_x = self.memory.ab_y_read(address, self.register_y);
         self.update_zero_and_negative_flag(self.register_x);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
-    fn ldy(&mut self, opcode: u8) {
-        match opcode {
+    fn ldy(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::LDY_IM => {
                 let immediate = self.fetch_param();
-                self.ldy_im(immediate);
+                self.ldy_im(immediate)
             },
             CPU::LDY_ZP => {
                 let address = self.fetch_param();
-                self.ldy_zp(address);
+                self.ldy_zp(address)
             },
             CPU::LDY_ZP_X => {
                 let address = self.fetch_param();
-                self.ldy_zp_x(address);
+                self.ldy_zp_x(address)
             },
             CPU::LDY_AB => {
                 let address = self.fetch_addr_param();
-                self.ldy_ab(address);
+                self.ldy_ab(address)
             },
             CPU::LDY_AB_X => {
                 let address = self.fetch_addr_param();
-                self.ldy_ab_x(address);
+                self.ldy_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn ldy_im(&mut self, immediate: u8) {
+    fn ldy_im(&mut self, immediate: u8) -> u8 {
         self.register_y = immediate;
         self.update_zero_and_negative_flag(self.register_y);
+        return 2;
     }
 
     #[inline]
-    fn ldy_zp(&mut self, address: u8) {
+    fn ldy_zp(&mut self, address: u8) -> u8 {
         self.register_y = self.memory.zp_read(address);
         self.update_zero_and_negative_flag(self.register_y);
+        return 3;
     }
 
     #[inline]
-    fn ldy_zp_x(&mut self, address: u8) {
+    fn ldy_zp_x(&mut self, address: u8) -> u8 {
         self.register_y = self.memory.zp_x_read(address, self.register_x);
         self.update_zero_and_negative_flag(self.register_y);
+        return 4;
     }
 
     #[inline]
-    fn ldy_ab(&mut self, address: u16) {
+    fn ldy_ab(&mut self, address: u16) -> u8 {
         self.register_y = self.memory.ab_read(address);
         self.update_zero_and_negative_flag(self.register_y);
+        return 4;
     }
 
     #[inline]
-    fn ldy_ab_x(&mut self, address: u16) {
+    fn ldy_ab_x(&mut self, address: u16) -> u8 {
         self.register_y = self.memory.ab_x_read(address, self.register_x);
         self.update_zero_and_negative_flag(self.register_y);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
-    fn lax(&mut self, opcode: u8) {
-        match opcode {
+    fn lax(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::LAX_ZP => {
                 let address = self.fetch_param();
-                self.lax_zp(address);
+                self.lax_zp(address)
             },
             CPU::LAX_ZP_Y => {
                 let address = self.fetch_param();
-                self.lax_zp_y(address);
+                self.lax_zp_y(address)
             },
             CPU::LAX_AB => {
                 let address = self.fetch_addr_param();
-                self.lax_ab(address);
+                self.lax_ab(address)
             },
             CPU::LAX_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.lax_ab_y(address);
+                self.lax_ab_y(address)
             },
             CPU::LAX_IN_X => {
                 let address = self.fetch_param();
-                self.lax_in_x(address);
+                self.lax_in_x(address)
             },
             CPU::LAX_IN_Y => {
                 let address = self.fetch_param();
-                self.lax_in_y(address);
+                self.lax_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn lax_zp(&mut self, address: u8) {
+    fn lax_zp(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.zp_read(address);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 3;
     }
 
     #[inline]
-    fn lax_zp_y(&mut self, address: u8) {
+    fn lax_zp_y(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.zp_y_read(address, self.register_y);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn lax_ab(&mut self, address: u16) {
+    fn lax_ab(&mut self, address: u16) -> u8 {
         self.register_a = self.memory.ab_read(address);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn lax_ab_y(&mut self, address: u16) {
+    fn lax_ab_y(&mut self, address: u16) -> u8 {
         self.register_a = self.memory.ab_y_read(address, self.register_y);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn lax_in_x(&mut self, address: u8) {
+    fn lax_in_x(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.in_x_read(address, self.register_x);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 6;
     }
 
     #[inline]
-    fn lax_in_y(&mut self, address: u8) {
+    fn lax_in_y(&mut self, address: u8) -> u8 {
         self.register_a = self.memory.in_y_read(address, self.register_y);
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_a);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn sta(&mut self, opcode: u8) {
-        match opcode {
+    fn sta(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::STA_ZP => {
                 let address = self.fetch_param();
-                self.sta_zp(address);
+                self.sta_zp(address)
             },
             CPU::STA_ZP_X => {
                 let address = self.fetch_param();
-                self.sta_zp_x(address);
+                self.sta_zp_x(address)
             },
             CPU::STA_AB => {
                 let address = self.fetch_addr_param();
-                self.sta_ab(address);
+                self.sta_ab(address)
             },
             CPU::STA_AB_X => {
                 let address = self.fetch_addr_param();
-                self.sta_ab_x(address);
+                self.sta_ab_x(address)
             },
             CPU::STA_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.sta_ab_y(address);
+                self.sta_ab_y(address)
             },
             CPU::STA_IN_X => {
                 let address = self.fetch_param();
-                self.sta_in_x(address);
+                self.sta_in_x(address)
             },
             CPU::STA_IN_Y => {
                 let address = self.fetch_param();
-                self.sta_in_y(address);
+                self.sta_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn sta_zp(&mut self, address: u8) {
+    fn sta_zp(&mut self, address: u8) -> u8 {
         self.memory.zp_write(address, self.register_a);
+        return 3;
     }
 
     #[inline]
-    fn sta_zp_x(&mut self, address: u8) {
+    fn sta_zp_x(&mut self, address: u8) -> u8 {
         self.memory.zp_x_write(address, self.register_x, self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn sta_ab(&mut self, address: u16) {
+    fn sta_ab(&mut self, address: u16) -> u8 {
         self.memory.ab_write(address, self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn sta_ab_x(&mut self, address: u16) {
+    fn sta_ab_x(&mut self, address: u16) -> u8 {
         self.memory.ab_x_write(address, self.register_x, self.register_a);
+        return 5;
     }
 
     #[inline]
-    fn sta_ab_y(&mut self, address: u16) {
+    fn sta_ab_y(&mut self, address: u16) -> u8 {
         self.memory.ab_y_write(address, self.register_y, self.register_a);
+        return 5;
     }
 
     #[inline]
-    fn sta_in_x(&mut self, address: u8) {
+    fn sta_in_x(&mut self, address: u8) -> u8 {
         self.memory.in_x_write(address, self.register_x, self.register_a);
+        return 6;
     }
 
     #[inline]
-    fn sta_in_y(&mut self, address: u8) {
+    fn sta_in_y(&mut self, address: u8) -> u8 {
         self.memory.in_y_write(address, self.register_y, self.register_a);
+        return 6;
     }
 
-    fn stx(&mut self, opcode: u8) {
-        match opcode {
+    fn stx(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::STX_ZP => {
                 let address = self.fetch_param();
-                self.stx_zp(address);
+                self.stx_zp(address)
             },
             CPU::STX_ZP_Y => {
                 let address = self.fetch_param();
-                self.stx_zp_y(address);
+                self.stx_zp_y(address)
             },
             CPU::STX_AB => {
                 let address = self.fetch_addr_param();
-                self.stx_ab(address);
+                self.stx_ab(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn stx_zp(&mut self, address: u8) {
+    fn stx_zp(&mut self, address: u8) -> u8 {
         self.memory.zp_write(address, self.register_x);
+        return 3;
     }
 
     #[inline]
-    fn stx_zp_y(&mut self, address: u8) {
+    fn stx_zp_y(&mut self, address: u8) -> u8 {
         self.memory.zp_y_write(address, self.register_y, self.register_x);
+        return 4;
     }
 
     #[inline]
-    fn stx_ab(&mut self, address: u16) {
+    fn stx_ab(&mut self, address: u16) -> u8 {
         self.memory.ab_write(address, self.register_x);
+        return 4;
     }
 
-    fn sty(&mut self, opcode: u8) {
-        match opcode {
+    fn sty(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::STY_ZP => {
                 let address = self.fetch_param();
-                self.sty_zp(address);
+                self.sty_zp(address)
             },
             CPU::STY_ZP_X => {
                 let address = self.fetch_param();
-                self.sty_zp_x(address);
+                self.sty_zp_x(address)
             },
             CPU::STY_AB => {
                 let address = self.fetch_addr_param();
-                self.sty_ab(address);
+                self.sty_ab(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn sty_zp(&mut self, address: u8) {
+    fn sty_zp(&mut self, address: u8) -> u8 {
         self.memory.zp_write(address, self.register_y);
+        return 3;
     }
 
     #[inline]
-    fn sty_zp_x(&mut self, address: u8) {
+    fn sty_zp_x(&mut self, address: u8) -> u8 {
         self.memory.zp_x_write(address, self.register_x, self.register_y);
+        return 4;
     }
 
     #[inline]
-    fn sty_ab(&mut self, address: u16) {
+    fn sty_ab(&mut self, address: u16) -> u8 {
         self.memory.ab_write(address, self.register_y);
+        return 4;
     }
 
-    fn sax(&mut self, opcode: u8) {
-        match opcode {
+    fn sax(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::SAX_ZP => {
                 let address = self.fetch_param();
-                self.sax_zp(address);
+                self.sax_zp(address)
             },
             CPU::SAX_ZP_Y => {
                 let address = self.fetch_param();
-                self.sax_zp_y(address);
+                self.sax_zp_y(address)
             },
             CPU::SAX_AB => {
                 let address = self.fetch_addr_param();
-                self.sax_ab(address);
+                self.sax_ab(address)
             },
             CPU::SAX_IN_X => {
                 let address = self.fetch_param();
-                self.sax_in_x(address);
+                self.sax_in_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn sax_zp(&mut self, address: u8) {
+    fn sax_zp(&mut self, address: u8) -> u8 {
         self.memory.zp_write(address, self.register_x & self.register_a);
+        return 3;
     }
 
     #[inline]
-    fn sax_zp_y(&mut self, address: u8) {
+    fn sax_zp_y(&mut self, address: u8) -> u8 {
         self.memory.zp_y_write(address, self.register_y, self.register_x & self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn sax_ab(&mut self, address: u16) {
+    fn sax_ab(&mut self, address: u16) -> u8 {
         self.memory.ab_write(address, self.register_x & self.register_a);
+        return 4;
     }
 
     #[inline]
-    fn sax_in_x(&mut self, address: u8) {
+    fn sax_in_x(&mut self, address: u8) -> u8 {
         self.memory.in_x_write(address, self.register_x, self.register_x & self.register_a);
+        return 6;
     }
 
-    fn dec(&mut self, opcode: u8) {
-        match opcode {
+    fn dec(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::DEC_ZP => {
                 let address = self.fetch_param();
-                self.dec_zp(address);
+                self.dec_zp(address)
             },
             CPU::DEC_ZP_X => {
                 let address = self.fetch_param();
-                self.dec_zp_x(address);
+                self.dec_zp_x(address)
             },
             CPU::DEC_AB => {
                 let address = self.fetch_addr_param();
-                self.dec_ab(address);
+                self.dec_ab(address)
             },
             CPU::DEC_AB_X => {
                 let address = self.fetch_addr_param();
-                self.dec_ab_x(address);
+                self.dec_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn dec_zp(&mut self, address: u8) {
+    fn dec_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         value = value.wrapping_sub(1);
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn dec_zp_x(&mut self, address: u8) {
+    fn dec_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         value = value.wrapping_sub(1);
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn dec_ab(&mut self, address: u16) {
+    fn dec_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         value = value.wrapping_sub(1);
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn dec_ab_x(&mut self, address: u16) {
+    fn dec_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         value = value.wrapping_sub(1);
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn dcp(&mut self, opcode: u8) {
-        match opcode {
+    fn dcp(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::DCP_ZP => {
                 let address = self.fetch_param();
-                self.dcp_zp(address);
+                self.dcp_zp(address)
             },
             CPU::DCP_ZP_X => {
                 let address = self.fetch_param();
-                self.dcp_zp_x(address);
+                self.dcp_zp_x(address)
             },
             CPU::DCP_AB => {
                 let address = self.fetch_addr_param();
-                self.dcp_ab(address);
+                self.dcp_ab(address)
             },
             CPU::DCP_AB_X => {
                 let address = self.fetch_addr_param();
-                self.dcp_ab_x(address);
+                self.dcp_ab_x(address)
             },
             CPU::DCP_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.dcp_ab_y(address);
+                self.dcp_ab_y(address)
             },
             CPU::DCP_IN_X => {
                 let address = self.fetch_param();
-                self.dcp_in_x(address);
+                self.dcp_in_x(address)
             },
             CPU::DCP_IN_Y => {
                 let address = self.fetch_param();
-                self.dcp_in_y(address);
+                self.dcp_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn dcp_zp(&mut self, address: u8) {
+    fn dcp_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         value = value.wrapping_sub(1);
         self.memory.zp_write(address, value);
         self.cmp_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn dcp_zp_x(&mut self, address: u8) {
+    fn dcp_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         value = value.wrapping_sub(1);
         self.memory.zp_x_write(address, self.register_x, value);
         self.cmp_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn dcp_ab(&mut self, address: u16) {
+    fn dcp_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         value = value.wrapping_sub(1);
         self.memory.ab_write(address, value);
         self.cmp_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn dcp_ab_x(&mut self, address: u16) {
+    fn dcp_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         value = value.wrapping_sub(1);
         self.memory.ab_x_write(address, self.register_x, value);
         self.cmp_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn dcp_ab_y(&mut self, address: u16) {
+    fn dcp_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         value = value.wrapping_sub(1);
         self.memory.ab_y_write(address, self.register_y, value);
         self.cmp_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn dcp_in_x(&mut self, address: u8) {
+    fn dcp_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         value = value.wrapping_sub(1);
         self.memory.in_x_write(address, self.register_x, value);
         self.cmp_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn dcp_in_y(&mut self, address: u8) {
+    fn dcp_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         value = value.wrapping_sub(1);
         self.memory.in_y_write(address, self.register_y, value);
         self.cmp_in_y(address);
+        return 8;
     }
 
-    fn inc(&mut self, opcode: u8) {
-        match opcode {
+    fn inc(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::INC_ZP => {
                 let address = self.fetch_param();
-                self.inc_zp(address);
+                self.inc_zp(address)
             },
             CPU::INC_ZP_X => {
                 let address = self.fetch_param();
-                self.inc_zp_x(address);
+                self.inc_zp_x(address)
             },
             CPU::INC_AB => {
                 let address = self.fetch_addr_param();
-                self.inc_ab(address);
+                self.inc_ab(address)
             },
             CPU::INC_AB_X => {
                 let address = self.fetch_addr_param();
-                self.inc_ab_x(address);
+                self.inc_ab_x(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn inc_zp(&mut self, address: u8) {
+    fn inc_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         value = value.wrapping_add(1);
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 5;
     }
 
     #[inline]
-    fn inc_zp_x(&mut self, address: u8) {
+    fn inc_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         value = value.wrapping_add(1);
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn inc_ab(&mut self, address: u16) {
+    fn inc_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         value = value.wrapping_add(1);
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
+        return 6;
     }
 
     #[inline]
-    fn inc_ab_x(&mut self, address: u16) {
+    fn inc_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         value = value.wrapping_add(1);
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
+        return 7;
     }
 
-    fn isb(&mut self, opcode: u8) {
-        match opcode {
+    fn isb(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::ISB_ZP => {
                 let address = self.fetch_param();
-                self.isb_zp(address);
+                self.isb_zp(address)
             },
             CPU::ISB_ZP_X => {
                 let address = self.fetch_param();
-                self.isb_zp_x(address);
+                self.isb_zp_x(address)
             },
             CPU::ISB_AB => {
                 let address = self.fetch_addr_param();
-                self.isb_ab(address);
+                self.isb_ab(address)
             },
             CPU::ISB_AB_X => {
                 let address = self.fetch_addr_param();
-                self.isb_ab_x(address);
+                self.isb_ab_x(address)
             },
             CPU::ISB_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.isb_ab_y(address);
+                self.isb_ab_y(address)
             },
             CPU::ISB_IN_X => {
                 let address = self.fetch_param();
-                self.isb_in_x(address);
+                self.isb_in_x(address)
             },
             CPU::ISB_IN_Y => {
                 let address = self.fetch_param();
-                self.isb_in_y(address);
+                self.isb_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn isb_zp(&mut self, address: u8) {
+    fn isb_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
         value = value.wrapping_add(1);
         self.memory.zp_write(address, value);
         self.sbc_zp(address);
+        return 5;
     }
 
     #[inline]
-    fn isb_zp_x(&mut self, address: u8) {
+    fn isb_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
         value = value.wrapping_add(1);
         self.memory.zp_x_write(address, self.register_x, value);
         self.sbc_zp_x(address);
+        return 6;
     }
 
     #[inline]
-    fn isb_ab(&mut self, address: u16) {
+    fn isb_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
         value = value.wrapping_add(1);
         self.memory.ab_write(address, value);
         self.sbc_ab(address);
+        return 6;
     }
 
     #[inline]
-    fn isb_ab_x(&mut self, address: u16) {
+    fn isb_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
         value = value.wrapping_add(1);
         self.memory.ab_x_write(address, self.register_x, value);
         self.sbc_ab_x(address);
+        return 7;
     }
 
     #[inline]
-    fn isb_ab_y(&mut self, address: u16) {
+    fn isb_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
         value = value.wrapping_add(1);
         self.memory.ab_y_write(address, self.register_y, value);
         self.sbc_ab_y(address);
+        return 7;
     }
 
     #[inline]
-    fn isb_in_x(&mut self, address: u8) {
+    fn isb_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
         value = value.wrapping_add(1);
         self.memory.in_x_write(address, self.register_x, value);
         self.sbc_in_x(address);
+        return 8;
     }
 
     #[inline]
-    fn isb_in_y(&mut self, address: u8) {
+    fn isb_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
         value = value.wrapping_add(1);
         self.memory.in_y_write(address, self.register_y, value);
         self.sbc_in_y(address);
+        return 8;
     }
 
-    fn _cmp(&mut self, opcode: u8) {
-        match opcode {
+    fn _cmp(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::CMP_IM => {
                 let immediate = self.fetch_param();
-                self.cmp_im(immediate);
+                self.cmp_im(immediate)
             },
             CPU::CMP_ZP => {
                 let address = self.fetch_param();
-                self.cmp_zp(address);
+                self.cmp_zp(address)
             },
             CPU::CMP_ZP_X => {
                 let address = self.fetch_param();
-                self.cmp_zp_x(address);
+                self.cmp_zp_x(address)
             },
             CPU::CMP_AB => {
                 let address = self.fetch_addr_param();
-                self.cmp_ab(address);
+                self.cmp_ab(address)
             },
             CPU::CMP_AB_X => {
                 let address = self.fetch_addr_param();
-                self.cmp_ab_x(address);
+                self.cmp_ab_x(address)
             },
             CPU::CMP_AB_Y => {
                 let address = self.fetch_addr_param();
-                self.cmp_ab_y(address);
+                self.cmp_ab_y(address)
             },
             CPU::CMP_IN_X => {
                 let address = self.fetch_param();
-                self.cmp_in_x(address);
+                self.cmp_in_x(address)
             },
             CPU::CMP_IN_Y => {
                 let address = self.fetch_param();
-                self.cmp_in_y(address);
+                self.cmp_in_y(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn cmp_im(&mut self, immediate: u8) {
+    fn cmp_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_a.wrapping_sub(immediate);
         self.update_status_flag(CARRY_FLAG, self.register_a >= immediate);
         self.update_zero_and_negative_flag(cmp);
+        return 2;
     }
 
     #[inline]
-    fn cmp_zp(&mut self, address: u8) {
+    fn cmp_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.cmp_im(value);
+        return 3;
     }
 
     #[inline]
-    fn cmp_zp_x(&mut self, address: u8) {
+    fn cmp_zp_x(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_x_read(address, self.register_x);
         self.cmp_im(value);
+        return 4;
     }
 
     #[inline]
-    fn cmp_ab(&mut self, address: u16) {
+    fn cmp_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.cmp_im(value);
+        return 4;
     }
 
     #[inline]
-    fn cmp_ab_x(&mut self, address: u16) {
+    fn cmp_ab_x(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_x_read(address, self.register_x);
         self.cmp_im(value);
+        return 4 + self.ab_x_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn cmp_ab_y(&mut self, address: u16) {
+    fn cmp_ab_y(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_y_read(address, self.register_y);
         self.cmp_im(value);
+        return 4 + self.ab_y_page_crossed(address) as u8;
     }
 
     #[inline]
-    fn cmp_in_x(&mut self, address: u8) {
+    fn cmp_in_x(&mut self, address: u8) -> u8 {
         let value = self.memory.in_x_read(address, self.register_x);
         self.cmp_im(value);
+        return 6;
     }
 
     #[inline]
-    fn cmp_in_y(&mut self, address: u8) {
+    fn cmp_in_y(&mut self, address: u8) -> u8 {
         let value = self.memory.in_y_read(address, self.register_y);
         self.cmp_im(value);
+        return 5 + self.in_y_page_crossed(address) as u8;
     }
 
-    fn cpx(&mut self, opcode: u8) {
-        match opcode {
+    fn cpx(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::CPX_IM => {
                 let immediate = self.fetch_param();
-                self.cpx_im(immediate);
+                self.cpx_im(immediate)
             },
             CPU::CPX_ZP => {
                 let address = self.fetch_param();
-                self.cpx_zp(address);
+                self.cpx_zp(address)
             },
             CPU::CPX_AB => {
                 let address = self.fetch_addr_param();
-                self.cpx_ab(address);
+                self.cpx_ab(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn cpx_im(&mut self, immediate: u8) {
+    fn cpx_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_x.wrapping_sub(immediate);
         self.update_status_flag(CARRY_FLAG, self.register_x >= immediate);
         self.update_zero_and_negative_flag(cmp);
+        return 2;
     }
 
     #[inline]
-    fn cpx_zp(&mut self, address: u8) {
+    fn cpx_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.cpx_im(value);
+        return 3;
     }
 
     #[inline]
-    fn cpx_ab(&mut self, address: u16) {
+    fn cpx_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.cpx_im(value);
+        return 4;
     }
 
-    fn cpy(&mut self, opcode: u8) {
-        match opcode {
+    fn cpy(&mut self, opcode: u8) -> u8 {
+        let cycles = match opcode {
             CPU::CPY_IM => {
                 let immediate = self.fetch_param();
-                self.cpy_im(immediate);
+                self.cpy_im(immediate)
             },
             CPU::CPY_ZP => {
                 let address = self.fetch_param();
-                self.cpy_zp(address);
+                self.cpy_zp(address)
             },
             CPU::CPY_AB => {
                 let address = self.fetch_addr_param();
-                self.cpy_ab(address);
+                self.cpy_ab(address)
             },
             _ => panic!("invalid opcode: {:x}", opcode)
-        }
-        self.increment_program_counter()
+        };
+        self.increment_program_counter();
+        return cycles;
     }
 
     #[inline]
-    fn cpy_im(&mut self, immediate: u8) {
+    fn cpy_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_y.wrapping_sub(immediate);
         self.update_status_flag(CARRY_FLAG, self.register_y >= immediate);
         self.update_zero_and_negative_flag(cmp);
+        return 2;
     }
 
     #[inline]
-    fn cpy_zp(&mut self, address: u8) {
+    fn cpy_zp(&mut self, address: u8) -> u8 {
         let value = self.memory.zp_read(address);
         self.cpy_im(value);
+        return 3;
     }
 
     #[inline]
-    fn cpy_ab(&mut self, address: u16) {
+    fn cpy_ab(&mut self, address: u16) -> u8 {
         let value = self.memory.ab_read(address);
         self.cpy_im(value);
+        return 4;
     }
 
     #[inline]
@@ -3085,6 +3344,34 @@ impl CPU {
         self.stack = self.stack.wrapping_add(2);
         self.memory.read_addr(0x0100 + self.stack.wrapping_sub(1) as u16)
     }
+
+    #[inline]
+    fn jmp_offset(&mut self, offset: i8) -> u8 {
+        let old_pc = self.program_counter;
+        self.program_counter = self.program_counter.wrapping_add_signed(offset as i16);
+        return if self.pc_page_crossed(old_pc) { 2 } else { 1 };
+    }
+
+    #[inline]
+    fn pc_page_crossed(&self, old_pc: u16) -> bool {
+        return old_pc & 0xff00 != self.program_counter & 0xff00;
+    }
+
+    #[inline]
+    fn ab_x_page_crossed(&self, addr: u16) -> bool {
+        return addr & 0xff00 != addr.wrapping_add(self.register_x as u16) & 0xff00;
+    }
+
+    #[inline]
+    fn ab_y_page_crossed(&self, addr: u16) -> bool {
+        return addr & 0xff00 != addr.wrapping_add(self.register_y as u16) & 0xff00;
+    }
+
+    #[inline]
+    fn in_y_page_crossed(&mut self, addr: u8) -> bool {
+        let pointer = self.memory.read_addr_zp(addr);
+        return (addr as u16) & 0xff00 != pointer.wrapping_add(self.register_y as u16) & 0xff00;
+    }
 }
 
 #[cfg(test)]
@@ -3118,6 +3405,32 @@ mod tests {
         assert_eq!(cpu.get_status_flag(UNUSED_FLAG), true);
         assert_eq!(cpu.get_status_flag(BREAK_COMMAND), false);
         assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), true);
+    }
+
+    /* NOP */
+
+    #[test]
+    fn test_nop() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x80;
+        cpu.nop();
+        assert_eq!(cpu.program_counter, 0x81);
+    }
+
+    #[test]
+    fn test_dop() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x80;
+        cpu.dop_im(0x10);
+        assert_eq!(cpu.program_counter, 0x81);
+    }
+
+    #[test]
+    fn test_top() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x80;
+        cpu.top_ab(0x1010);
+        assert_eq!(cpu.program_counter, 0x81);
     }
 
     /* BRK and JAM */
@@ -5946,29 +6259,112 @@ mod tests {
         assert_eq!(cpu.program_counter, 0x70 + 1);
     }
 
-    /* NOP */
+    /* Cycles */
 
     #[test]
-    fn test_nop() {
+    fn test_branch_cycles_when_no_branch() {
         let mut cpu = CPU::new();
-        cpu.program_counter = 0x80;
-        cpu.nop();
-        assert_eq!(cpu.program_counter, 0x81);
+        cpu.program_counter = 0xc0;
+        cpu.clear_status_flag(ZERO_FLAG);
+        let cycles = cpu.beq(0x10);
+        assert_eq!(cycles, 2);
     }
 
     #[test]
-    fn test_dop() {
+    fn test_branch_cycles_when_branch() {
         let mut cpu = CPU::new();
-        cpu.program_counter = 0x80;
-        cpu.dop();
-        assert_eq!(cpu.program_counter, 0x82);
+        cpu.program_counter = 0xc0;
+        cpu.set_status_flag(ZERO_FLAG);
+        let cycles = cpu.beq(0x10);
+        assert_eq!(cycles, 3);
     }
 
     #[test]
-    fn test_top() {
+    fn test_branch_cycles_when_branch_page_cross() {
         let mut cpu = CPU::new();
-        cpu.program_counter = 0x80;
-        cpu.top();
-        assert_eq!(cpu.program_counter, 0x83);
+        cpu.program_counter = 0xc0;
+        cpu.set_status_flag(ZERO_FLAG);
+        assert_eq!(cpu.beq(0x70), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_im() {
+        let mut cpu = CPU::new();
+        assert_eq!(cpu.adc_im(0x70), 2);
+    }
+
+    #[test]
+    fn test_operation_cycles_zp() {
+        let mut cpu = CPU::new();
+        assert_eq!(cpu.adc_zp(0x70), 3);
+    }
+
+    #[test]
+    fn test_operation_cycles_zp_x() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0xc0;
+        assert_eq!(cpu.adc_zp_x(0x70), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_zp_y() {
+        let mut cpu = CPU::new();
+        assert_eq!(cpu.ldx_zp_y(0x70), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_ab() {
+        let mut cpu = CPU::new();
+        assert_eq!(cpu.adc_ab(0x70), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_ab_x() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0x10;
+        assert_eq!(cpu.adc_ab_x(0x1470), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_ab_y() {
+        let mut cpu = CPU::new();
+        cpu.register_y = 0x10;
+        assert_eq!(cpu.adc_ab_y(0x1470), 4);
+    }
+
+    #[test]
+    fn test_operation_cycles_ab_x_page_cross() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0xc0;
+        assert_eq!(cpu.adc_ab_x(0x1470), 5);
+    }
+
+    #[test]
+    fn test_operation_cycles_ab_y_page_cross() {
+        let mut cpu = CPU::new();
+        cpu.register_y = 0xc0;
+        assert_eq!(cpu.adc_ab_y(0x1470), 5);
+    }
+
+    #[test]
+    fn test_operation_cycles_in_x() {
+        let mut cpu = CPU::new();
+        cpu.register_x = 0xc0;
+        assert_eq!(cpu.adc_in_x(0x70), 6);
+    }
+
+    #[test]
+    fn test_operation_cycles_in_y() {
+        let mut cpu = CPU::new();
+        cpu.register_y = 0xc0;
+        assert_eq!(cpu.adc_in_y(0x70), 5);
+    }
+
+    #[test]
+    fn test_operation_cycles_in_y_page_cross() {
+        let mut cpu = CPU::new();
+        cpu.memory.write_addr(0x70, 0x1470);
+        cpu.register_y = 0xc0;
+        assert_eq!(cpu.adc_in_y(0x70), 6);
     }
 }

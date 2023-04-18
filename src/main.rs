@@ -120,6 +120,6 @@ fn run_nestest() {
 }
 
 fn main() {
-    run_snake();
-    // run_nestest();
+    // run_snake();
+    run_nestest();
 }

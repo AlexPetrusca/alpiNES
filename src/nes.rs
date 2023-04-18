@@ -18,7 +18,8 @@ impl NES {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        self.cpu.step()
+        self.cpu.step()?;
+        self.cpu.memory.ppu.step()
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {
@@ -76,6 +77,33 @@ mod tests {
         nes.step().unwrap_or_default();
         assert_eq!(nes.cpu.status, 0b0010_0101);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 4);
+    }
+
+    #[test]
+    fn test_nes_nop_dop_top() {
+        let mut nes = NES::new();
+        let program = vec![
+            CPU::NOP, // single nop
+            CPU::DOP_IM_1, 0xff, // double nop
+            CPU::TOP_AB, 0xff, 0xff, // triple nop
+            CPU::BRK
+        ];
+        nes.load(&program);
+
+        let mut old_pc = nes.cpu.program_counter;
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.program_counter, old_pc + 1);
+
+        old_pc = nes.cpu.program_counter;
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.program_counter, old_pc + 2);
+
+        old_pc = nes.cpu.program_counter;
+        nes.step().unwrap();
+        assert_eq!(nes.cpu.program_counter, old_pc + 3);
+
+        nes.step().unwrap_or_default();
+        assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
     #[test]
