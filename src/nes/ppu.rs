@@ -2,8 +2,8 @@ pub mod mem;
 mod oam;
 mod registers;
 
-use crate::io::bitvec::BitVector;
-use crate::io::rom::Mirroring;
+use crate::util::bitvec::BitVector;
+use crate::util::rom::Mirroring;
 use crate::nes::ppu::mem::Memory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;

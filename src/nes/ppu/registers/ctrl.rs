@@ -1,6 +1,6 @@
 use bitvec::prelude::*;
 use bitvec::view::BitView;
-use crate::io::bitvec::BitVector;
+use crate::util::bitvec::BitVector;
 
 // 7  bit  0
 // ---- ----

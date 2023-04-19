@@ -1,4 +1,4 @@
-use crate::io::rom::Mirroring;
+use crate::util::rom::Mirroring;
 // PPU memory map
 macro_rules! chr_rom_range {() => {0x0000..=0x1FFF}}
 macro_rules! vram_range {() => {0x2000..=0x3EFF}}

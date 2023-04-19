@@ -1,4 +1,4 @@
-use crate::io::rom::ROM;
+use crate::util::rom::ROM;
 use crate::nes::ppu::PPU;
 
 // CPU memory map

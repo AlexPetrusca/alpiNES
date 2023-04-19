@@ -1,7 +1,7 @@
 pub mod cpu;
 pub mod ppu;
 
-use crate::io::rom::ROM;
+use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;

@@ -1,5 +1,5 @@
 use crate::nes::NES;
-use crate::io::rom::ROM;
+use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;

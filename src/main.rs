@@ -9,8 +9,8 @@ use sdl2::pixels::PixelFormatEnum;
 
 use alpines::emu::Emulator;
 use alpines::nes::NES;
-use alpines::io::rom::ROM;
-use alpines::io::logger::Logger;
+use alpines::util::rom::ROM;
+use alpines::util::logger::Logger;
 use alpines::logln;
 
 const SCALE: f32 = 20.0;
