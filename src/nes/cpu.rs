@@ -582,6 +582,24 @@ impl CPU {
         self.memory.ppu.tick(cycles * 3);
     }
 
+    pub fn handle_nmi(&mut self) {
+        // NMI execution flow:
+        //  1. Finish execution of the current instruction
+        //  2. Store Program Counter and Status flag on the stack
+        //  3. Disable Interrupts by setting Disable Interrupt flag in the status register P
+        //  4. Load the Address of interrupt handler routine from 0xFFFA (for NMI)
+        //  5. Set Program Counter register pointing to that address
+
+        self.push_addr(self.program_counter);
+        // todo: refactor B_FLAG logic (hard to read)
+        self.push_byte((self.status | B_FLAG_SET_MASK) & B_FLAG_CLEAR_MASK);
+
+        self.set_status_flag(INTERRUPT_DISABLE);
+
+        self.tick(2);
+        self.program_counter = self.memory.read_addr(Memory::NMI_INT_VECTOR);
+    }
+
     #[inline]
     fn tax(&mut self) -> u8 {
         self.register_x = self.register_a;

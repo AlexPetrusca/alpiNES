@@ -1,3 +1,5 @@
 pub mod addr;
 pub mod ctrl;
-mod data;
+pub mod data;
+pub mod stat;
+pub mod mask;

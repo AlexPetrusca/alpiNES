@@ -2,21 +2,29 @@ pub mod mem;
 mod oam;
 mod registers;
 
+use crate::io::bitvec::BitVector;
 use crate::io::rom::Mirroring;
 use crate::nes::ppu::mem::Memory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
+use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
 use crate::nes::ppu::registers::ctrl::ControlRegister;
+use crate::nes::ppu::registers::mask::MaskRegister;
+use crate::nes::ppu::registers::stat::StatusFlag::VerticalBlank;
+use crate::nes::ppu::registers::stat::StatusRegister;
 
 pub struct PPU {
     pub addr: AddressRegister,
     pub data: u8,
     pub ctrl: ControlRegister,
+    pub stat: StatusRegister,
+    pub mask: MaskRegister,
     pub memory: Memory,
-    pub buffer: u8, // todo: should be private
     pub oam: OAM, // todo: should be private
+    pub data_buffer: u8, // todo: should be private
     pub scanline: u16,
     pub cycles: usize,
+    pub nmi_flag: bool, // todo: should be private
 }
 
 impl PPU {
@@ -25,11 +33,14 @@ impl PPU {
             addr: AddressRegister::new(),
             data: 0,
             ctrl: ControlRegister::new(),
+            stat: StatusRegister::new(),
+            mask: MaskRegister::new(),
             memory: Memory::new(),
             oam: OAM::new(),
-            buffer: 0,
+            data_buffer: 0,
             scanline: 0,
-            cycles: 0
+            cycles: 0,
+            nmi_flag: false,
         }
     }
 
@@ -38,23 +49,24 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        // if self.cycles >= 341 {
-        //     self.cycles = self.cycles - 341;
-        //     self.scanline += 1;
-        //
-        //     if self.scanline == 241 {
-        //         if self.ctrl.generate_vblank_nmi() {
-        //             self.status.set_vblank_status(true);
-        //             todo!("Should trigger NMI interrupt")
-        //         }
-        //     }
-        //
-        //     if self.scanline >= 262 {
-        //         self.scanline = 0;
-        //         self.status.reset_vblank_status();
-        //         OK(true);
-        //     }
-        // }
+        if self.cycles >= 341 {
+            self.cycles = self.cycles - 341;
+            self.scanline += 1;
+
+            if self.scanline == 241 {
+                if self.ctrl.is_set(GenerateNmi) {
+                    // NMI is triggered when PPU enters VBLANK state
+                    self.stat.set(VerticalBlank);
+                    self.set_nmi();
+                }
+            }
+
+            if self.scanline >= 262 {
+                self.scanline = 0;
+                self.stat.clear(VerticalBlank);
+                return Ok(true);
+            }
+        }
         Ok(false)
     }
 
@@ -66,9 +78,33 @@ impl PPU {
         let addr = self.addr.get();
         self.increment_vram_addr();
 
-        let result = self.buffer;
-        self.buffer = self.memory.read_byte(addr);
+        let result = self.data_buffer;
+        self.data_buffer = self.memory.read_byte(addr);
         result
+    }
+
+    pub fn write_ctrl_register(&mut self, value: u8) {
+        // NMI is triggered if:
+        //  1. PPU is in VBLANK state
+        //  2. "Generate NMI" bit in the control Register is updated from 0 to 1.
+        let before_nmi_status = self.ctrl.is_set(GenerateNmi);
+        self.ctrl.set_value(value);
+        if !before_nmi_status && self.ctrl.is_set(GenerateNmi) && self.stat.is_set(VerticalBlank) {
+            self.set_nmi();
+        }
+    }
+
+
+    pub fn poll_nmi(&self) -> bool {
+        return self.nmi_flag;
+    }
+
+    pub fn set_nmi(&mut self) {
+        self.nmi_flag = true;
+    }
+
+    pub fn clear_nmi(&mut self) {
+        self.nmi_flag = false;
     }
 
     fn increment_vram_addr(&mut self) {

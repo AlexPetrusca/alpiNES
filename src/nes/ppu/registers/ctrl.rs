@@ -68,12 +68,12 @@ impl ControlRegister {
     }
 
     #[inline]
-    fn get_value(&self) -> u8 {
+    pub fn get_value(&self) -> u8 {
         self.value
     }
 
     #[inline]
-    fn set_value(&mut self, value: u8) {
+    pub fn set_value(&mut self, value: u8) {
         self.value = value;
     }
 }

@@ -18,6 +18,10 @@ impl NES {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
+        if self.cpu.memory.ppu.poll_nmi() {
+            self.cpu.handle_nmi();
+            self.cpu.memory.ppu.clear_nmi();
+        }
         self.cpu.step()?;
         self.cpu.memory.ppu.step()
     }
@@ -110,7 +114,7 @@ mod tests {
     fn test_nes_read_ppu_ram() {
         let mut nes = NES::new();
         nes.cpu.memory.ppu.memory.write_byte(0x26ab, 0xff);
-        nes.cpu.memory.ppu.buffer = 0xaa;
+        nes.cpu.memory.ppu.data_buffer = 0xaa;
         let program = vec![
             // write addr 0x0600 to addr register
             CPU::LDA_IM, 0x26, CPU::STA_AB, 0x06, 0x20,
