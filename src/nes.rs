@@ -1,5 +1,6 @@
 pub mod cpu;
 pub mod ppu;
+pub mod io;
 
 use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
