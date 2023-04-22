@@ -10,8 +10,9 @@ use crate::nes::NES;
 use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
-use crate::nes::io::frame::Frame;
 use crate::nes::ppu::PPU;
+use crate::nes::ppu::mem::PpuMemory;
+use crate::nes::io::frame::Frame;
 
 pub struct Emulator {
     pub nes: NES,
@@ -102,30 +103,52 @@ impl Emulator {
         let bank = ppu.ctrl.get_background_chrtable_address();
 
         for i in 0..0x03c0 { // just for now, lets use the first nametable
-            let tile = ppu.memory.read_byte(0x2000 + i) as u16;
+            let tile = ppu.memory.read_byte(PpuMemory::VRAM_START + i) as u16;
             let tile_x = i % 32;
-            let tile_y = (i) / 32;
-            let tile = &ppu.memory.memory[(bank + tile * 16) as usize..=(bank + tile * 16 + 15) as usize];
+            let tile_y = i / 32;
+            let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
+            let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
 
             for y in 0..8 {
-                let mut upper = tile[y as usize];
-                let mut lower = tile[y as usize + 8];
+                let mut lower = tile[y as usize];
+                let mut upper = tile[y as usize + 8];
 
                 for x in (0..8).rev() {
                     let value = (1 & upper) << 1 | (1 & lower);
-                    upper = upper >> 1;
                     lower = lower >> 1;
+                    upper = upper >> 1;
                     let rgb = match value {
-                        0 => PPU::SYSTEM_PALLETE[0x01],
-                        1 => PPU::SYSTEM_PALLETE[0x23],
-                        2 => PPU::SYSTEM_PALLETE[0x27],
-                        3 => PPU::SYSTEM_PALLETE[0x30],
+                        0 => PPU::SYSTEM_PALLETE[palette[0] as usize],
+                        1 => PPU::SYSTEM_PALLETE[palette[1] as usize],
+                        2 => PPU::SYSTEM_PALLETE[palette[2] as usize],
+                        3 => PPU::SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be"),
                     };
                     frame.set_pixel(8 * tile_x as usize + x, 8 * tile_y as usize + y, rgb)
                 }
             }
         }
+    }
+
+    fn bg_palette(ppu: &PPU, tile_x: usize, tile_y: usize) -> [u8; 4] {
+        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
+        let attr_byte = ppu.memory.read_byte(PpuMemory::VRAM_START + 0x3c0 + attr_table_idx as u16);  // todo: note: still using hardcoded first nametable
+
+        let pallete_idx = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
+            (0, 0) => attr_byte & 0b0000_0011,
+            (1, 0) => (attr_byte >> 2) & 0b0000_0011,
+            (0, 1) => (attr_byte >> 4) & 0b0000_0011,
+            (1, 1) => (attr_byte >> 6) & 0b0000_0011,
+            (_, _) => panic!("can't be"),
+        };
+
+        let pallete_start = (4 * pallete_idx + 1) as u16;
+        [
+            ppu.memory.read_byte(PpuMemory::PALLETES_START),
+            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start),
+            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start + 1),
+            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start + 2),
+        ]
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

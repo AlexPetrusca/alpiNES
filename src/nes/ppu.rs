@@ -4,7 +4,7 @@ mod registers;
 
 use crate::util::bitvec::BitVector;
 use crate::util::rom::Mirroring;
-use crate::nes::ppu::mem::Memory;
+use crate::nes::ppu::mem::PpuMemory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
 use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
@@ -19,7 +19,7 @@ pub struct PPU {
     pub ctrl: ControlRegister,
     pub stat: StatusRegister,
     pub mask: MaskRegister,
-    pub memory: Memory,
+    pub memory: PpuMemory,
     pub oam: OAM, // todo: should be private
     pub data_buffer: u8, // todo: should be private
     pub scanline: u16,
@@ -51,7 +51,7 @@ impl PPU {
             ctrl: ControlRegister::new(),
             stat: StatusRegister::new(),
             mask: MaskRegister::new(),
-            memory: Memory::new(),
+            memory: PpuMemory::new(),
             oam: OAM::new(),
             data_buffer: 0,
             scanline: 0,

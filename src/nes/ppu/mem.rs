@@ -5,19 +5,21 @@ macro_rules! chr_rom_range {() => {0x0000..=0x1FFF}}
 macro_rules! vram_range {() => {0x2000..=0x3EFF}}
 macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
 
-pub struct Memory {
-    pub memory: [u8; Memory::MEM_SIZE],
+pub struct PpuMemory {
+    pub memory: [u8; PpuMemory::MEM_SIZE],
     pub screen_mirroring: Mirroring,
 }
 
-impl Memory {
+impl PpuMemory {
     const MEM_SIZE: usize = 0x4000 as usize; // 16kB
 
     pub const CHR_ROM_START: u16 = *chr_rom_range!().start();
+    pub const VRAM_START: u16 = *vram_range!().start();
+    pub const PALLETES_START: u16 = *palletes_range!().start();
 
     pub fn new() -> Self {
-        Memory {
-            memory: [0; Memory::MEM_SIZE],
+        PpuMemory {
+            memory: [0; PpuMemory::MEM_SIZE],
             screen_mirroring: Mirroring::FourScreen,
         }
     }
@@ -25,7 +27,7 @@ impl Memory {
     pub fn load_rom(&mut self, rom: &ROM) {
         self.screen_mirroring = rom.screen_mirroring.clone();
         for i in 0..rom.chr_rom.len() {
-            let idx = Memory::CHR_ROM_START.wrapping_add(i as u16);
+            let idx = PpuMemory::CHR_ROM_START.wrapping_add(i as u16);
             self.memory[idx as usize] = rom.chr_rom[i];
         }
     }
@@ -44,7 +46,7 @@ impl Memory {
 
     #[inline]
     pub fn read_byte(&self, address: u16) -> u8 {
-        let ppu_addr = address % Memory::MEM_SIZE as u16;
+        let ppu_addr = address % PpuMemory::MEM_SIZE as u16;
         match ppu_addr {
             chr_rom_range!() => {
                 self.memory[ppu_addr as usize]
@@ -54,6 +56,8 @@ impl Memory {
                 self.memory[mirror_addr as usize]
             },
             palletes_range!() => {
+                // let mirror_addr = ppu_addr & 0b0011_1111_0001_1111;
+                // self.memory[mirror_addr as usize]
                 self.memory[ppu_addr as usize]
             },
             _ => {
@@ -64,7 +68,7 @@ impl Memory {
 
     #[inline]
     pub fn write_byte(&mut self, address: u16, data: u8) {
-        let ppu_addr = address % Memory::MEM_SIZE as u16;
+        let ppu_addr = address % PpuMemory::MEM_SIZE as u16;
         match ppu_addr {
             chr_rom_range!() => {
                 panic!("Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", ppu_addr)
@@ -74,7 +78,9 @@ impl Memory {
                 self.memory[mirror_addr as usize] = data;
             },
             palletes_range!() => {
-                self.memory[ppu_addr as usize] = data;
+                // let mirror_addr = ppu_addr & 0b0011_1111_0001_1111;
+                // self.memory[mirror_addr as usize] = data;
+                self.memory[ppu_addr as usize] = data
             },
             _ => {
                 panic!("Attempt to write to unmapped PPU memory: 0x{:0>4X}", ppu_addr);
@@ -94,6 +100,6 @@ mod tests {
 
     #[test]
     fn test_read_write() {
-        let memory = Memory::new();
+        let memory = PpuMemory::new();
     }
 }
