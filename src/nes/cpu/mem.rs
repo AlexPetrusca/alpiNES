@@ -1,6 +1,6 @@
-use crate::nes::cpu::Cpu;
+use crate::nes::cpu::CPU;
 use crate::util::rom::ROM;
-use crate::nes::ppu::Ppu;
+use crate::nes::ppu::PPU;
 
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
@@ -10,7 +10,7 @@ macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
-    pub ppu: Ppu,
+    pub ppu: PPU,
     pub prg_mirror_enabled: bool,
 }
 
@@ -26,7 +26,7 @@ impl Memory {
     pub const PPU_SCROLL_REGISTER: u16 = 0x2005;
     pub const PPU_ADDR_REGISTER: u16 = 0x2006;
     pub const PPU_DATA_REGISTER: u16 = 0x2007;
-    pub const OAM_DMA_REGISTER: u16 = 0x4014;
+    pub const PPU_OAM_DMA_REGISTER: u16 = 0x4014;
     pub const JOYCON_ONE_REGISTER: u16 = 0x4016;
     pub const JOYCON_TWO_REGISTER: u16 = 0x4017;
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
@@ -36,7 +36,7 @@ impl Memory {
     pub fn new() -> Self {
         Memory {
             memory: [0; Memory::MEM_SIZE],
-            ppu: Ppu::new(),
+            ppu: PPU::new(),
             prg_mirror_enabled: false,
         }
     }
@@ -79,18 +79,18 @@ impl Memory {
                         self.ppu.read_data_register()
                     },
                     Memory::PPU_OAM_DATA_REGISTER => {
-                        0 // todo: fix
-                    },
-                    Memory::JOYCON_TWO_REGISTER => {
-                        0 // todo: fix
+                        self.ppu.read_oam_data_register()
                     },
                     _ => {
                         panic!("Attempt to read from unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
                     }
                 }
             }
-            0x4016 | 0x4017 => {
-                0 // todo: fix
+            Memory::JOYCON_ONE_REGISTER => {
+                0
+            },
+            Memory::JOYCON_TWO_REGISTER => {
+                0
             },
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
@@ -131,8 +131,10 @@ impl Memory {
                         self.ppu.write_data_register(data);
                     },
                     Memory::PPU_OAM_ADDR_REGISTER => {
+                        self.ppu.write_oam_addr_register(data);
                     },
                     Memory::PPU_OAM_DATA_REGISTER => {
+                        self.ppu.write_oam_data_register(data);
                     },
                     Memory::PPU_SCROLL_REGISTER => {
                     },
@@ -141,8 +143,14 @@ impl Memory {
                     }
                 }
             }
-            Memory::OAM_DMA_REGISTER => {
-
+            Memory::PPU_OAM_DMA_REGISTER => {
+                let read_addr = (data as u16) << 8;
+                let write_addr = self.ppu.oam_addr;
+                for i in 0..256 {
+                    let value = self.read_byte(read_addr.wrapping_add(i));
+                    self.ppu.oam.write_byte(write_addr.wrapping_add(i as u8), value);
+                }
+                // todo: this op takes between 513 - 514 CPU cycles to execute
             },
             Memory::JOYCON_ONE_REGISTER => {
 
@@ -151,6 +159,7 @@ impl Memory {
 
             },
             0x4015 => {
+                // todo: implement
             }
             prg_rom_range!() => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)

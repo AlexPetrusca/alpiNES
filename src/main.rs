@@ -11,9 +11,9 @@ use sdl2::pixels::PixelFormatEnum;
 
 use alpines::emu::Emulator;
 use alpines::nes::NES;
-use alpines::nes::cpu::Cpu;
+use alpines::nes::cpu::CPU;
 use alpines::nes::io::frame::Frame;
-use alpines::nes::ppu::Ppu;
+use alpines::nes::ppu::PPU;
 use alpines::util::rom::ROM;
 use alpines::util::logger::Logger;
 use alpines::util::bitvec::BitVector;
@@ -138,10 +138,10 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
         for x in (0..8).rev() {
             let value = (1 & high_byte) << 1 | (1 & low_byte);
             let rgb = match value {
-                0 => Ppu::SYSTEM_PALLETE[0x01],
-                1 => Ppu::SYSTEM_PALLETE[0x23],
-                2 => Ppu::SYSTEM_PALLETE[0x27],
-                3 => Ppu::SYSTEM_PALLETE[0x30],
+                0 => NES::SYSTEM_PALLETE[0x01],
+                1 => NES::SYSTEM_PALLETE[0x23],
+                2 => NES::SYSTEM_PALLETE[0x27],
+                3 => NES::SYSTEM_PALLETE[0x30],
                 _ => panic!("chr_rom value out of range: {}", value),
             };
             const TILE_SIZE: usize = 8;

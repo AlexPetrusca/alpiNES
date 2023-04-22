@@ -1,9 +1,9 @@
 pub struct OAM {
-    memory: [u8; OAM::MEM_SIZE],
+    pub memory: [u8; OAM::MEM_SIZE],
 }
 
 impl OAM {
-    const MEM_SIZE: usize = 0x4000 as usize; // 16kB
+    const MEM_SIZE: usize = 0x100 as usize; // 256 bytes
 
     pub fn new() -> Self {
         OAM {
@@ -11,22 +11,24 @@ impl OAM {
         }
     }
 
-    #[inline]
-    pub fn read_byte(&self, address: u8) -> u8 {
-        match address {
-            _ => {
-                panic!("Attempt to read from unmapped oam memory: 0x{:0>2X}", address);
-            }
-        }
+    pub fn get_sprite(&self, sprite_idx: u8) -> [u8; 4] {
+        let sprite_start_idx = 4 * sprite_idx as usize;
+        return [
+            self.memory[sprite_start_idx],
+            self.memory[sprite_start_idx + 1],
+            self.memory[sprite_start_idx + 2],
+            self.memory[sprite_start_idx + 3],
+        ]
     }
 
     #[inline]
-    pub fn write_byte(&mut self, address: u8, data: u8) {
-        match address {
-            _ => {
-                panic!("Attempt to write to unmapped oam memory: 0x{:0>2X}", address);
-            }
-        }
+    pub fn read_byte(&self, addr: u8) -> u8 {
+        self.memory[addr as usize]
+    }
+
+    #[inline]
+    pub fn write_byte(&mut self, addr: u8, data: u8) {
+        self.memory[addr as usize] = data;
     }
 
     #[inline]

@@ -8,14 +8,15 @@ use sdl2::{EventPump, Sdl};
 use sdl2::video::Window;
 use crate::nes::NES;
 use crate::util::rom::ROM;
-use crate::nes::cpu::Cpu;
+use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
-use crate::nes::ppu::Ppu;
-use crate::nes::ppu::mem::PpuMemory;
+use crate::nes::ppu::PPU;
+use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::io::frame::Frame;
 
 pub struct Emulator {
     pub nes: NES,
+
     pub fps_timestamp: Instant,
     pub frame_timestamp: Instant,
     pub fps: f32,
@@ -28,6 +29,7 @@ impl Emulator {
     pub fn new() -> Self {
         Emulator {
             nes: NES::new(),
+
             fps_timestamp: Instant::now(),
             frame_timestamp: Instant::now(), // todo use
             fps: 0.0,
@@ -56,7 +58,8 @@ impl Emulator {
                 self.nes.cpu.memory.ppu.clear_nmi();
 
                 let mut frame = Frame::new();
-                Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
+                Emulator::render_background(&self.nes.cpu.memory.ppu, &mut frame);
+                Emulator::render_sprites(&self.nes.cpu.memory.ppu, &mut frame);
 
                 texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
@@ -99,11 +102,11 @@ impl Emulator {
         }
     }
 
-    fn render(ppu: &Ppu, frame: &mut Frame) {
+    fn render_background(ppu: &PPU, frame: &mut Frame) {
         let bank = ppu.ctrl.get_background_chrtable_address();
 
         for i in 0..0x03c0 { // just for now, lets use the first nametable
-            let tile = ppu.memory.read_byte(PpuMemory::VRAM_START + i) as u16;
+            let tile = ppu.memory.read_byte(PPUMemory::VRAM_START + i) as u16;
             let tile_x = i % 32;
             let tile_y = i / 32;
             let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
@@ -118,10 +121,10 @@ impl Emulator {
                     lower = lower >> 1;
                     upper = upper >> 1;
                     let rgb = match value {
-                        0 => Ppu::SYSTEM_PALLETE[palette[0] as usize],
-                        1 => Ppu::SYSTEM_PALLETE[palette[1] as usize],
-                        2 => Ppu::SYSTEM_PALLETE[palette[2] as usize],
-                        3 => Ppu::SYSTEM_PALLETE[palette[3] as usize],
+                        0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+                        1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+                        2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+                        3 => NES::SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be"),
                     };
                     frame.set_pixel(8 * tile_x as usize + x, 8 * tile_y as usize + y, rgb)
@@ -130,11 +133,49 @@ impl Emulator {
         }
     }
 
-    fn bg_palette(ppu: &Ppu, tile_x: usize, tile_y: usize) -> [u8; 4] {
-        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
-        let attr_byte = ppu.memory.read_byte(PpuMemory::VRAM_START + 0x3c0 + attr_table_idx as u16);  // todo: note: still using hardcoded first nametable
+    fn render_sprites(ppu: &PPU, frame: &mut Frame) {
+        let bank = ppu.ctrl.get_sprite_chrtable_address();
+        for i in (0..ppu.oam.memory.len()).step_by(4).rev() {
+            let tile_idx = ppu.oam.memory[i + 1] as u16;
+            let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
+            let tile_x = ppu.oam.memory[i + 3] as usize;
+            let tile_y = ppu.oam.memory[i] as usize;
 
-        let pallete_idx = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
+            let flip_vertical = ppu.oam.memory[i + 2] >> 7 & 1 == 1;
+            let flip_horizontal = ppu.oam.memory[i + 2] >> 6 & 1 == 1;
+            let palette_idx = ppu.oam.memory[i + 2] & 0b0000_0011;
+            let sprite_palette = Emulator::sprite_palette(ppu, palette_idx);
+
+            for y in 0..8 {
+                let mut lower = tile[y];
+                let mut upper = tile[y + 8];
+                'sprite_render: for x in (0..8).rev() {
+                    let value = (1 & upper) << 1 | (1 & lower);
+                    lower = lower >> 1;
+                    upper = upper >> 1;
+                    let rgb = match value {
+                        0 => continue 'sprite_render, // skip coloring the pixel
+                        1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
+                        2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
+                        3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
+                        _ => panic!("can't be"),
+                    };
+                    match (flip_horizontal, flip_vertical) {
+                        (false, false) => frame.set_pixel(tile_x + x, tile_y + y, rgb),
+                        (true, false) => frame.set_pixel(tile_x + 7 - x, tile_y + y, rgb),
+                        (false, true) => frame.set_pixel(tile_x + x, tile_y + 7 - y, rgb),
+                        (true, true) => frame.set_pixel(tile_x + 7 - x, tile_y + 7 - y, rgb),
+                    }
+                }
+            }
+        }
+    }
+
+    fn bg_palette(ppu: &PPU, tile_x: usize, tile_y: usize) -> [u8; 4] {
+        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
+        let attr_byte = ppu.memory.read_byte(PPUMemory::VRAM_START + 0x3c0 + attr_table_idx as u16);  // todo: note: still using hardcoded first nametable
+
+        let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
             (0, 0) => attr_byte & 0b0000_0011,
             (1, 0) => (attr_byte >> 2) & 0b0000_0011,
             (0, 1) => (attr_byte >> 4) & 0b0000_0011,
@@ -142,12 +183,22 @@ impl Emulator {
             (_, _) => panic!("can't be"),
         };
 
-        let pallete_start = (4 * pallete_idx + 1) as u16;
+        let pallete_idx = 4 * pallete as u16;
         [
-            ppu.memory.read_byte(PpuMemory::PALLETES_START),
-            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start),
-            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start + 1),
-            ppu.memory.read_byte(PpuMemory::PALLETES_START + pallete_start + 2),
+            ppu.memory.read_byte(PPUMemory::PALLETES_START),
+            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
+            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
+            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
+        ]
+    }
+
+    fn sprite_palette(ppu: &PPU, pallete: u8) -> [u8; 4] {
+        let pallete_idx = 4 * pallete as u16;
+        [
+            0,
+            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx),
+            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
+            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
         ]
     }
 
@@ -191,7 +242,7 @@ impl Emulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nes::cpu::Cpu;
+    use crate::nes::cpu::CPU;
     use crate::nes::cpu::mem::Memory;
 
     #[test]
@@ -207,7 +258,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
         let mut emu = Emulator::new();
-        emu.load(&vec![Cpu::LDA_IM, 5, Cpu::BRK]);
+        emu.load(&vec![CPU::LDA_IM, 5, CPU::BRK]);
         emu.run();
 
         let mut cpu = &mut emu.nes.cpu;
@@ -219,7 +270,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![Cpu::LDA_IM, 0, Cpu::BRK]);
+        emu.load_and_run(&vec![CPU::LDA_IM, 0, CPU::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0);
@@ -229,7 +280,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_negative_flag() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![Cpu::LDA_IM, 0xff, Cpu::BRK]);
+        emu.load_and_run(&vec![CPU::LDA_IM, 0xff, CPU::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0xff);
@@ -239,7 +290,7 @@ mod tests {
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![Cpu::LDA_IM, 0x10, Cpu::TAX, Cpu::BRK]);
+        emu.load_and_run(&vec![CPU::LDA_IM, 0x10, CPU::TAX, CPU::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x10);
@@ -249,7 +300,7 @@ mod tests {
     #[test]
     fn test_inx_overflow() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![Cpu::LDX_IM, 0xff, Cpu::INX, Cpu::INX, Cpu::BRK]);
+        emu.load_and_run(&vec![CPU::LDX_IM, 0xff, CPU::INX, CPU::INX, CPU::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_x, 1);
@@ -258,7 +309,7 @@ mod tests {
     #[test]
     fn test_5_ops() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![Cpu::LDA_IM, 0xc0, Cpu::TAX, Cpu::INX, Cpu::BRK]);
+        emu.load_and_run(&vec![CPU::LDA_IM, 0xc0, CPU::TAX, CPU::INX, CPU::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0xc0);
@@ -300,7 +351,7 @@ mod tests {
     fn test_signed_division_by_four() {
         let mut emu = Emulator::new();
         let program = vec![
-            Cpu::LDA_IM, 0x88, Cpu::CMP_IM, 0x80, Cpu::ARR, 0xff, Cpu::ROR, Cpu::BRK
+            CPU::LDA_IM, 0x88, CPU::CMP_IM, 0x80, CPU::ARR, 0xff, CPU::ROR, CPU::BRK
         ];
         emu.load_and_run(&program);
 
