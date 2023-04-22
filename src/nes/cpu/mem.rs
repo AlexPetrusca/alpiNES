@@ -1,3 +1,4 @@
+use crate::nes::cpu::CPU;
 use crate::util::rom::ROM;
 use crate::nes::ppu::PPU;
 
@@ -17,8 +18,17 @@ impl Memory {
     const MEM_SIZE: usize = 0x10000 as usize; // 64kB
 
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
+    pub const PPU_CTRL_REGISTER: u16 = 0x2000;
+    pub const PPU_MASK_REGISTER: u16 = 0x2001;
+    pub const PPU_STAT_REGISTER: u16 = 0x2002;
+    pub const PPU_OAM_ADDR_REGISTER: u16 = 0x2003;
+    pub const PPU_OAM_DATA_REGISTER: u16 = 0x2004;
+    pub const PPU_SCROLL_REGISTER: u16 = 0x2005;
     pub const PPU_ADDR_REGISTER: u16 = 0x2006;
     pub const PPU_DATA_REGISTER: u16 = 0x2007;
+    pub const OAM_DMA_REGISTER: u16 = 0x4014;
+    pub const JOYCON_ONE_REGISTER: u16 = 0x4016;
+    pub const JOYCON_TWO_REGISTER: u16 = 0x4017;
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
     pub const RESET_INT_VECTOR: u16 = 0xFFFC;
     pub const NMI_INT_VECTOR: u16 = 0xFFFA;
@@ -32,8 +42,8 @@ impl Memory {
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
+        self.ppu.memory.load_rom(rom);
         self.prg_mirror_enabled = rom.prg_rom_mirroring;
-        self.ppu.memory.screen_mirroring = rom.screen_mirroring.clone();
         for i in 0..rom.prg_rom.len() {
             let idx = Memory::PRG_ROM_START.wrapping_add(i as u16);
             self.memory[idx as usize] = rom.prg_rom[i];
@@ -62,14 +72,26 @@ impl Memory {
                     0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
                         panic!("Attempt to read from write-only PPU address {:x}", mirror_addr);
                     },
+                    Memory::PPU_STAT_REGISTER => {
+                        self.ppu.read_status_register()
+                    },
                     Memory::PPU_DATA_REGISTER => {
                         self.ppu.read_data_register()
+                    },
+                    Memory::PPU_OAM_DATA_REGISTER => {
+                        0 // todo: fix
+                    },
+                    Memory::JOYCON_TWO_REGISTER => {
+                        0 // todo: fix
                     },
                     _ => {
                         panic!("Attempt to read from unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
                     }
                 }
             }
+            0x4016 | 0x4017 => {
+                0 // todo: fix
+            },
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
                 if self.prg_mirror_enabled && address >= 0x4000 {
@@ -96,13 +118,39 @@ impl Memory {
                     // 0x => {
                     //     panic!("Attempt to write to read-only PPU address {:x}", mirror_addr);
                     // },
+                    Memory::PPU_CTRL_REGISTER => {
+                        self.ppu.write_ctrl_register(data);
+                    },
+                    Memory::PPU_MASK_REGISTER => {
+                        self.ppu.write_mask_register(data);
+                    },
                     Memory::PPU_ADDR_REGISTER => {
                         self.ppu.write_addr_register(data);
+                    },
+                    Memory::PPU_DATA_REGISTER => {
+                        self.ppu.write_data_register(data);
+                    },
+                    Memory::PPU_OAM_ADDR_REGISTER => {
+                    },
+                    Memory::PPU_OAM_DATA_REGISTER => {
+                    },
+                    Memory::PPU_SCROLL_REGISTER => {
                     },
                     _ => {
                         panic!("Attempt to write to unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
                     }
                 }
+            }
+            Memory::OAM_DMA_REGISTER => {
+
+            },
+            Memory::JOYCON_ONE_REGISTER => {
+
+            },
+            Memory::JOYCON_TWO_REGISTER => {
+
+            },
+            0x4015 => {
             }
             prg_rom_range!() => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)

@@ -70,9 +70,9 @@ impl PPU {
             self.scanline += 1;
 
             if self.scanline == 241 {
+                self.stat.set(VerticalBlank);
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
-                    self.stat.set(VerticalBlank);
                     self.set_nmi();
                 }
             }
@@ -84,6 +84,15 @@ impl PPU {
             }
         }
         Ok(false)
+    }
+
+    pub fn write_data_register(&mut self, value: u8) {
+        let addr = self.addr.get();
+        self.increment_vram_addr();
+
+        self.data = value;
+        self.memory.write_byte(addr, value);
+        // self.data.write(value);
     }
 
     pub fn write_addr_register(&mut self, value: u8) {
@@ -110,6 +119,13 @@ impl PPU {
         }
     }
 
+    pub fn write_mask_register(&mut self, value: u8) {
+        self.mask.set_value(value);
+    }
+
+    pub fn read_status_register(&mut self) -> u8 {
+        self.stat.get_value()
+    }
 
     pub fn poll_nmi(&self) -> bool {
         return self.nmi_flag;

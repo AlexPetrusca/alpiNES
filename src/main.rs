@@ -1,4 +1,6 @@
-use std::time::Duration;
+use std::ops::Sub;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use rand::Rng;
 
 use sdl2::event::Event;
@@ -9,11 +11,13 @@ use sdl2::pixels::PixelFormatEnum;
 
 use alpines::emu::Emulator;
 use alpines::nes::NES;
-use alpines::util::rom::ROM;
-use alpines::util::logger::Logger;
-use alpines::logln;
+use alpines::nes::cpu::CPU;
 use alpines::nes::io::frame::Frame;
 use alpines::nes::ppu::PPU;
+use alpines::util::rom::ROM;
+use alpines::util::logger::Logger;
+use alpines::util::bitvec::BitVector;
+use alpines::logln;
 
 // snake - 6502 game
 
@@ -105,7 +109,25 @@ fn run_snake() {
     });
 }
 
-// pacman - chr rom dump
+// nestest - cpu golden standard test
+
+fn run_nestest() {
+    let cartridge_path = "rom/nestest.nes";
+    let mut emulator = Emulator::new();
+    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
+    emulator.nes.cpu.program_counter = 0xC000;
+
+    let log_path = cartridge_path.replace(".nes", ".log");
+    let mut logger = Logger::new(&log_path);
+    emulator.run_with_callback(|nes| {
+        let op = nes.cpu.memory.read_byte(nes.cpu.program_counter);
+        logln!(logger, "{:0>4X}  {:0>2X}    A:{:0>2X} X:{:0>2X} Y:{:0>2X} P:{:0>2X} SP:{:0>2X}",
+            nes.cpu.program_counter, op, nes.cpu.register_a, nes.cpu.register_x,
+            nes.cpu.register_y, nes.cpu.status, nes.cpu.stack);
+    });
+}
+
+// chrdump - chr rom dump of pacman for the nes
 
 fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame) {
     let tile_addr = 0x1000 * bank + 16 * tile_n;
@@ -138,7 +160,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
     }
 }
 
-fn run_pacman() {
+fn run_chrdump() {
     const SCALE: f32 = 3.0;
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -151,7 +173,7 @@ fn run_pacman() {
     let creator = canvas.texture_creator();
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
 
-    let cartridge_path = "rom/pacman.nes";
+    let cartridge_path = "rom/nestest.nes";
     let mut emulator = Emulator::new();
     let rom = ROM::from_filepath(cartridge_path).unwrap();
     emulator.load_rom(&rom);
@@ -181,27 +203,17 @@ fn run_pacman() {
     }
 }
 
-// nestest - cpu golden standard test
+// pacman - run pacman for the nes
 
-fn run_nestest() {
-    let cartridge_path = "rom/nestest.nes";
-    let mut emulator = Emulator::new();
-    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
-    emulator.nes.cpu.program_counter = 0xC000;
-
-
-    let log_path = cartridge_path.replace(".nes", ".log");
-    let mut logger = Logger::new(&log_path);
-    emulator.run_with_callback(|nes| {
-        let op = nes.cpu.memory.read_byte(nes.cpu.program_counter);
-        logln!(logger, "{:0>4X}  {:0>2X}    A:{:0>2X} X:{:0>2X} Y:{:0>2X} P:{:0>2X} SP:{:0>2X}",
-            nes.cpu.program_counter, op, nes.cpu.register_a, nes.cpu.register_x,
-            nes.cpu.register_y, nes.cpu.status, nes.cpu.stack);
-    });
+fn run_pacman() {
+    let mut emu = Emulator::new();
+    let rom = ROM::from_filepath("rom/pacman.nes").unwrap();
+    emu.run_rom(&rom);
 }
 
 fn main() {
     // run_snake();
     // run_nestest();
+    // run_chrdump();
     run_pacman();
 }

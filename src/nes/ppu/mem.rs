@@ -1,20 +1,9 @@
-use crate::util::rom::Mirroring;
+use crate::util::rom::{Mirroring, ROM};
+
 // PPU memory map
 macro_rules! chr_rom_range {() => {0x0000..=0x1FFF}}
 macro_rules! vram_range {() => {0x2000..=0x3EFF}}
 macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
-
-// macro_rules! pattern_tables_range {() => {0x0000..=0x1FFF}}
-// macro_rules! pattern_table_0_range {() => {0x0000..=0x0FFF}}
-// macro_rules! pattern_table_1_range {() => {0x1000..=0x1FFF}}
-
-// macro_rules! name_tables_range {() => {0x2000..=0x3EFF}}
-// macro_rules! name_table_0_range {() => {0x2000..=0x23FF}}
-// macro_rules! name_table_1_range {() => {0x2400..=0x27FF}}
-// macro_rules! name_table_2_range {() => {0x2800..=0x2BFF}}
-// macro_rules! name_table_3_range {() => {0x2C00..=0x2FFF}}
-
-// macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
 
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
@@ -24,6 +13,8 @@ pub struct Memory {
 impl Memory {
     const MEM_SIZE: usize = 0x4000 as usize; // 16kB
 
+    pub const CHR_ROM_START: u16 = *chr_rom_range!().start();
+
     pub fn new() -> Self {
         Memory {
             memory: [0; Memory::MEM_SIZE],
@@ -31,13 +22,13 @@ impl Memory {
         }
     }
 
-    // Horizontal:
-    //   [ A ] [ a ]
-    //   [ B ] [ b ]
-
-    // Vertical:
-    //   [ A ] [ B ]
-    //   [ a ] [ b ]
+    pub fn load_rom(&mut self, rom: &ROM) {
+        self.screen_mirroring = rom.screen_mirroring.clone();
+        for i in 0..rom.chr_rom.len() {
+            let idx = Memory::CHR_ROM_START.wrapping_add(i as u16);
+            self.memory[idx as usize] = rom.chr_rom[i];
+        }
+    }
 
     #[inline]
     pub fn mirror_vram_addr(&self, addr: u16) -> u16 {

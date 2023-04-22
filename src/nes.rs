@@ -19,10 +19,6 @@ impl NES {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        if self.cpu.memory.ppu.poll_nmi() {
-            self.cpu.handle_nmi();
-            self.cpu.memory.ppu.clear_nmi();
-        }
         self.cpu.step()?;
         self.cpu.memory.ppu.step()
     }

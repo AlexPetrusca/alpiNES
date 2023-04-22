@@ -20,8 +20,8 @@ use crate::util::bitvec::BitVector;
 //            vertical blanking interval (0: off; 1: on)
 
 pub enum ControlFlag {
-    NameTableAddrHigh,
     NameTableAddrLow,
+    NameTableAddrHigh,
     VramAddIncrement,
     SpritePatternAddr,
     BackgroundPatternAddr,
@@ -65,6 +65,22 @@ impl ControlRegister {
     #[inline]
     pub fn get_vram_addr_increment(&self) -> u8 {
         if self.is_set(ControlFlag::VramAddIncrement) { 32 } else { 1 }
+    }
+
+    #[inline]
+    pub fn get_sprite_chrtable_address(&self) -> u16 {
+        if self.is_set(ControlFlag::SpritePatternAddr) { 0x1000 } else { 0x0000 }
+    }
+
+    #[inline]
+    pub fn get_background_chrtable_address(&self) -> u16 {
+        if self.is_set(ControlFlag::BackgroundPatternAddr) { 0x1000 } else { 0x0000 }
+    }
+
+    #[inline]
+    pub fn get_base_nametable_address(&self) -> u16 {
+        let nametable_index = self.get_value() & 0b0000_0011;
+        return 0x2000 + 0x400 * nametable_index as u16;
     }
 
     #[inline]

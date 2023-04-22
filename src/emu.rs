@@ -1,18 +1,135 @@
+use std::thread::sleep;
+use std::time::{Duration, Instant};
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::PixelFormatEnum;
+use sdl2::render::{Canvas, Texture, WindowCanvas};
+use sdl2::{EventPump, Sdl};
+use sdl2::video::Window;
 use crate::nes::NES;
 use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
+use crate::nes::io::frame::Frame;
 use crate::nes::ppu::PPU;
 
 pub struct Emulator {
-    pub nes: NES
+    pub nes: NES,
+    pub fps_timestamp: Instant,
+    pub frame_timestamp: Instant,
+    pub fps: f32,
+    pub frames: u64,
 }
 
 impl Emulator {
+    const TARGET_FPS: f32 = 60.0;
+
     pub fn new() -> Self {
         Emulator {
-            nes: NES::new()
+            nes: NES::new(),
+            fps_timestamp: Instant::now(),
+            frame_timestamp: Instant::now(), // todo use
+            fps: 0.0,
+            frames: 0,
         }
+    }
+
+    pub fn run_rom(&mut self, rom: &ROM) {
+        self.load_rom(&rom);
+
+        const SCALE: f32 = 3.0;
+        const WINDOW_WIDTH: u32 = (SCALE * Frame::WIDTH as f32) as u32;
+        const WINDOW_HEIGHT: u32 = (SCALE * Frame::HEIGHT as f32) as u32;
+        let sdl_context = sdl2::init().unwrap();
+        let video_subsystem = sdl_context.video().unwrap();
+        let window = video_subsystem.window("alpiNES", WINDOW_WIDTH, WINDOW_HEIGHT)
+            .position_centered().build().unwrap();
+        let mut canvas = window.into_canvas().build().unwrap();
+        let mut event_pump = sdl_context.event_pump().unwrap();
+        let creator = canvas.texture_creator();
+        let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
+
+        loop {
+            if self.nes.cpu.memory.ppu.poll_nmi() {
+                self.nes.cpu.handle_nmi();
+                self.nes.cpu.memory.ppu.clear_nmi();
+
+                let mut frame = Frame::new();
+                Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
+
+                texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
+                canvas.copy(&texture, None, None).unwrap();
+                canvas.present();
+
+                for event in event_pump.poll_iter() {
+                    match event {
+                        Event::Quit { .. } |
+                        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                            std::process::exit(0)
+                        },
+                        _ => { }
+                    }
+                }
+
+                self.sleep_frame();
+            }
+
+            let Ok(_) = self.nes.step() else { return };
+        }
+    }
+
+    fn sleep_frame(&mut self) {
+        self.tick_fps();
+        const FRAME_SLEEP_OFFSET: f32 = 1.0 / 56.67 - 1.0 / 60.0; // todo: why do I need this? somethings wrong
+        let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f32() - FRAME_SLEEP_OFFSET;
+        if sleep_time > 0.0 {
+            sleep(Duration::from_secs_f32(sleep_time));
+        }
+        self.frame_timestamp = Instant::now();
+    }
+
+    fn tick_fps(&mut self) {
+        self.frames += 1;
+        if self.frames % 100 == 0 {
+            self.fps = 100.0 / self.fps_timestamp.elapsed().as_secs_f32();
+            self.fps_timestamp = Instant::now();
+            self.frames = 0;
+            println!("fps: {:.2}", self.fps);
+        }
+    }
+
+    fn render(ppu: &PPU, frame: &mut Frame) {
+        let bank = ppu.ctrl.get_background_chrtable_address();
+
+        for i in 0..0x03c0 { // just for now, lets use the first nametable
+            let tile = ppu.memory.read_byte(0x2000 + i) as u16;
+            let tile_x = i % 32;
+            let tile_y = (i) / 32;
+            let tile = &ppu.memory.memory[(bank + tile * 16) as usize..=(bank + tile * 16 + 15) as usize];
+
+            for y in 0..8 {
+                let mut upper = tile[y as usize];
+                let mut lower = tile[y as usize + 8];
+
+                for x in (0..8).rev() {
+                    let value = (1 & upper) << 1 | (1 & lower);
+                    upper = upper >> 1;
+                    lower = lower >> 1;
+                    let rgb = match value {
+                        0 => PPU::SYSTEM_PALLETE[0x01],
+                        1 => PPU::SYSTEM_PALLETE[0x23],
+                        2 => PPU::SYSTEM_PALLETE[0x27],
+                        3 => PPU::SYSTEM_PALLETE[0x30],
+                        _ => panic!("can't be"),
+                    };
+                    frame.set_pixel(8 * tile_x as usize + x, 8 * tile_y as usize + y, rgb)
+                }
+            }
+        }
+    }
+
+    pub fn load_rom(&mut self, rom: &ROM) {
+        self.nes.load_rom(rom);
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {
@@ -21,10 +138,6 @@ impl Emulator {
 
     pub fn load_at_addr(&mut self, addr: u16, program: &Vec<u8>) {
         self.nes.load_at_addr(addr, program);
-    }
-
-    pub fn load_rom(&mut self, rom: &ROM) {
-        self.nes.load_rom(rom);
     }
 
     pub fn load_and_run(&mut self, program: &Vec<u8>) {
@@ -38,6 +151,10 @@ impl Emulator {
 
     pub fn run_with_callback<F>(&mut self, mut callback: F) where F: FnMut(&mut NES) {
         loop {
+            if self.nes.cpu.memory.ppu.poll_nmi() {
+                self.tick_fps();
+                self.nes.cpu.handle_nmi();
+            }
             callback(&mut self.nes);
             let Ok(_) = self.nes.step() else { return };
         }
