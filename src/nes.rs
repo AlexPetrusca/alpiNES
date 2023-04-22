@@ -3,18 +3,18 @@ pub mod ppu;
 pub mod io;
 
 use crate::util::rom::ROM;
-use crate::nes::cpu::CPU;
+use crate::nes::cpu::Cpu;
 use crate::nes::cpu::mem::Memory;
-use crate::nes::ppu::PPU;
+use crate::nes::ppu::Ppu;
 
 pub struct NES {
-    pub cpu: CPU,
+    pub cpu: Cpu,
 }
 
 impl NES {
     pub fn new() -> Self {
         NES {
-            cpu: CPU::new(),
+            cpu: Cpu::new(),
         }
     }
 
@@ -51,14 +51,14 @@ mod tests {
     fn test_nes_load() {
         let mut nes = NES::new();
         assert_eq!(nes.cpu.program_counter, 0);
-        nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
+        nes.load(&vec![Cpu::LDA_IM, 5, Cpu::ROR, Cpu::BRK]);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START);
     }
 
     #[test]
     fn test_nes_reset() {
         let mut nes = NES::new();
-        nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
+        nes.load(&vec![Cpu::LDA_IM, 5, Cpu::ROR, Cpu::BRK]);
         nes.step().unwrap();
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 2);
         nes.reset();
@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn test_nes_step() {
         let mut nes = NES::new();
-        nes.load(&vec![CPU::LDA_IM, 5, CPU::ROR, CPU::BRK]);
+        nes.load(&vec![Cpu::LDA_IM, 5, Cpu::ROR, Cpu::BRK]);
         nes.step().unwrap();
         assert_eq!(nes.cpu.register_a, 0x05);
         assert_eq!(nes.cpu.program_counter, Memory::PRG_ROM_START + 2);
@@ -84,10 +84,10 @@ mod tests {
     fn test_nes_nop_dop_top() {
         let mut nes = NES::new();
         let program = vec![
-            CPU::NOP, // single nop
-            CPU::DOP_IM_1, 0xff, // double nop
-            CPU::TOP_AB, 0xff, 0xff, // triple nop
-            CPU::BRK
+            Cpu::NOP, // single nop
+            Cpu::DOP_IM_1, 0xff, // double nop
+            Cpu::TOP_AB, 0xff, 0xff, // triple nop
+            Cpu::BRK
         ];
         nes.load(&program);
 
@@ -114,12 +114,12 @@ mod tests {
         nes.cpu.memory.ppu.data_buffer = 0xaa;
         let program = vec![
             // write addr 0x0600 to addr register
-            CPU::LDA_IM, 0x26, CPU::STA_AB, 0x06, 0x20,
-            CPU::LDA_IM, 0xab, CPU::STA_AB, 0x06, 0x20,
+            Cpu::LDA_IM, 0x26, Cpu::STA_AB, 0x06, 0x20,
+            Cpu::LDA_IM, 0xab, Cpu::STA_AB, 0x06, 0x20,
             // read data register twice to get value at 0x0600
-            CPU::LDA_AB, 0x07, 0x20,
-            CPU::LDA_AB, 0x07, 0x20,
-            CPU::BRK
+            Cpu::LDA_AB, 0x07, 0x20,
+            Cpu::LDA_AB, 0x07, 0x20,
+            Cpu::BRK
         ];
         nes.load(&program);
 

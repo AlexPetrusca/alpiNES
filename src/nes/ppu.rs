@@ -13,7 +13,7 @@ use crate::nes::ppu::registers::mask::MaskRegister;
 use crate::nes::ppu::registers::stat::StatusFlag::VerticalBlank;
 use crate::nes::ppu::registers::stat::StatusRegister;
 
-pub struct PPU {
+pub struct Ppu {
     pub addr: AddressRegister,
     pub data: u8,
     pub ctrl: ControlRegister,
@@ -27,7 +27,7 @@ pub struct PPU {
     pub nmi_flag: bool, // todo: should be private
 }
 
-impl PPU {
+impl Ppu {
     pub const SYSTEM_PALLETE: [(u8, u8, u8); 64] = [
         (0x80, 0x80, 0x80), (0x00, 0x3D, 0xA6), (0x00, 0x12, 0xB0), (0x44, 0x00, 0x96), (0xA1, 0x00, 0x5E),
         (0xC7, 0x00, 0x28), (0xBA, 0x06, 0x00), (0x8C, 0x17, 0x00), (0x5C, 0x2F, 0x00), (0x10, 0x45, 0x00),
@@ -150,6 +150,6 @@ mod tests {
 
     #[test]
     fn test_() {
-        let mut ppu = PPU::new();
+        let mut ppu = Ppu::new();
     }
 }

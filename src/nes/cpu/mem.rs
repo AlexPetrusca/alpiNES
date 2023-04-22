@@ -1,6 +1,6 @@
-use crate::nes::cpu::CPU;
+use crate::nes::cpu::Cpu;
 use crate::util::rom::ROM;
-use crate::nes::ppu::PPU;
+use crate::nes::ppu::Ppu;
 
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
@@ -10,7 +10,7 @@ macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
-    pub ppu: PPU,
+    pub ppu: Ppu,
     pub prg_mirror_enabled: bool,
 }
 
@@ -36,7 +36,7 @@ impl Memory {
     pub fn new() -> Self {
         Memory {
             memory: [0; Memory::MEM_SIZE],
-            ppu: PPU::new(),
+            ppu: Ppu::new(),
             prg_mirror_enabled: false,
         }
     }

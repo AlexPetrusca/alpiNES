@@ -8,9 +8,9 @@ use sdl2::{EventPump, Sdl};
 use sdl2::video::Window;
 use crate::nes::NES;
 use crate::util::rom::ROM;
-use crate::nes::cpu::CPU;
+use crate::nes::cpu::Cpu;
 use crate::nes::cpu::mem::Memory;
-use crate::nes::ppu::PPU;
+use crate::nes::ppu::Ppu;
 use crate::nes::ppu::mem::PpuMemory;
 use crate::nes::io::frame::Frame;
 
@@ -99,7 +99,7 @@ impl Emulator {
         }
     }
 
-    fn render(ppu: &PPU, frame: &mut Frame) {
+    fn render(ppu: &Ppu, frame: &mut Frame) {
         let bank = ppu.ctrl.get_background_chrtable_address();
 
         for i in 0..0x03c0 { // just for now, lets use the first nametable
@@ -118,10 +118,10 @@ impl Emulator {
                     lower = lower >> 1;
                     upper = upper >> 1;
                     let rgb = match value {
-                        0 => PPU::SYSTEM_PALLETE[palette[0] as usize],
-                        1 => PPU::SYSTEM_PALLETE[palette[1] as usize],
-                        2 => PPU::SYSTEM_PALLETE[palette[2] as usize],
-                        3 => PPU::SYSTEM_PALLETE[palette[3] as usize],
+                        0 => Ppu::SYSTEM_PALLETE[palette[0] as usize],
+                        1 => Ppu::SYSTEM_PALLETE[palette[1] as usize],
+                        2 => Ppu::SYSTEM_PALLETE[palette[2] as usize],
+                        3 => Ppu::SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be"),
                     };
                     frame.set_pixel(8 * tile_x as usize + x, 8 * tile_y as usize + y, rgb)
@@ -130,7 +130,7 @@ impl Emulator {
         }
     }
 
-    fn bg_palette(ppu: &PPU, tile_x: usize, tile_y: usize) -> [u8; 4] {
+    fn bg_palette(ppu: &Ppu, tile_x: usize, tile_y: usize) -> [u8; 4] {
         let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
         let attr_byte = ppu.memory.read_byte(PpuMemory::VRAM_START + 0x3c0 + attr_table_idx as u16);  // todo: note: still using hardcoded first nametable
 
@@ -191,7 +191,7 @@ impl Emulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nes::cpu::CPU;
+    use crate::nes::cpu::Cpu;
     use crate::nes::cpu::mem::Memory;
 
     #[test]
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
         let mut emu = Emulator::new();
-        emu.load(&vec![CPU::LDA_IM, 5, CPU::BRK]);
+        emu.load(&vec![Cpu::LDA_IM, 5, Cpu::BRK]);
         emu.run();
 
         let mut cpu = &mut emu.nes.cpu;
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![CPU::LDA_IM, 0, CPU::BRK]);
+        emu.load_and_run(&vec![Cpu::LDA_IM, 0, Cpu::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0);
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn test_0xa9_lda_negative_flag() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![CPU::LDA_IM, 0xff, CPU::BRK]);
+        emu.load_and_run(&vec![Cpu::LDA_IM, 0xff, Cpu::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0xff);
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![CPU::LDA_IM, 0x10, CPU::TAX, CPU::BRK]);
+        emu.load_and_run(&vec![Cpu::LDA_IM, 0x10, Cpu::TAX, Cpu::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x10);
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn test_inx_overflow() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![CPU::LDX_IM, 0xff, CPU::INX, CPU::INX, CPU::BRK]);
+        emu.load_and_run(&vec![Cpu::LDX_IM, 0xff, Cpu::INX, Cpu::INX, Cpu::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_x, 1);
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn test_5_ops() {
         let mut emu = Emulator::new();
-        emu.load_and_run(&vec![CPU::LDA_IM, 0xc0, CPU::TAX, CPU::INX, CPU::BRK]);
+        emu.load_and_run(&vec![Cpu::LDA_IM, 0xc0, Cpu::TAX, Cpu::INX, Cpu::BRK]);
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0xc0);
@@ -300,7 +300,7 @@ mod tests {
     fn test_signed_division_by_four() {
         let mut emu = Emulator::new();
         let program = vec![
-            CPU::LDA_IM, 0x88, CPU::CMP_IM, 0x80, CPU::ARR, 0xff, CPU::ROR, CPU::BRK
+            Cpu::LDA_IM, 0x88, Cpu::CMP_IM, 0x80, Cpu::ARR, 0xff, Cpu::ROR, Cpu::BRK
         ];
         emu.load_and_run(&program);
 

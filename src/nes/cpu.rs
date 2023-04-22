@@ -53,7 +53,7 @@ const B_FLAG_CLEAR_MASK: u8 = 0b1110_1111;
 
 const OP_MASK: u8 = 0b1110_0011;
 
-pub struct CPU {
+pub struct Cpu {
     pub register_a: u8,
     pub register_x: u8,
     pub register_y: u8,
@@ -64,7 +64,7 @@ pub struct CPU {
     pub memory: Memory
 }
 
-impl CPU {
+impl Cpu {
     pub const LDA_IM: u8 = 0xa9;
     pub const LDA_ZP: u8 = 0xa5;
     pub const LDA_ZP_X: u8 = 0xb5;
@@ -354,7 +354,7 @@ impl CPU {
     pub const SBC_IM_U: u8 = 0xeb;
 
     pub fn new() -> Self {
-        CPU {
+        Cpu {
             register_a: 0,
             register_x: 0,
             register_y: 0,
@@ -378,167 +378,167 @@ impl CPU {
     pub fn step(&mut self) -> Result<bool, bool> {
         let opcode = self.memory.read_byte(self.program_counter);
         let cycles: u8 = match opcode {
-            CPU::TAX => self.tax(),
-            CPU::TAY => self.tay(),
-            CPU::TSX => self.tsx(),
-            CPU::TXA => self.txa(),
-            CPU::TXS => self.txs(),
-            CPU::TYA => self.tya(),
-            CPU::INX => self.inx(),
-            CPU::INY => self.iny(),
-            CPU::DEX => self.dex(),
-            CPU::DEY => self.dey(),
-            CPU::SEC => self.sec(),
-            CPU::CLC => self.clc(),
-            CPU::SED => self.sed(),
-            CPU::CLD => self.cld(),
-            CPU::SEI => self.sei(),
-            CPU::CLI => self.cli(),
-            CPU::CLV => self.clv(),
-            CPU::PHA => self.pha(),
-            CPU::PLA => self.pla(),
-            CPU::PHP => self.php(),
-            CPU::PLP => self.plp(),
-            CPU::RTS => self.rts(),
-            CPU::RTI => self.rti(),
-            CPU::NOP => self.nop(),
-            CPU::BIT_ZP => {
+            Cpu::TAX => self.tax(),
+            Cpu::TAY => self.tay(),
+            Cpu::TSX => self.tsx(),
+            Cpu::TXA => self.txa(),
+            Cpu::TXS => self.txs(),
+            Cpu::TYA => self.tya(),
+            Cpu::INX => self.inx(),
+            Cpu::INY => self.iny(),
+            Cpu::DEX => self.dex(),
+            Cpu::DEY => self.dey(),
+            Cpu::SEC => self.sec(),
+            Cpu::CLC => self.clc(),
+            Cpu::SED => self.sed(),
+            Cpu::CLD => self.cld(),
+            Cpu::SEI => self.sei(),
+            Cpu::CLI => self.cli(),
+            Cpu::CLV => self.clv(),
+            Cpu::PHA => self.pha(),
+            Cpu::PLA => self.pla(),
+            Cpu::PHP => self.php(),
+            Cpu::PLP => self.plp(),
+            Cpu::RTS => self.rts(),
+            Cpu::RTI => self.rti(),
+            Cpu::NOP => self.nop(),
+            Cpu::BIT_ZP => {
                 let address = self.fetch_param();
                 self.bit_zp(address)
             },
-            CPU::BIT_AB => {
+            Cpu::BIT_AB => {
                 let address = self.fetch_addr_param();
                 self.bit_ab(address)
             },
-            CPU::JMP_AB => {
+            Cpu::JMP_AB => {
                 let address = self.fetch_addr_param();
                 self.jmp_ab(address)
             },
-            CPU::JMP_IN => {
+            Cpu::JMP_IN => {
                 let address = self.fetch_addr_param();
                 self.jmp_in(address)
             },
-            CPU::JSR => {
+            Cpu::JSR => {
                 let address = self.fetch_addr_param();
                 self.jsr(address)
             },
-            CPU::BEQ => {
+            Cpu::BEQ => {
                 let offset = self.fetch_param();
                 self.beq(offset as i8)
             }
-            CPU::BNE => {
+            Cpu::BNE => {
                 let offset = self.fetch_param();
                 self.bne(offset as i8)
             },
-            CPU::BCC => {
+            Cpu::BCC => {
                 let offset = self.fetch_param();
                 self.bcc(offset as i8)
             },
-            CPU::BCS => {
+            Cpu::BCS => {
                 let offset = self.fetch_param();
                 self.bcs(offset as i8)
             },
-            CPU::BMI => {
+            Cpu::BMI => {
                 let offset = self.fetch_param();
                 self.bmi(offset as i8)
             },
-            CPU::BPL => {
+            Cpu::BPL => {
                 let offset = self.fetch_param();
                 self.bpl(offset as i8)
             },
-            CPU::BVS => {
+            Cpu::BVS => {
                 let offset = self.fetch_param();
                 self.bvs(offset as i8)
             },
-            CPU::BVC => {
+            Cpu::BVC => {
                 let offset = self.fetch_param();
                 self.bvc(offset as i8)
             },
-            CPU::BRK => {
+            Cpu::BRK => {
                 // todo: this implementation of BRK is not correct (lol)
                 self.increment_program_counter();
                 return Err(false);
             },
             // undocumented opcodes
-            CPU::SBC_IM_U => self.sbc(CPU::SBC_IM),
-            CPU::ARR => {
+            Cpu::SBC_IM_U => self.sbc(Cpu::SBC_IM),
+            Cpu::ARR => {
                 let immediate = self.fetch_param();
                 self.arr(immediate)
             },
-            CPU::ALR => {
+            Cpu::ALR => {
                 let immediate = self.fetch_param();
                 self.alr(immediate)
             },
-            CPU::LXA => {
+            Cpu::LXA => {
                 let immediate = self.fetch_param();
                 self.lxa(immediate)
             },
-            CPU::SBX => {
+            Cpu::SBX => {
                 let immediate = self.fetch_param();
                 self.sbx(immediate)
             },
-            CPU::LAS => {
+            Cpu::LAS => {
                 let address = self.fetch_addr_param();
                 self.las(address)
             },
-            CPU::ANE => {
+            Cpu::ANE => {
                 let immediate = self.fetch_param();
                 self.ane(immediate)
             },
-            CPU::SHA_AB_Y => {
+            Cpu::SHA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.sha_ab_y(address)
             },
-            CPU::SHA_IN_Y => {
+            Cpu::SHA_IN_Y => {
                 let address = self.fetch_param();
                 self.sha_in_y(address)
             },
-            CPU::SHX => {
+            Cpu::SHX => {
                 let address = self.fetch_addr_param();
                 self.shx(address)
             }
-            CPU::SHY => {
+            Cpu::SHY => {
                 let address = self.fetch_addr_param();
                 self.shy(address)
             }
-            CPU::SHS => {
+            Cpu::SHS => {
                 let address = self.fetch_addr_param();
                 self.shs(address)
             }
-            CPU::ANC_1 | CPU::ANC_2 => {
+            Cpu::ANC_1 | Cpu::ANC_2 => {
                 let immediate = self.fetch_param();
                 self.anc(immediate)
             },
-            CPU::TOP_AB => {
+            Cpu::TOP_AB => {
                 let address = self.fetch_addr_param();
                 self.top_ab(address)
             },
-            CPU::TOP_AB_X_1 | CPU::TOP_AB_X_2 | CPU::TOP_AB_X_3 |
-            CPU::TOP_AB_X_4 | CPU::TOP_AB_X_5 | CPU::TOP_AB_X_6 => {
+            Cpu::TOP_AB_X_1 | Cpu::TOP_AB_X_2 | Cpu::TOP_AB_X_3 |
+            Cpu::TOP_AB_X_4 | Cpu::TOP_AB_X_5 | Cpu::TOP_AB_X_6 => {
                 let address = self.fetch_addr_param();
                 self.top_ab_x(address)
             },
-            CPU::DOP_IM_1 | CPU::DOP_IM_2 | CPU::DOP_IM_3 |
-            CPU::DOP_IM_4 | CPU::DOP_IM_5 => {
+            Cpu::DOP_IM_1 | Cpu::DOP_IM_2 | Cpu::DOP_IM_3 |
+            Cpu::DOP_IM_4 | Cpu::DOP_IM_5 => {
                 let immediate = self.fetch_param();
                 self.dop_im(immediate)
             },
-            CPU::DOP_ZP_1 | CPU::DOP_ZP_2 | CPU::DOP_ZP_3 => {
+            Cpu::DOP_ZP_1 | Cpu::DOP_ZP_2 | Cpu::DOP_ZP_3 => {
                 let address = self.fetch_param();
                 self.dop_zp(address)
             },
-            CPU::DOP_ZP_X_1 | CPU::DOP_ZP_X_2 | CPU::DOP_ZP_X_3 |
-            CPU::DOP_ZP_X_4 | CPU::DOP_ZP_X_5 | CPU::DOP_ZP_X_6 => {
+            Cpu::DOP_ZP_X_1 | Cpu::DOP_ZP_X_2 | Cpu::DOP_ZP_X_3 |
+            Cpu::DOP_ZP_X_4 | Cpu::DOP_ZP_X_5 | Cpu::DOP_ZP_X_6 => {
                 let address = self.fetch_param();
                 self.dop_zp_x(address)
             },
-            CPU::NOP_1 | CPU::NOP_2 | CPU::NOP_3 |
-            CPU::NOP_4 | CPU::NOP_5 | CPU::NOP_6 => {
+            Cpu::NOP_1 | Cpu::NOP_2 | Cpu::NOP_3 |
+            Cpu::NOP_4 | Cpu::NOP_5 | Cpu::NOP_6 => {
                 self.nop()
             },
-            CPU::JAM_1 | CPU::JAM_2 | CPU::JAM_3 | CPU::JAM_4 |
-            CPU::JAM_5 | CPU::JAM_6 | CPU::JAM_7 | CPU::JAM_8 |
-            CPU::JAM_9 | CPU::JAM_10 | CPU::JAM_11 | CPU::JAM_12 => {
+            Cpu::JAM_1 | Cpu::JAM_2 | Cpu::JAM_3 | Cpu::JAM_4 |
+            Cpu::JAM_5 | Cpu::JAM_6 | Cpu::JAM_7 | Cpu::JAM_8 |
+            Cpu::JAM_9 | Cpu::JAM_10 | Cpu::JAM_11 | Cpu::JAM_12 => {
                 self.jam()
             },
             _ => match opcode & OP_MASK {
@@ -1050,35 +1050,35 @@ impl CPU {
      */
     fn adc(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ADC_IM => {
+            Cpu::ADC_IM => {
                 let immediate = self.fetch_param();
                 self.adc_im(immediate)
             },
-            CPU::ADC_ZP => {
+            Cpu::ADC_ZP => {
                 let address = self.fetch_param();
                 self.adc_zp(address)
             },
-            CPU::ADC_ZP_X => {
+            Cpu::ADC_ZP_X => {
                 let address = self.fetch_param();
                 self.adc_zp_x(address)
             },
-            CPU::ADC_AB => {
+            Cpu::ADC_AB => {
                 let address = self.fetch_addr_param();
                 self.adc_ab(address)
             },
-            CPU::ADC_AB_X => {
+            Cpu::ADC_AB_X => {
                 let address = self.fetch_addr_param();
                 self.adc_ab_x(address)
             },
-            CPU::ADC_AB_Y => {
+            Cpu::ADC_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.adc_ab_y(address)
             },
-            CPU::ADC_IN_X => {
+            Cpu::ADC_IN_X => {
                 let address = self.fetch_param();
                 self.adc_in_x(address)
             },
-            CPU::ADC_IN_Y => {
+            Cpu::ADC_IN_Y => {
                 let address = self.fetch_param();
                 self.adc_in_y(address)
             },
@@ -1155,35 +1155,35 @@ impl CPU {
 
     fn sbc(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::SBC_IM => {
+            Cpu::SBC_IM => {
                 let immediate = self.fetch_param();
                 self.sbc_im(immediate)
             },
-            CPU::SBC_ZP => {
+            Cpu::SBC_ZP => {
                 let address = self.fetch_param();
                 self.sbc_zp(address)
             },
-            CPU::SBC_ZP_X => {
+            Cpu::SBC_ZP_X => {
                 let address = self.fetch_param();
                 self.sbc_zp_x(address)
             },
-            CPU::SBC_AB => {
+            Cpu::SBC_AB => {
                 let address = self.fetch_addr_param();
                 self.sbc_ab(address)
             },
-            CPU::SBC_AB_X => {
+            Cpu::SBC_AB_X => {
                 let address = self.fetch_addr_param();
                 self.sbc_ab_x(address)
             },
-            CPU::SBC_AB_Y => {
+            Cpu::SBC_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.sbc_ab_y(address)
             },
-            CPU::SBC_IN_X => {
+            Cpu::SBC_IN_X => {
                 let address = self.fetch_param();
                 self.sbc_in_x(address)
             },
-            CPU::SBC_IN_Y => {
+            Cpu::SBC_IN_Y => {
                 let address = self.fetch_param();
                 self.sbc_in_y(address)
             },
@@ -1250,35 +1250,35 @@ impl CPU {
 
     fn eor(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::EOR_IM => {
+            Cpu::EOR_IM => {
                 let immediate = self.fetch_param();
                 self.eor_im(immediate)
             },
-            CPU::EOR_ZP => {
+            Cpu::EOR_ZP => {
                 let address = self.fetch_param();
                 self.eor_zp(address)
             },
-            CPU::EOR_ZP_X => {
+            Cpu::EOR_ZP_X => {
                 let address = self.fetch_param();
                 self.eor_zp_x(address)
             },
-            CPU::EOR_AB => {
+            Cpu::EOR_AB => {
                 let address = self.fetch_addr_param();
                 self.eor_ab(address)
             },
-            CPU::EOR_AB_X => {
+            Cpu::EOR_AB_X => {
                 let address = self.fetch_addr_param();
                 self.eor_ab_x(address)
             },
-            CPU::EOR_AB_Y => {
+            Cpu::EOR_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.eor_ab_y(address)
             },
-            CPU::EOR_IN_X => {
+            Cpu::EOR_IN_X => {
                 let address = self.fetch_param();
                 self.eor_in_x(address)
             },
-            CPU::EOR_IN_Y => {
+            Cpu::EOR_IN_Y => {
                 let address = self.fetch_param();
                 self.eor_in_y(address)
             },
@@ -1346,35 +1346,35 @@ impl CPU {
 
     fn and(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::AND_IM => {
+            Cpu::AND_IM => {
                 let immediate = self.fetch_param();
                 self.and_im(immediate)
             },
-            CPU::AND_ZP => {
+            Cpu::AND_ZP => {
                 let address = self.fetch_param();
                 self.and_zp(address)
             },
-            CPU::AND_ZP_X => {
+            Cpu::AND_ZP_X => {
                 let address = self.fetch_param();
                 self.and_zp_x(address)
             },
-            CPU::AND_AB => {
+            Cpu::AND_AB => {
                 let address = self.fetch_addr_param();
                 self.and_ab(address)
             },
-            CPU::AND_AB_X => {
+            Cpu::AND_AB_X => {
                 let address = self.fetch_addr_param();
                 self.and_ab_x(address)
             },
-            CPU::AND_AB_Y => {
+            Cpu::AND_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.and_ab_y(address)
             },
-            CPU::AND_IN_X => {
+            Cpu::AND_IN_X => {
                 let address = self.fetch_param();
                 self.and_in_x(address)
             },
-            CPU::AND_IN_Y => {
+            Cpu::AND_IN_Y => {
                 let address = self.fetch_param();
                 self.and_in_y(address)
             },
@@ -1442,35 +1442,35 @@ impl CPU {
 
     fn ora(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ORA_IM => {
+            Cpu::ORA_IM => {
                 let immediate = self.fetch_param();
                 self.ora_im(immediate)
             },
-            CPU::ORA_ZP => {
+            Cpu::ORA_ZP => {
                 let address = self.fetch_param();
                 self.ora_zp(address)
             },
-            CPU::ORA_ZP_X => {
+            Cpu::ORA_ZP_X => {
                 let address = self.fetch_param();
                 self.ora_zp_x(address)
             },
-            CPU::ORA_AB => {
+            Cpu::ORA_AB => {
                 let address = self.fetch_addr_param();
                 self.ora_ab(address)
             },
-            CPU::ORA_AB_X => {
+            Cpu::ORA_AB_X => {
                 let address = self.fetch_addr_param();
                 self.ora_ab_x(address)
             },
-            CPU::ORA_AB_Y => {
+            Cpu::ORA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.ora_ab_y(address)
             },
-            CPU::ORA_IN_X => {
+            Cpu::ORA_IN_X => {
                 let address = self.fetch_param();
                 self.ora_in_x(address)
             },
-            CPU::ORA_IN_Y => {
+            Cpu::ORA_IN_Y => {
                 let address = self.fetch_param();
                 self.ora_in_y(address)
             },
@@ -1538,22 +1538,22 @@ impl CPU {
 
     fn lsr(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::LSR => {
+            Cpu::LSR => {
                 self.lsr_a()
             },
-            CPU::LSR_ZP => {
+            Cpu::LSR_ZP => {
                 let address = self.fetch_param();
                 self.lsr_zp(address)
             },
-            CPU::LSR_ZP_X => {
+            Cpu::LSR_ZP_X => {
                 let address = self.fetch_param();
                 self.lsr_zp_x(address)
             },
-            CPU::LSR_AB => {
+            Cpu::LSR_AB => {
                 let address = self.fetch_addr_param();
                 self.lsr_ab(address)
             },
-            CPU::LSR_AB_X => {
+            Cpu::LSR_AB_X => {
                 let address = self.fetch_addr_param();
                 self.lsr_ab_x(address)
             },
@@ -1613,31 +1613,31 @@ impl CPU {
 
     fn sre(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::SRE_ZP => {
+            Cpu::SRE_ZP => {
                 let address = self.fetch_param();
                 self.sre_zp(address)
             },
-            CPU::SRE_ZP_X => {
+            Cpu::SRE_ZP_X => {
                 let address = self.fetch_param();
                 self.sre_zp_x(address)
             },
-            CPU::SRE_AB => {
+            Cpu::SRE_AB => {
                 let address = self.fetch_addr_param();
                 self.sre_ab(address)
             },
-            CPU::SRE_AB_X => {
+            Cpu::SRE_AB_X => {
                 let address = self.fetch_addr_param();
                 self.sre_ab_x(address)
             },
-            CPU::SRE_AB_Y => {
+            Cpu::SRE_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.sre_ab_y(address)
             },
-            CPU::SRE_IN_X => {
+            Cpu::SRE_IN_X => {
                 let address = self.fetch_param();
                 self.sre_in_x(address)
             },
-            CPU::SRE_IN_Y => {
+            Cpu::SRE_IN_Y => {
                 let address = self.fetch_param();
                 self.sre_in_y(address)
             },
@@ -1719,22 +1719,22 @@ impl CPU {
 
     fn asl(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ASL => {
+            Cpu::ASL => {
                 self.asl_a()
             },
-            CPU::ASL_ZP => {
+            Cpu::ASL_ZP => {
                 let address = self.fetch_param();
                 self.asl_zp(address)
             },
-            CPU::ASL_ZP_X => {
+            Cpu::ASL_ZP_X => {
                 let address = self.fetch_param();
                 self.asl_zp_x(address)
             },
-            CPU::ASL_AB => {
+            Cpu::ASL_AB => {
                 let address = self.fetch_addr_param();
                 self.asl_ab(address)
             },
-            CPU::ASL_AB_X => {
+            Cpu::ASL_AB_X => {
                 let address = self.fetch_addr_param();
                 self.asl_ab_x(address)
             },
@@ -1794,31 +1794,31 @@ impl CPU {
 
     fn slo(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::SLO_ZP => {
+            Cpu::SLO_ZP => {
                 let address = self.fetch_param();
                 self.slo_zp(address)
             },
-            CPU::SLO_ZP_X => {
+            Cpu::SLO_ZP_X => {
                 let address = self.fetch_param();
                 self.slo_zp_x(address)
             },
-            CPU::SLO_AB => {
+            Cpu::SLO_AB => {
                 let address = self.fetch_addr_param();
                 self.slo_ab(address)
             },
-            CPU::SLO_AB_X => {
+            Cpu::SLO_AB_X => {
                 let address = self.fetch_addr_param();
                 self.slo_ab_x(address)
             },
-            CPU::SLO_AB_Y => {
+            Cpu::SLO_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.slo_ab_y(address)
             },
-            CPU::SLO_IN_X => {
+            Cpu::SLO_IN_X => {
                 let address = self.fetch_param();
                 self.slo_in_x(address)
             },
-            CPU::SLO_IN_Y => {
+            Cpu::SLO_IN_Y => {
                 let address = self.fetch_param();
                 self.slo_in_y(address)
             },
@@ -1900,22 +1900,22 @@ impl CPU {
 
     fn ror(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ROR => {
+            Cpu::ROR => {
                 self.ror_a()
             },
-            CPU::ROR_ZP => {
+            Cpu::ROR_ZP => {
                 let address = self.fetch_param();
                 self.ror_zp(address)
             },
-            CPU::ROR_ZP_X => {
+            Cpu::ROR_ZP_X => {
                 let address = self.fetch_param();
                 self.ror_zp_x(address)
             },
-            CPU::ROR_AB => {
+            Cpu::ROR_AB => {
                 let address = self.fetch_addr_param();
                 self.ror_ab(address)
             },
-            CPU::ROR_AB_X => {
+            Cpu::ROR_AB_X => {
                 let address = self.fetch_addr_param();
                 self.ror_ab_x(address)
             },
@@ -1980,31 +1980,31 @@ impl CPU {
 
     fn rra(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::RRA_ZP => {
+            Cpu::RRA_ZP => {
                 let address = self.fetch_param();
                 self.rra_zp(address)
             },
-            CPU::RRA_ZP_X => {
+            Cpu::RRA_ZP_X => {
                 let address = self.fetch_param();
                 self.rra_zp_x(address)
             },
-            CPU::RRA_AB => {
+            Cpu::RRA_AB => {
                 let address = self.fetch_addr_param();
                 self.rra_ab(address)
             },
-            CPU::RRA_AB_X => {
+            Cpu::RRA_AB_X => {
                 let address = self.fetch_addr_param();
                 self.rra_ab_x(address)
             },
-            CPU::RRA_AB_Y => {
+            Cpu::RRA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.rra_ab_y(address)
             },
-            CPU::RRA_IN_X => {
+            Cpu::RRA_IN_X => {
                 let address = self.fetch_param();
                 self.rra_in_x(address)
             },
-            CPU::RRA_IN_Y => {
+            Cpu::RRA_IN_Y => {
                 let address = self.fetch_param();
                 self.rra_in_y(address)
             },
@@ -2093,22 +2093,22 @@ impl CPU {
 
     fn rol(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ROL => {
+            Cpu::ROL => {
                 self.rol_a()
             },
-            CPU::ROL_ZP => {
+            Cpu::ROL_ZP => {
                 let address = self.fetch_param();
                 self.rol_zp(address)
             },
-            CPU::ROL_ZP_X => {
+            Cpu::ROL_ZP_X => {
                 let address = self.fetch_param();
                 self.rol_zp_x(address)
             },
-            CPU::ROL_AB => {
+            Cpu::ROL_AB => {
                 let address = self.fetch_addr_param();
                 self.rol_ab(address)
             },
-            CPU::ROL_AB_X => {
+            Cpu::ROL_AB_X => {
                 let address = self.fetch_addr_param();
                 self.rol_ab_x(address)
             },
@@ -2173,31 +2173,31 @@ impl CPU {
 
     fn rla(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::RLA_ZP => {
+            Cpu::RLA_ZP => {
                 let address = self.fetch_param();
                 self.rla_zp(address)
             },
-            CPU::RLA_ZP_X => {
+            Cpu::RLA_ZP_X => {
                 let address = self.fetch_param();
                 self.rla_zp_x(address)
             },
-            CPU::RLA_AB => {
+            Cpu::RLA_AB => {
                 let address = self.fetch_addr_param();
                 self.rla_ab(address)
             },
-            CPU::RLA_AB_X => {
+            Cpu::RLA_AB_X => {
                 let address = self.fetch_addr_param();
                 self.rla_ab_x(address)
             },
-            CPU::RLA_AB_Y => {
+            Cpu::RLA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.rla_ab_y(address)
             },
-            CPU::RLA_IN_X => {
+            Cpu::RLA_IN_X => {
                 let address = self.fetch_param();
                 self.rla_in_x(address)
             },
-            CPU::RLA_IN_Y => {
+            Cpu::RLA_IN_Y => {
                 let address = self.fetch_param();
                 self.rla_in_y(address)
             },
@@ -2286,35 +2286,35 @@ impl CPU {
 
     fn lda(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::LDA_IM => {
+            Cpu::LDA_IM => {
                 let immediate = self.fetch_param();
                 self.lda_im(immediate)
             },
-            CPU::LDA_ZP => {
+            Cpu::LDA_ZP => {
                 let address = self.fetch_param();
                 self.lda_zp(address)
             },
-            CPU::LDA_ZP_X => {
+            Cpu::LDA_ZP_X => {
                 let address = self.fetch_param();
                 self.lda_zp_x(address)
             },
-            CPU::LDA_AB => {
+            Cpu::LDA_AB => {
                 let address = self.fetch_addr_param();
                 self.lda_ab(address)
             },
-            CPU::LDA_AB_X => {
+            Cpu::LDA_AB_X => {
                 let address = self.fetch_addr_param();
                 self.lda_ab_x(address)
             },
-            CPU::LDA_AB_Y => {
+            Cpu::LDA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.lda_ab_y(address)
             },
-            CPU::LDA_IN_X => {
+            Cpu::LDA_IN_X => {
                 let address = self.fetch_param();
                 self.lda_in_x(address)
             },
-            CPU::LDA_IN_Y => {
+            Cpu::LDA_IN_Y => {
                 let address = self.fetch_param();
                 self.lda_in_y(address)
             },
@@ -2382,23 +2382,23 @@ impl CPU {
 
     fn ldx(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::LDX_IM => {
+            Cpu::LDX_IM => {
                 let immediate = self.fetch_param();
                 self.ldx_im(immediate)
             },
-            CPU::LDX_ZP => {
+            Cpu::LDX_ZP => {
                 let address = self.fetch_param();
                 self.ldx_zp(address)
             },
-            CPU::LDX_ZP_Y => {
+            Cpu::LDX_ZP_Y => {
                 let address = self.fetch_param();
                 self.ldx_zp_y(address)
             },
-            CPU::LDX_AB => {
+            Cpu::LDX_AB => {
                 let address = self.fetch_addr_param();
                 self.ldx_ab(address)
             },
-            CPU::LDX_AB_Y => {
+            Cpu::LDX_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.ldx_ab_y(address)
             },
@@ -2445,23 +2445,23 @@ impl CPU {
 
     fn ldy(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::LDY_IM => {
+            Cpu::LDY_IM => {
                 let immediate = self.fetch_param();
                 self.ldy_im(immediate)
             },
-            CPU::LDY_ZP => {
+            Cpu::LDY_ZP => {
                 let address = self.fetch_param();
                 self.ldy_zp(address)
             },
-            CPU::LDY_ZP_X => {
+            Cpu::LDY_ZP_X => {
                 let address = self.fetch_param();
                 self.ldy_zp_x(address)
             },
-            CPU::LDY_AB => {
+            Cpu::LDY_AB => {
                 let address = self.fetch_addr_param();
                 self.ldy_ab(address)
             },
-            CPU::LDY_AB_X => {
+            Cpu::LDY_AB_X => {
                 let address = self.fetch_addr_param();
                 self.ldy_ab_x(address)
             },
@@ -2508,27 +2508,27 @@ impl CPU {
 
     fn lax(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::LAX_ZP => {
+            Cpu::LAX_ZP => {
                 let address = self.fetch_param();
                 self.lax_zp(address)
             },
-            CPU::LAX_ZP_Y => {
+            Cpu::LAX_ZP_Y => {
                 let address = self.fetch_param();
                 self.lax_zp_y(address)
             },
-            CPU::LAX_AB => {
+            Cpu::LAX_AB => {
                 let address = self.fetch_addr_param();
                 self.lax_ab(address)
             },
-            CPU::LAX_AB_Y => {
+            Cpu::LAX_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.lax_ab_y(address)
             },
-            CPU::LAX_IN_X => {
+            Cpu::LAX_IN_X => {
                 let address = self.fetch_param();
                 self.lax_in_x(address)
             },
-            CPU::LAX_IN_Y => {
+            Cpu::LAX_IN_Y => {
                 let address = self.fetch_param();
                 self.lax_in_y(address)
             },
@@ -2588,31 +2588,31 @@ impl CPU {
 
     fn sta(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::STA_ZP => {
+            Cpu::STA_ZP => {
                 let address = self.fetch_param();
                 self.sta_zp(address)
             },
-            CPU::STA_ZP_X => {
+            Cpu::STA_ZP_X => {
                 let address = self.fetch_param();
                 self.sta_zp_x(address)
             },
-            CPU::STA_AB => {
+            Cpu::STA_AB => {
                 let address = self.fetch_addr_param();
                 self.sta_ab(address)
             },
-            CPU::STA_AB_X => {
+            Cpu::STA_AB_X => {
                 let address = self.fetch_addr_param();
                 self.sta_ab_x(address)
             },
-            CPU::STA_AB_Y => {
+            Cpu::STA_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.sta_ab_y(address)
             },
-            CPU::STA_IN_X => {
+            Cpu::STA_IN_X => {
                 let address = self.fetch_param();
                 self.sta_in_x(address)
             },
-            CPU::STA_IN_Y => {
+            Cpu::STA_IN_Y => {
                 let address = self.fetch_param();
                 self.sta_in_y(address)
             },
@@ -2666,15 +2666,15 @@ impl CPU {
 
     fn stx(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::STX_ZP => {
+            Cpu::STX_ZP => {
                 let address = self.fetch_param();
                 self.stx_zp(address)
             },
-            CPU::STX_ZP_Y => {
+            Cpu::STX_ZP_Y => {
                 let address = self.fetch_param();
                 self.stx_zp_y(address)
             },
-            CPU::STX_AB => {
+            Cpu::STX_AB => {
                 let address = self.fetch_addr_param();
                 self.stx_ab(address)
             },
@@ -2704,15 +2704,15 @@ impl CPU {
 
     fn sty(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::STY_ZP => {
+            Cpu::STY_ZP => {
                 let address = self.fetch_param();
                 self.sty_zp(address)
             },
-            CPU::STY_ZP_X => {
+            Cpu::STY_ZP_X => {
                 let address = self.fetch_param();
                 self.sty_zp_x(address)
             },
-            CPU::STY_AB => {
+            Cpu::STY_AB => {
                 let address = self.fetch_addr_param();
                 self.sty_ab(address)
             },
@@ -2742,19 +2742,19 @@ impl CPU {
 
     fn sax(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::SAX_ZP => {
+            Cpu::SAX_ZP => {
                 let address = self.fetch_param();
                 self.sax_zp(address)
             },
-            CPU::SAX_ZP_Y => {
+            Cpu::SAX_ZP_Y => {
                 let address = self.fetch_param();
                 self.sax_zp_y(address)
             },
-            CPU::SAX_AB => {
+            Cpu::SAX_AB => {
                 let address = self.fetch_addr_param();
                 self.sax_ab(address)
             },
-            CPU::SAX_IN_X => {
+            Cpu::SAX_IN_X => {
                 let address = self.fetch_param();
                 self.sax_in_x(address)
             },
@@ -2790,19 +2790,19 @@ impl CPU {
 
     fn dec(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::DEC_ZP => {
+            Cpu::DEC_ZP => {
                 let address = self.fetch_param();
                 self.dec_zp(address)
             },
-            CPU::DEC_ZP_X => {
+            Cpu::DEC_ZP_X => {
                 let address = self.fetch_param();
                 self.dec_zp_x(address)
             },
-            CPU::DEC_AB => {
+            Cpu::DEC_AB => {
                 let address = self.fetch_addr_param();
                 self.dec_ab(address)
             },
-            CPU::DEC_AB_X => {
+            Cpu::DEC_AB_X => {
                 let address = self.fetch_addr_param();
                 self.dec_ab_x(address)
             },
@@ -2850,31 +2850,31 @@ impl CPU {
 
     fn dcp(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::DCP_ZP => {
+            Cpu::DCP_ZP => {
                 let address = self.fetch_param();
                 self.dcp_zp(address)
             },
-            CPU::DCP_ZP_X => {
+            Cpu::DCP_ZP_X => {
                 let address = self.fetch_param();
                 self.dcp_zp_x(address)
             },
-            CPU::DCP_AB => {
+            Cpu::DCP_AB => {
                 let address = self.fetch_addr_param();
                 self.dcp_ab(address)
             },
-            CPU::DCP_AB_X => {
+            Cpu::DCP_AB_X => {
                 let address = self.fetch_addr_param();
                 self.dcp_ab_x(address)
             },
-            CPU::DCP_AB_Y => {
+            Cpu::DCP_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.dcp_ab_y(address)
             },
-            CPU::DCP_IN_X => {
+            Cpu::DCP_IN_X => {
                 let address = self.fetch_param();
                 self.dcp_in_x(address)
             },
-            CPU::DCP_IN_Y => {
+            Cpu::DCP_IN_Y => {
                 let address = self.fetch_param();
                 self.dcp_in_y(address)
             },
@@ -2949,19 +2949,19 @@ impl CPU {
 
     fn inc(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::INC_ZP => {
+            Cpu::INC_ZP => {
                 let address = self.fetch_param();
                 self.inc_zp(address)
             },
-            CPU::INC_ZP_X => {
+            Cpu::INC_ZP_X => {
                 let address = self.fetch_param();
                 self.inc_zp_x(address)
             },
-            CPU::INC_AB => {
+            Cpu::INC_AB => {
                 let address = self.fetch_addr_param();
                 self.inc_ab(address)
             },
-            CPU::INC_AB_X => {
+            Cpu::INC_AB_X => {
                 let address = self.fetch_addr_param();
                 self.inc_ab_x(address)
             },
@@ -3009,31 +3009,31 @@ impl CPU {
 
     fn isb(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::ISB_ZP => {
+            Cpu::ISB_ZP => {
                 let address = self.fetch_param();
                 self.isb_zp(address)
             },
-            CPU::ISB_ZP_X => {
+            Cpu::ISB_ZP_X => {
                 let address = self.fetch_param();
                 self.isb_zp_x(address)
             },
-            CPU::ISB_AB => {
+            Cpu::ISB_AB => {
                 let address = self.fetch_addr_param();
                 self.isb_ab(address)
             },
-            CPU::ISB_AB_X => {
+            Cpu::ISB_AB_X => {
                 let address = self.fetch_addr_param();
                 self.isb_ab_x(address)
             },
-            CPU::ISB_AB_Y => {
+            Cpu::ISB_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.isb_ab_y(address)
             },
-            CPU::ISB_IN_X => {
+            Cpu::ISB_IN_X => {
                 let address = self.fetch_param();
                 self.isb_in_x(address)
             },
-            CPU::ISB_IN_Y => {
+            Cpu::ISB_IN_Y => {
                 let address = self.fetch_param();
                 self.isb_in_y(address)
             },
@@ -3108,35 +3108,35 @@ impl CPU {
 
     fn _cmp(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::CMP_IM => {
+            Cpu::CMP_IM => {
                 let immediate = self.fetch_param();
                 self.cmp_im(immediate)
             },
-            CPU::CMP_ZP => {
+            Cpu::CMP_ZP => {
                 let address = self.fetch_param();
                 self.cmp_zp(address)
             },
-            CPU::CMP_ZP_X => {
+            Cpu::CMP_ZP_X => {
                 let address = self.fetch_param();
                 self.cmp_zp_x(address)
             },
-            CPU::CMP_AB => {
+            Cpu::CMP_AB => {
                 let address = self.fetch_addr_param();
                 self.cmp_ab(address)
             },
-            CPU::CMP_AB_X => {
+            Cpu::CMP_AB_X => {
                 let address = self.fetch_addr_param();
                 self.cmp_ab_x(address)
             },
-            CPU::CMP_AB_Y => {
+            Cpu::CMP_AB_Y => {
                 let address = self.fetch_addr_param();
                 self.cmp_ab_y(address)
             },
-            CPU::CMP_IN_X => {
+            Cpu::CMP_IN_X => {
                 let address = self.fetch_param();
                 self.cmp_in_x(address)
             },
-            CPU::CMP_IN_Y => {
+            Cpu::CMP_IN_Y => {
                 let address = self.fetch_param();
                 self.cmp_in_y(address)
             },
@@ -3205,15 +3205,15 @@ impl CPU {
 
     fn cpx(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::CPX_IM => {
+            Cpu::CPX_IM => {
                 let immediate = self.fetch_param();
                 self.cpx_im(immediate)
             },
-            CPU::CPX_ZP => {
+            Cpu::CPX_ZP => {
                 let address = self.fetch_param();
                 self.cpx_zp(address)
             },
-            CPU::CPX_AB => {
+            Cpu::CPX_AB => {
                 let address = self.fetch_addr_param();
                 self.cpx_ab(address)
             },
@@ -3247,15 +3247,15 @@ impl CPU {
 
     fn cpy(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
-            CPU::CPY_IM => {
+            Cpu::CPY_IM => {
                 let immediate = self.fetch_param();
                 self.cpy_im(immediate)
             },
-            CPU::CPY_ZP => {
+            Cpu::CPY_ZP => {
                 let address = self.fetch_param();
                 self.cpy_zp(address)
             },
-            CPU::CPY_AB => {
+            Cpu::CPY_AB => {
                 let address = self.fetch_addr_param();
                 self.cpy_ab(address)
             },
@@ -3401,7 +3401,7 @@ mod tests {
 
     #[test]
     fn test_init() {
-        let cpu = CPU::new();
+        let cpu = Cpu::new();
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.register_x, 0);
         assert_eq!(cpu.register_y, 0);
@@ -3413,7 +3413,7 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.reset();
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.register_x, 0);
@@ -3429,7 +3429,7 @@ mod tests {
 
     #[test]
     fn test_nop() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.nop();
         assert_eq!(cpu.program_counter, 0x81);
@@ -3437,7 +3437,7 @@ mod tests {
 
     #[test]
     fn test_dop() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.dop_im(0x10);
         assert_eq!(cpu.program_counter, 0x81);
@@ -3445,7 +3445,7 @@ mod tests {
 
     #[test]
     fn test_top() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.top_ab(0x1010);
         assert_eq!(cpu.program_counter, 0x81);
@@ -3455,16 +3455,16 @@ mod tests {
 
     #[test]
     fn test_step_brk() {
-        let mut cpu = CPU::new();
-        cpu.memory.write_byte(0, CPU::BRK);
+        let mut cpu = Cpu::new();
+        cpu.memory.write_byte(0, Cpu::BRK);
         cpu.step().unwrap_or_default();
         assert_eq!(cpu.program_counter, 1);
     }
 
     #[test]
     fn test_step_jam() {
-        let mut cpu = CPU::new();
-        cpu.memory.write_byte(0, CPU::JAM_1);
+        let mut cpu = Cpu::new();
+        cpu.memory.write_byte(0, Cpu::JAM_1);
         cpu.step().unwrap();
         cpu.step().unwrap();
         cpu.step().unwrap();
@@ -3475,14 +3475,14 @@ mod tests {
 
     #[test]
     fn test_sec() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.sec();
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
     }
 
     #[test]
     fn test_clc() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1111_1111;
         cpu.clc();
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
@@ -3490,14 +3490,14 @@ mod tests {
 
     #[test]
     fn test_sed() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.sed();
         assert_eq!(cpu.get_status_flag(DECIMAL_MODE_FLAG), true);
     }
 
     #[test]
     fn test_cld() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1111_1111;
         cpu.cld();
         assert_eq!(cpu.get_status_flag(DECIMAL_MODE_FLAG), false);
@@ -3505,14 +3505,14 @@ mod tests {
 
     #[test]
     fn test_sei() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.sei();
         assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), true);
     }
 
     #[test]
     fn test_cli() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1111_1111;
         cpu.cli();
         assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), false);
@@ -3520,7 +3520,7 @@ mod tests {
 
     #[test]
     fn test_clv() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1111_1111;
         cpu.clv();
         assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
@@ -3530,7 +3530,7 @@ mod tests {
 
     #[test]
     fn test_pha() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.pha();
         assert_eq!(cpu.stack, 0xfe);
@@ -3539,7 +3539,7 @@ mod tests {
 
     #[test]
     fn test_pla() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b0111_1010;
         cpu.php();
         cpu.pla();
@@ -3552,7 +3552,7 @@ mod tests {
 
     #[test]
     fn test_pla_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.pha();
         cpu.pla();
         assert_eq!(cpu.stack, 0xff);
@@ -3564,7 +3564,7 @@ mod tests {
 
     #[test]
     fn test_pla_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1011_1010;
         cpu.php();
         cpu.pla();
@@ -3577,7 +3577,7 @@ mod tests {
 
     #[test]
     fn test_php() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1011_1010;
         cpu.php();
         assert_eq!(cpu.stack, 0xfe);
@@ -3586,7 +3586,7 @@ mod tests {
 
     #[test]
     fn test_php_set_b_flag() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.php();
         assert_eq!(cpu.stack, 0xfe);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0b0011_0000);
@@ -3594,7 +3594,7 @@ mod tests {
 
     #[test]
     fn test_plp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b1010_1010;
         cpu.pha();
         cpu.plp();
@@ -3605,7 +3605,7 @@ mod tests {
 
     #[test]
     fn test_plp_set_b_flag() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x04;
         cpu.pha();
         cpu.plp();
@@ -3616,7 +3616,7 @@ mod tests {
 
     #[test]
     fn test_plp_clear_b_flag() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.pha();
         cpu.plp();
@@ -3629,7 +3629,7 @@ mod tests {
 
     #[test]
     fn test_bit_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b0011_1111);
         cpu.register_a = 0b0110_0011;
         cpu.bit_zp(0x10);
@@ -3640,7 +3640,7 @@ mod tests {
 
     #[test]
     fn test_bit_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0b0011_1111);
         cpu.register_a = 0b0110_0011;
         cpu.bit_ab(0x1400);
@@ -3651,7 +3651,7 @@ mod tests {
 
     #[test]
     fn test_bit_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b0011_1100);
         cpu.register_a = 0b1100_0011;
         cpu.bit_zp(0x10);
@@ -3662,7 +3662,7 @@ mod tests {
 
     #[test]
     fn test_bit_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b1000_0000);
         cpu.register_a = 0b1111_1111;
         cpu.bit_zp(0x10);
@@ -3673,7 +3673,7 @@ mod tests {
 
     #[test]
     fn test_bit_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b0100_0000);
         cpu.register_a = 0b1111_1111;
         cpu.bit_zp(0x10);
@@ -3686,7 +3686,7 @@ mod tests {
 
     #[test]
     fn test_adc_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.adc_im(BYTE_A);
         assert_eq!(cpu.register_a, BYTE_B);
@@ -3694,7 +3694,7 @@ mod tests {
 
     #[test]
     fn test_adc_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.adc_zp(0x10);
@@ -3703,7 +3703,7 @@ mod tests {
 
     #[test]
     fn test_adc_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_x = 0x08;
@@ -3713,7 +3713,7 @@ mod tests {
 
     #[test]
     fn test_adc_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.adc_ab(0x1400);
@@ -3722,7 +3722,7 @@ mod tests {
 
     #[test]
     fn test_adc_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
@@ -3732,7 +3732,7 @@ mod tests {
 
     #[test]
     fn test_adc_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_y = 0x10;
@@ -3742,7 +3742,7 @@ mod tests {
 
     #[test]
     fn test_adc_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
@@ -3753,7 +3753,7 @@ mod tests {
 
     #[test]
     fn test_adc_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
@@ -3764,7 +3764,7 @@ mod tests {
 
     #[test]
     fn test_adc_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.adc_im(0x01);
         assert_eq!(cpu.register_a, 0x00);
@@ -3773,7 +3773,7 @@ mod tests {
 
     #[test]
     fn test_adc_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xfe;
         cpu.adc_im(0x01);
         assert_eq!(cpu.register_a, 0xff);
@@ -3782,7 +3782,7 @@ mod tests {
 
     #[test]
     fn test_adc_carry() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.adc_im(0xff);
         assert_eq!(cpu.register_a, 0xfe);
@@ -3791,7 +3791,7 @@ mod tests {
 
     #[test]
     fn test_adc_add_positives_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x64;
         cpu.adc_im(0x64);
         assert_eq!(cpu.register_a, 0xc8);
@@ -3800,7 +3800,7 @@ mod tests {
 
     #[test]
     fn test_adc_add_positives_overflow_with_carry() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x64;
         cpu.adc_im(0x64);
@@ -3810,7 +3810,7 @@ mod tests {
 
     #[test]
     fn test_adc_add_negatives_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x9C;
         cpu.adc_im(0x9C);
         assert_eq!(cpu.register_a, 0x38);
@@ -3819,7 +3819,7 @@ mod tests {
 
     #[test]
     fn test_adc_add_negatives_overflow_with_carry() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x9C;
         cpu.adc_im(0x9C);
@@ -3829,7 +3829,7 @@ mod tests {
 
     #[test]
     fn test_adc_carry_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x0f;
         cpu.adc_im(0x70);
@@ -3839,7 +3839,7 @@ mod tests {
 
     #[test]
     fn test_adc_add_zero_carry_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x7f;
         cpu.adc_im(0x00);
@@ -3849,7 +3849,7 @@ mod tests {
     
     #[test]
     fn test_adc_carry_wraparound() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x0f;
         cpu.adc_im(0xf0);
@@ -3863,7 +3863,7 @@ mod tests {
 
     #[test]
     fn test_sbc_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.sbc_im(0x01);
@@ -3872,7 +3872,7 @@ mod tests {
 
     #[test]
     fn test_sbc_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x10, 0x01);
@@ -3882,7 +3882,7 @@ mod tests {
 
     #[test]
     fn test_sbc_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x10, 0x01);
@@ -3893,7 +3893,7 @@ mod tests {
 
     #[test]
     fn test_sbc_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1400, 0x01);
@@ -3903,7 +3903,7 @@ mod tests {
 
     #[test]
     fn test_sbc_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
@@ -3914,7 +3914,7 @@ mod tests {
 
     #[test]
     fn test_sbc_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
@@ -3925,7 +3925,7 @@ mod tests {
 
     #[test]
     fn test_sbc_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1400, 0x01);
@@ -3937,7 +3937,7 @@ mod tests {
 
     #[test]
     fn test_sbc_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
@@ -3949,7 +3949,7 @@ mod tests {
 
     #[test]
     fn test_sbc_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x01;
         cpu.sbc_im(0x01);
@@ -3959,7 +3959,7 @@ mod tests {
 
     #[test]
     fn test_sbc_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0xff;
         cpu.sbc_im(0x01);
@@ -3969,7 +3969,7 @@ mod tests {
 
     #[test]
     fn test_sbc_carry() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x10;
         cpu.sbc_im(0x01);
@@ -3979,7 +3979,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_negatives_carry() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0xff;
         cpu.sbc_im(0xff);
@@ -3989,7 +3989,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_negatives_carry_with_borrow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.sbc_im(0xff);
         assert_eq!(cpu.register_a, 0xff);
@@ -3998,7 +3998,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_positive_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x9C;
         cpu.sbc_im(0x64);
@@ -4008,7 +4008,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_positive_overflow_with_borrow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x9C;
         cpu.sbc_im(0x64);
         assert_eq!(cpu.register_a, 0x37);
@@ -4017,7 +4017,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_negative_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0x64;
         cpu.sbc_im(0x9C);
@@ -4027,7 +4027,7 @@ mod tests {
 
     #[test]
     fn test_sbc_sub_negative_overflow_with_borrow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x64;
         cpu.sbc_im(0x9C);
         assert_eq!(cpu.register_a, 0xc7);
@@ -4036,7 +4036,7 @@ mod tests {
 
     #[test]
     fn test_sbc_borrow_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x80;
         cpu.sbc_im(0x0f);
         assert_eq!(cpu.register_a, 0x70);
@@ -4045,7 +4045,7 @@ mod tests {
 
     #[test]
     fn test_sbc_add_zero_borrow_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x80;
         cpu.sbc_im(0x00);
         assert_eq!(cpu.register_a, 0x7f);
@@ -4054,7 +4054,7 @@ mod tests {
 
     #[test]
     fn test_sbc_borrow_wraparound() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x00;
         cpu.sbc_im(0x00);
         assert_eq!(cpu.register_a, 0xff);
@@ -4067,7 +4067,7 @@ mod tests {
 
     #[test]
     fn test_eor_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b1010_1010);
         assert_eq!(cpu.register_a, 0b1111_0000);
@@ -4075,7 +4075,7 @@ mod tests {
 
     #[test]
     fn test_eor_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
         cpu.eor_zp(0x10);
@@ -4084,7 +4084,7 @@ mod tests {
 
     #[test]
     fn test_eor_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4094,7 +4094,7 @@ mod tests {
 
     #[test]
     fn test_eor_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
         cpu.eor_ab(0x1400);
@@ -4103,7 +4103,7 @@ mod tests {
 
     #[test]
     fn test_eor_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4113,7 +4113,7 @@ mod tests {
 
     #[test]
     fn test_eor_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
         cpu.register_y = 0x10;
@@ -4123,7 +4123,7 @@ mod tests {
 
     #[test]
     fn test_eor_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x20, 0x1400);
         cpu.memory.write_byte(0x1400, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
@@ -4134,7 +4134,7 @@ mod tests {
 
     #[test]
     fn test_eor_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.memory.write_byte(0x1410, 0b1010_1010);
         cpu.register_a = 0b0101_1010;
@@ -4145,7 +4145,7 @@ mod tests {
 
     #[test]
     fn test_eor_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b0101_1010);
         assert_eq!(cpu.register_a, 0);
@@ -4154,7 +4154,7 @@ mod tests {
 
     #[test]
     fn test_eor_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b1101_1010);
         assert_eq!(cpu.register_a, 0x80);
@@ -4163,7 +4163,7 @@ mod tests {
 
     #[test]
     fn test_double_eor_cancels_out() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b1101_1011);
         cpu.eor_im(0b1101_1011);
@@ -4172,7 +4172,7 @@ mod tests {
 
     #[test]
     fn test_and_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.and_im(0b0110_0110);
         assert_eq!(cpu.register_a, 0b0100_0010);
@@ -4180,7 +4180,7 @@ mod tests {
 
     #[test]
     fn test_and_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.and_zp(0x10);
@@ -4189,7 +4189,7 @@ mod tests {
 
     #[test]
     fn test_and_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4199,7 +4199,7 @@ mod tests {
 
     #[test]
     fn test_and_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.and_ab(0x1400);
@@ -4208,7 +4208,7 @@ mod tests {
 
     #[test]
     fn test_and_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4218,7 +4218,7 @@ mod tests {
 
     #[test]
     fn test_and_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_y = 0x10;
@@ -4228,7 +4228,7 @@ mod tests {
 
     #[test]
     fn test_and_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x20, 0x1400);
         cpu.memory.write_byte(0x1400, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
@@ -4239,7 +4239,7 @@ mod tests {
 
     #[test]
     fn test_and_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
@@ -4250,7 +4250,7 @@ mod tests {
 
     #[test]
     fn test_and_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.and_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0);
@@ -4259,7 +4259,7 @@ mod tests {
 
     #[test]
     fn test_and_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b1101_1010;
         cpu.and_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0x80);
@@ -4268,7 +4268,7 @@ mod tests {
 
     #[test]
     fn test_anc() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x9b;
         cpu.anc(0xf1);
         assert_eq!(cpu.register_a, 0x91);
@@ -4279,7 +4279,7 @@ mod tests {
 
     #[test]
     fn test_arr() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b1110_0000;
         cpu.arr(0b1110_1010);
@@ -4292,7 +4292,7 @@ mod tests {
 
     #[test]
     fn test_arr_overflow() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b1011_0000;
         cpu.arr(0b1110_1010);
@@ -4305,7 +4305,7 @@ mod tests {
 
     #[test]
     fn test_alr() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b1110_0001;
         cpu.alr(0b1110_1011);
@@ -4317,7 +4317,7 @@ mod tests {
 
     #[test]
     fn test_lxa() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b1110_0001;
         cpu.lxa(0b1110_1011);
@@ -4329,7 +4329,7 @@ mod tests {
 
     #[test]
     fn test_las() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x140a, 0b1010_1010);
         cpu.stack = 0b1010_0011;
         cpu.register_y = BYTE_A;
@@ -4343,7 +4343,7 @@ mod tests {
 
     #[test]
     fn test_sha_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
@@ -4355,7 +4355,7 @@ mod tests {
 
     #[test]
     fn test_sha_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x24, 0x1480);
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
@@ -4368,7 +4368,7 @@ mod tests {
 
     #[test]
     fn test_shx() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_x = 0b1110_1101;
         cpu.shx(0x1480);
@@ -4378,7 +4378,7 @@ mod tests {
 
     #[test]
     fn test_shy() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.register_y = 0b1110_1101;
         cpu.shy(0x1480);
@@ -4388,7 +4388,7 @@ mod tests {
 
     #[test]
     fn test_shs() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0001;
         cpu.register_x = 0b1110_1101;
@@ -4399,7 +4399,7 @@ mod tests {
 
     #[test]
     fn test_sbx() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_a = 0b1010_0101;
         cpu.register_x = 0b1110_1101;
@@ -4412,7 +4412,7 @@ mod tests {
 
     #[test]
     fn test_ane_zero_immediate() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.ane(0);
@@ -4423,7 +4423,7 @@ mod tests {
 
     #[test]
     fn test_ane_ff_accumulator() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.register_x = BYTE_B;
         cpu.ane(BYTE_A);
@@ -4434,7 +4434,7 @@ mod tests {
 
     #[test]
     fn test_ane() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x11;
         cpu.register_x = BYTE_B;
         cpu.ane(BYTE_A);
@@ -4444,7 +4444,7 @@ mod tests {
 
     #[test]
     fn test_ora_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.ora_im(0b0110_0110);
         assert_eq!(cpu.register_a, 0b0111_1110);
@@ -4452,7 +4452,7 @@ mod tests {
 
     #[test]
     fn test_ora_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.ora_zp(0x10);
@@ -4461,7 +4461,7 @@ mod tests {
 
     #[test]
     fn test_ora_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4471,7 +4471,7 @@ mod tests {
 
     #[test]
     fn test_ora_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.ora_ab(0x1400);
@@ -4480,7 +4480,7 @@ mod tests {
 
     #[test]
     fn test_ora_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_x = 0x10;
@@ -4490,7 +4490,7 @@ mod tests {
 
     #[test]
     fn test_ora_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
         cpu.register_y = 0x10;
@@ -4500,7 +4500,7 @@ mod tests {
 
     #[test]
     fn test_ora_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x20, 0x1400);
         cpu.memory.write_byte(0x1400, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
@@ -4511,7 +4511,7 @@ mod tests {
 
     #[test]
     fn test_ora_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.memory.write_byte(0x1410, 0b0110_0110);
         cpu.register_a = 0b0101_1010;
@@ -4522,7 +4522,7 @@ mod tests {
 
     #[test]
     fn test_ora_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.ora_im(0);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -4530,7 +4530,7 @@ mod tests {
 
     #[test]
     fn test_ora_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0101_1010;
         cpu.ora_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0xff);
@@ -4541,7 +4541,7 @@ mod tests {
 
     #[test]
     fn test_lsr_a() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b0000_1111;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0b0000_0111);
@@ -4550,7 +4550,7 @@ mod tests {
     
     #[test]
     fn test_lsr_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.lsr_zp(0x10);
@@ -4560,7 +4560,7 @@ mod tests {
 
     #[test]
     fn test_lsr_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -4571,7 +4571,7 @@ mod tests {
 
     #[test]
     fn test_lsr_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.lsr_ab(0x1400);
@@ -4581,7 +4581,7 @@ mod tests {
 
     #[test]
     fn test_lsr_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -4592,7 +4592,7 @@ mod tests {
 
     #[test]
     fn test_lsr_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x01;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0);
@@ -4602,7 +4602,7 @@ mod tests {
 
     #[test]
     fn test_lsr_no_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0x7F);
@@ -4612,7 +4612,7 @@ mod tests {
 
     #[test]
     fn test_lsr_shift_to_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         for _i in 0..8 {
             cpu.lsr_a();
@@ -4624,7 +4624,7 @@ mod tests {
 
     #[test]
     fn test_sre_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 2);
         cpu.register_a = BYTE_B;
         cpu.sre_zp(0x10);
@@ -4634,7 +4634,7 @@ mod tests {
 
     #[test]
     fn test_sre_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 2);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
@@ -4645,7 +4645,7 @@ mod tests {
 
     #[test]
     fn test_sre_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 2);
         cpu.register_a = BYTE_B;
         cpu.sre_ab(0x1400);
@@ -4655,7 +4655,7 @@ mod tests {
 
     #[test]
     fn test_sre_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 2);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
@@ -4666,7 +4666,7 @@ mod tests {
 
     #[test]
     fn test_sre_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 2);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
@@ -4677,7 +4677,7 @@ mod tests {
 
     #[test]
     fn test_sre_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 2);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_B;
@@ -4689,7 +4689,7 @@ mod tests {
 
     #[test]
     fn test_sre_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 2);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_B;
@@ -4701,7 +4701,7 @@ mod tests {
 
     #[test]
     fn test_asl_a() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0b1111_0000;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0b1110_0000);
@@ -4710,7 +4710,7 @@ mod tests {
     
     #[test]
     fn test_asl_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b1111_0000);
         cpu.asl_zp(0x10);
@@ -4720,7 +4720,7 @@ mod tests {
 
     #[test]
     fn test_asl_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b1111_0000);
         cpu.register_x = 0x10;
@@ -4731,7 +4731,7 @@ mod tests {
 
     #[test]
     fn test_asl_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b1111_0000);
         cpu.asl_ab(0x1400);
@@ -4741,7 +4741,7 @@ mod tests {
 
     #[test]
     fn test_asl_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b1111_0000);
         cpu.register_x = 0x10;
@@ -4752,7 +4752,7 @@ mod tests {
 
     #[test]
     fn test_asl_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x80;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0);
@@ -4762,7 +4762,7 @@ mod tests {
 
     #[test]
     fn test_asl_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x40;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0x80);
@@ -4772,7 +4772,7 @@ mod tests {
 
     #[test]
     fn test_asl_shift_to_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         for _i in 0..8 {
             cpu.asl_a();
@@ -4784,7 +4784,7 @@ mod tests {
 
     #[test]
     fn test_slo_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0x08);
         cpu.register_a = 0x20;
         cpu.slo_zp(0x10);
@@ -4794,7 +4794,7 @@ mod tests {
 
     #[test]
     fn test_slo_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 0x08);
         cpu.register_a = 0x20;
         cpu.register_x = 0x10;
@@ -4805,7 +4805,7 @@ mod tests {
 
     #[test]
     fn test_slo_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0x08);
         cpu.register_a = 0x20;
         cpu.slo_ab(0x1400);
@@ -4815,7 +4815,7 @@ mod tests {
 
     #[test]
     fn test_slo_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x08);
         cpu.register_a = 0x20;
         cpu.register_x = 0x10;
@@ -4826,7 +4826,7 @@ mod tests {
 
     #[test]
     fn test_slo_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x08);
         cpu.register_a = 0x20;
         cpu.register_y = 0x10;
@@ -4837,7 +4837,7 @@ mod tests {
 
     #[test]
     fn test_slo_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0x08);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = 0x20;
@@ -4849,7 +4849,7 @@ mod tests {
 
     #[test]
     fn test_slo_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x08);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = 0x20;
@@ -4863,7 +4863,7 @@ mod tests {
 
     #[test]
     fn test_ror_a() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b0000_1111;
         cpu.ror_a();
@@ -4872,7 +4872,7 @@ mod tests {
 
     #[test]
     fn test_ror_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.ror_zp(0x10);
@@ -4881,7 +4881,7 @@ mod tests {
 
     #[test]
     fn test_ror_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -4891,7 +4891,7 @@ mod tests {
 
     #[test]
     fn test_ror_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.ror_ab(0x1400);
@@ -4900,7 +4900,7 @@ mod tests {
 
     #[test]
     fn test_ror_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -4910,7 +4910,7 @@ mod tests {
 
     #[test]
     fn test_ror_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 1;
         cpu.ror_a();
         assert_eq!(cpu.register_a, 0);
@@ -4920,7 +4920,7 @@ mod tests {
 
     #[test]
     fn test_ror_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.ror_a();
         assert_eq!(cpu.register_a, 0x80);
@@ -4930,7 +4930,7 @@ mod tests {
 
     #[test]
     fn test_ror_wraparound() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b0000_1111;
         for _i in 0..9 {
@@ -4942,7 +4942,7 @@ mod tests {
 
     #[test]
     fn test_rra_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 1);
         cpu.register_a = BYTE_A;
         cpu.rra_zp(0x10);
@@ -4952,7 +4952,7 @@ mod tests {
 
     #[test]
     fn test_rra_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 1);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -4963,7 +4963,7 @@ mod tests {
 
     #[test]
     fn test_rra_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 1);
         cpu.register_a = BYTE_A;
         cpu.rra_ab(0x1400);
@@ -4973,7 +4973,7 @@ mod tests {
 
     #[test]
     fn test_rra_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 1);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -4984,7 +4984,7 @@ mod tests {
 
     #[test]
     fn test_rra_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 1);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
@@ -4995,7 +4995,7 @@ mod tests {
 
     #[test]
     fn test_rra_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 1);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5007,7 +5007,7 @@ mod tests {
 
     #[test]
     fn test_rra_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 1);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5019,7 +5019,7 @@ mod tests {
 
     #[test]
     fn test_rol_a() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b0000_1111;
         cpu.rol_a();
@@ -5028,7 +5028,7 @@ mod tests {
 
     #[test]
     fn test_rol_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.rol_zp(0x10);
@@ -5037,7 +5037,7 @@ mod tests {
 
     #[test]
     fn test_rol_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -5047,7 +5047,7 @@ mod tests {
 
     #[test]
     fn test_rol_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.rol_ab(0x1400);
@@ -5056,7 +5056,7 @@ mod tests {
 
     #[test]
     fn test_rol_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
@@ -5066,7 +5066,7 @@ mod tests {
 
     #[test]
     fn test_rol_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x80;
         cpu.rol_a();
         assert_eq!(cpu.register_a, 0);
@@ -5076,7 +5076,7 @@ mod tests {
 
     #[test]
     fn test_rol_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x40;
         cpu.rol_a();
         assert_eq!(cpu.register_a, 0x80);
@@ -5086,7 +5086,7 @@ mod tests {
 
     #[test]
     fn test_rol_wraparound() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = 0b0000_1111;
         for _i in 0..9 {
@@ -5098,7 +5098,7 @@ mod tests {
 
     #[test]
     fn test_rla_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, 0x05);
         cpu.register_a = BYTE_A;
         cpu.rla_zp(0x10);
@@ -5108,7 +5108,7 @@ mod tests {
 
     #[test]
     fn test_rla_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -5119,7 +5119,7 @@ mod tests {
 
     #[test]
     fn test_rla_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0x05);
         cpu.register_a = BYTE_A;
         cpu.rla_ab(0x1400);
@@ -5129,7 +5129,7 @@ mod tests {
 
     #[test]
     fn test_rla_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -5140,7 +5140,7 @@ mod tests {
 
     #[test]
     fn test_rla_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x05);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
@@ -5151,7 +5151,7 @@ mod tests {
 
     #[test]
     fn test_rla_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, 0x05);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5163,7 +5163,7 @@ mod tests {
 
     #[test]
     fn test_rla_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, 0x05);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5177,14 +5177,14 @@ mod tests {
 
     #[test]
     fn test_lda_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.lda_im(BYTE_A);
         assert_eq!(cpu.register_a, BYTE_A);
     }
 
     #[test]
     fn test_lda_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.lda_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
@@ -5192,7 +5192,7 @@ mod tests {
 
     #[test]
     fn test_lda_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_x = 0x08;
         cpu.lda_zp_x(0x08);
@@ -5201,7 +5201,7 @@ mod tests {
 
     #[test]
     fn test_lda_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.lda_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
@@ -5209,7 +5209,7 @@ mod tests {
 
     #[test]
     fn test_lda_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
         cpu.lda_ab_x(0x1400);
@@ -5218,7 +5218,7 @@ mod tests {
 
     #[test]
     fn test_lda_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_y = 0x10;
         cpu.lda_ab_y(0x1400);
@@ -5227,7 +5227,7 @@ mod tests {
 
     #[test]
     fn test_lda_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_x = 0x08;
@@ -5237,7 +5237,7 @@ mod tests {
 
     #[test]
     fn test_lda_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_y = 0x10;
@@ -5247,14 +5247,14 @@ mod tests {
 
     #[test]
     fn test_ldx_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.ldx_im(BYTE_A);
         assert_eq!(cpu.register_x, BYTE_A);
     }
 
     #[test]
     fn test_ldx_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.ldx_zp(0x10);
         assert_eq!(cpu.register_x, BYTE_A);
@@ -5262,7 +5262,7 @@ mod tests {
 
     #[test]
     fn test_ldx_zp_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_y = 0x10;
         cpu.ldx_zp_y(0x10);
@@ -5271,7 +5271,7 @@ mod tests {
 
     #[test]
     fn test_ldx_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.ldx_ab(0x1400);
         assert_eq!(cpu.register_x, BYTE_A);
@@ -5279,7 +5279,7 @@ mod tests {
 
     #[test]
     fn test_ldx_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_y = 0x10;
         cpu.ldx_ab_y(0x1400);
@@ -5288,14 +5288,14 @@ mod tests {
 
     #[test]
     fn test_ldy_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.ldy_im(BYTE_A);
         assert_eq!(cpu.register_y, BYTE_A);
     }
 
     #[test]
     fn test_ldy_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.ldy_zp(0x10);
         assert_eq!(cpu.register_y, BYTE_A);
@@ -5303,7 +5303,7 @@ mod tests {
 
     #[test]
     fn test_ldy_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_x = 0x10;
         cpu.ldy_zp_x(0x10);
@@ -5312,7 +5312,7 @@ mod tests {
 
     #[test]
     fn test_ldy_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.ldy_ab(0x1400);
         assert_eq!(cpu.register_y, BYTE_A);
@@ -5320,7 +5320,7 @@ mod tests {
 
     #[test]
     fn test_ldy_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
         cpu.ldy_ab_x(0x1400);
@@ -5329,7 +5329,7 @@ mod tests {
 
     #[test]
     fn test_lax_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.lax_zp(0x10);
         assert_eq!(cpu.register_a, BYTE_A);
@@ -5338,7 +5338,7 @@ mod tests {
 
     #[test]
     fn test_lax_zp_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_y = 0x10;
         cpu.lax_zp_y(0x10);
@@ -5348,7 +5348,7 @@ mod tests {
 
     #[test]
     fn test_lax_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.lax_ab(0x1400);
         assert_eq!(cpu.register_a, BYTE_A);
@@ -5357,7 +5357,7 @@ mod tests {
 
     #[test]
     fn test_lax_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_y = 0x10;
         cpu.lax_ab_y(0x1400);
@@ -5367,7 +5367,7 @@ mod tests {
 
     #[test]
     fn test_lax_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_x = 0x08;
@@ -5378,7 +5378,7 @@ mod tests {
 
     #[test]
     fn test_lax_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_y = 0x10;
@@ -5389,14 +5389,14 @@ mod tests {
 
     #[test]
     fn test_load_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.lda_im(0);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
     }
 
     #[test]
     fn test_load_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.lda_im(0xff);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
     }
@@ -5405,7 +5405,7 @@ mod tests {
 
     #[test]
     fn test_sta_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.sta_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
@@ -5413,7 +5413,7 @@ mod tests {
 
     #[test]
     fn test_sta_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
         cpu.sta_zp_x(0x10);
@@ -5422,7 +5422,7 @@ mod tests {
 
     #[test]
     fn test_sta_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.sta_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5430,7 +5430,7 @@ mod tests {
 
     #[test]
     fn test_sta_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
         cpu.sta_ab_x(0x1400);
@@ -5439,7 +5439,7 @@ mod tests {
 
     #[test]
     fn test_sta_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
         cpu.sta_ab_y(0x1400);
@@ -5448,7 +5448,7 @@ mod tests {
 
     #[test]
     fn test_sta_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x20, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -5458,7 +5458,7 @@ mod tests {
 
     #[test]
     fn test_sta_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
@@ -5468,7 +5468,7 @@ mod tests {
 
     #[test]
     fn test_stx_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.stx_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
@@ -5476,7 +5476,7 @@ mod tests {
 
     #[test]
     fn test_stx_zp_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.register_y = 0x10;
         cpu.stx_zp_y(0x10);
@@ -5485,7 +5485,7 @@ mod tests {
 
     #[test]
     fn test_stx_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.stx_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5493,7 +5493,7 @@ mod tests {
 
     #[test]
     fn test_sty_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.sty_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
@@ -5501,7 +5501,7 @@ mod tests {
 
     #[test]
     fn test_sty_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_x = 0x10;
         cpu.sty_zp_x(0x10);
@@ -5510,7 +5510,7 @@ mod tests {
 
     #[test]
     fn test_sty_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.sty_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5518,7 +5518,7 @@ mod tests {
 
     #[test]
     fn test_sax_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.sax_zp(0x10);
@@ -5529,7 +5529,7 @@ mod tests {
 
     #[test]
     fn test_sax_zp_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.register_y = 0x10;
@@ -5541,7 +5541,7 @@ mod tests {
 
     #[test]
     fn test_sax_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.sax_ab(0x1400);
@@ -5552,7 +5552,7 @@ mod tests {
 
     #[test]
     fn test_sax_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x1b, 0x1400);
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
@@ -5566,7 +5566,7 @@ mod tests {
 
     #[test]
     fn test_tax() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.tax();
@@ -5576,7 +5576,7 @@ mod tests {
 
     #[test]
     fn test_tay() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.register_y = BYTE_B;
         cpu.tay();
@@ -5586,7 +5586,7 @@ mod tests {
 
     #[test]
     fn test_tsx() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.stack = BYTE_A;
         cpu.register_x = BYTE_B;
         cpu.tsx();
@@ -5596,7 +5596,7 @@ mod tests {
 
     #[test]
     fn test_txa() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.register_a = BYTE_B;
         cpu.txa();
@@ -5606,7 +5606,7 @@ mod tests {
 
     #[test]
     fn test_txs() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.stack = BYTE_B;
         cpu.txs();
@@ -5616,7 +5616,7 @@ mod tests {
 
     #[test]
     fn test_tya() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.register_a = BYTE_B;
         cpu.tya();
@@ -5626,14 +5626,14 @@ mod tests {
 
     #[test]
     fn test_transfer_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.tax();
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
     }
 
     #[test]
     fn test_transfer_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0xff;
         cpu.tax();
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
@@ -5643,7 +5643,7 @@ mod tests {
 
     #[test]
     fn test_inc_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.inc_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_B);
@@ -5651,7 +5651,7 @@ mod tests {
 
     #[test]
     fn test_inc_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.register_x = 0x10;
         cpu.inc_zp_x(0x10);
@@ -5660,7 +5660,7 @@ mod tests {
 
     #[test]
     fn test_inc_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.inc_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
@@ -5668,7 +5668,7 @@ mod tests {
 
     #[test]
     fn test_inc_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_x = 0x10;
         cpu.inc_ab_x(0x1400);
@@ -5677,7 +5677,7 @@ mod tests {
 
     #[test]
     fn test_inx() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.inx();
         assert_eq!(cpu.register_x, 1);
         cpu.inx();
@@ -5686,7 +5686,7 @@ mod tests {
 
     #[test]
     fn test_iny() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.iny();
         assert_eq!(cpu.register_y, 1);
         cpu.iny();
@@ -5695,7 +5695,7 @@ mod tests {
 
     #[test]
     fn test_isb_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
@@ -5708,7 +5708,7 @@ mod tests {
 
     #[test]
     fn test_isb_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
@@ -5722,7 +5722,7 @@ mod tests {
 
     #[test]
     fn test_isb_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
@@ -5735,7 +5735,7 @@ mod tests {
 
     #[test]
     fn test_isb_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
@@ -5749,7 +5749,7 @@ mod tests {
 
     #[test]
     fn test_isb_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.set_status_flag(CARRY_FLAG);
         cpu.register_a = BYTE_B;
@@ -5763,7 +5763,7 @@ mod tests {
 
     #[test]
     fn test_isb_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.set_status_flag(CARRY_FLAG);
@@ -5778,7 +5778,7 @@ mod tests {
 
     #[test]
     fn test_isb_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.set_status_flag(CARRY_FLAG);
@@ -5793,7 +5793,7 @@ mod tests {
 
     #[test]
     fn test_increment_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xff;
         cpu.inx();
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
@@ -5801,7 +5801,7 @@ mod tests {
 
     #[test]
     fn test_increment_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xfe;
         cpu.inx();
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
@@ -5811,7 +5811,7 @@ mod tests {
 
     #[test]
     fn test_dec_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_B);
         cpu.dec_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
@@ -5819,7 +5819,7 @@ mod tests {
 
     #[test]
     fn test_dec_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_B);
         cpu.register_x = 0x10;
         cpu.dec_zp_x(0x10);
@@ -5828,7 +5828,7 @@ mod tests {
 
     #[test]
     fn test_dec_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_B);
         cpu.dec_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
@@ -5836,7 +5836,7 @@ mod tests {
 
     #[test]
     fn test_dec_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_x = 0x10;
         cpu.dec_ab_x(0x1400);
@@ -5845,7 +5845,7 @@ mod tests {
 
     #[test]
     fn test_dex() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 2;
         cpu.dex();
         assert_eq!(cpu.register_x, 1);
@@ -5855,7 +5855,7 @@ mod tests {
 
     #[test]
     fn test_dey() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = 2;
         cpu.dey();
         assert_eq!(cpu.register_y, 1);
@@ -5865,7 +5865,7 @@ mod tests {
 
     #[test]
     fn test_dcp_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.dcp_zp(0x10);
@@ -5876,7 +5876,7 @@ mod tests {
 
     #[test]
     fn test_dcp_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x20, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -5888,7 +5888,7 @@ mod tests {
 
     #[test]
     fn test_dcp_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.dcp_ab(0x1400);
@@ -5899,7 +5899,7 @@ mod tests {
 
     #[test]
     fn test_dcp_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -5911,7 +5911,7 @@ mod tests {
 
     #[test]
     fn test_dcp_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
@@ -5923,7 +5923,7 @@ mod tests {
 
     #[test]
     fn test_dcp_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_B);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5936,7 +5936,7 @@ mod tests {
 
     #[test]
     fn test_dcp_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_B);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -5949,7 +5949,7 @@ mod tests {
 
     #[test]
     fn test_decrement_zero() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 1;
         cpu.dex();
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
@@ -5957,7 +5957,7 @@ mod tests {
 
     #[test]
     fn test_decrement_negative() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xff;
         cpu.dex();
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
@@ -5967,7 +5967,7 @@ mod tests {
 
     #[test]
     fn test_cmp_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = BYTE_A;
         cpu.cmp_im(BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -5976,7 +5976,7 @@ mod tests {
 
     #[test]
     fn test_cmp_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.cmp_zp(0x10);
@@ -5986,7 +5986,7 @@ mod tests {
 
     #[test]
     fn test_cmp_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
@@ -5997,7 +5997,7 @@ mod tests {
 
     #[test]
     fn test_cmp_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.cmp_ab(0x1400);
@@ -6007,7 +6007,7 @@ mod tests {
 
     #[test]
     fn test_cmp_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
@@ -6018,7 +6018,7 @@ mod tests {
 
     #[test]
     fn test_cmp_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
@@ -6029,7 +6029,7 @@ mod tests {
 
     #[test]
     fn test_cmp_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -6041,7 +6041,7 @@ mod tests {
 
     #[test]
     fn test_cmp_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
         cpu.register_a = BYTE_A;
@@ -6053,7 +6053,7 @@ mod tests {
 
     #[test]
     fn test_cpx_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = BYTE_A;
         cpu.cpx_im(BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -6062,7 +6062,7 @@ mod tests {
 
     #[test]
     fn test_cpx_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_x = BYTE_A;
         cpu.cpx_zp(0x10);
@@ -6072,7 +6072,7 @@ mod tests {
 
     #[test]
     fn test_cpx_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_x = BYTE_A;
         cpu.cpx_ab(0x1400);
@@ -6082,7 +6082,7 @@ mod tests {
 
     #[test]
     fn test_cpy_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = BYTE_A;
         cpu.cpy_im(BYTE_A);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -6091,7 +6091,7 @@ mod tests {
 
     #[test]
     fn test_cpy_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_y = BYTE_A;
         cpu.cpy_zp(0x10);
@@ -6101,7 +6101,7 @@ mod tests {
 
     #[test]
     fn test_cpy_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_y = BYTE_A;
         cpu.cpy_ab(0x1400);
@@ -6111,7 +6111,7 @@ mod tests {
 
     #[test]
     fn test_compare_same() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x20);
         assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
@@ -6120,7 +6120,7 @@ mod tests {
 
     #[test]
     fn test_compare_greater() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x10);
         assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
@@ -6128,7 +6128,7 @@ mod tests {
 
     #[test]
     fn test_compare_lesser() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x30);
         assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
@@ -6138,14 +6138,14 @@ mod tests {
 
     #[test]
     fn test_jmp_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.jmp_ab(0x1400);
         assert_eq!(cpu.program_counter, 0x1400);
     }
 
     #[test]
     fn test_jmp_in() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x1400, 0x2000);
         cpu.jmp_in(0x1400);
         assert_eq!(cpu.program_counter, 0x2000);
@@ -6153,7 +6153,7 @@ mod tests {
 
     #[test]
     fn test_jsr() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x1234;
         cpu.jsr(0x2000);
         assert_eq!(cpu.program_counter, 0x2000);
@@ -6163,7 +6163,7 @@ mod tests {
 
     #[test]
     fn test_rts() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x1234;
         cpu.jsr(0x2000);
         cpu.rts();
@@ -6174,7 +6174,7 @@ mod tests {
 
     #[test]
     fn test_rti() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.status = 0b1011_1010;
         cpu.program_counter = 0x1234;
         cpu.push_addr(cpu.program_counter);
@@ -6189,7 +6189,7 @@ mod tests {
 
     #[test]
     fn test_beq() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(ZERO_FLAG);
         cpu.beq(0x10);
@@ -6198,7 +6198,7 @@ mod tests {
 
     #[test]
     fn test_bne() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.clear_status_flag(ZERO_FLAG);
         cpu.bne(0x10);
@@ -6207,7 +6207,7 @@ mod tests {
 
     #[test]
     fn test_bcs() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(CARRY_FLAG);
         cpu.bcs(0x10);
@@ -6216,7 +6216,7 @@ mod tests {
 
     #[test]
     fn test_bcc() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.clear_status_flag(CARRY_FLAG);
         cpu.bcc(0x10);
@@ -6225,7 +6225,7 @@ mod tests {
 
     #[test]
     fn test_bmi() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(NEGATIVE_FLAG);
         cpu.bmi(0x10);
@@ -6234,7 +6234,7 @@ mod tests {
 
     #[test]
     fn test_bpl() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.clear_status_flag(NEGATIVE_FLAG);
         cpu.bpl(0x10);
@@ -6243,7 +6243,7 @@ mod tests {
 
     #[test]
     fn test_bvs() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(OVERFLOW_FLAG);
         cpu.bvs(0x10);
@@ -6252,7 +6252,7 @@ mod tests {
 
     #[test]
     fn test_bvc() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.clear_status_flag(OVERFLOW_FLAG);
         cpu.bvc(0x10);
@@ -6261,7 +6261,7 @@ mod tests {
 
     #[test]
     fn test_branch_zero_offset() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(ZERO_FLAG);
         cpu.beq(0);
@@ -6270,7 +6270,7 @@ mod tests {
 
     #[test]
     fn test_branch_negative_offset() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0x80;
         cpu.set_status_flag(ZERO_FLAG);
         cpu.beq(-0x10);
@@ -6281,7 +6281,7 @@ mod tests {
 
     #[test]
     fn test_branch_cycles_when_no_branch() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0xc0;
         cpu.clear_status_flag(ZERO_FLAG);
         let cycles = cpu.beq(0x10);
@@ -6290,7 +6290,7 @@ mod tests {
 
     #[test]
     fn test_branch_cycles_when_branch() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0xc0;
         cpu.set_status_flag(ZERO_FLAG);
         let cycles = cpu.beq(0x10);
@@ -6299,7 +6299,7 @@ mod tests {
 
     #[test]
     fn test_branch_cycles_when_branch_page_cross() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.program_counter = 0xc0;
         cpu.set_status_flag(ZERO_FLAG);
         assert_eq!(cpu.beq(0x70), 4);
@@ -6307,80 +6307,80 @@ mod tests {
 
     #[test]
     fn test_operation_cycles_im() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         assert_eq!(cpu.adc_im(0x70), 2);
     }
 
     #[test]
     fn test_operation_cycles_zp() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         assert_eq!(cpu.adc_zp(0x70), 3);
     }
 
     #[test]
     fn test_operation_cycles_zp_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xc0;
         assert_eq!(cpu.adc_zp_x(0x70), 4);
     }
 
     #[test]
     fn test_operation_cycles_zp_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         assert_eq!(cpu.ldx_zp_y(0x70), 4);
     }
 
     #[test]
     fn test_operation_cycles_ab() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         assert_eq!(cpu.adc_ab(0x70), 4);
     }
 
     #[test]
     fn test_operation_cycles_ab_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0x10;
         assert_eq!(cpu.adc_ab_x(0x1470), 4);
     }
 
     #[test]
     fn test_operation_cycles_ab_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = 0x10;
         assert_eq!(cpu.adc_ab_y(0x1470), 4);
     }
 
     #[test]
     fn test_operation_cycles_ab_x_page_cross() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xc0;
         assert_eq!(cpu.adc_ab_x(0x1470), 5);
     }
 
     #[test]
     fn test_operation_cycles_ab_y_page_cross() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = 0xc0;
         assert_eq!(cpu.adc_ab_y(0x1470), 5);
     }
 
     #[test]
     fn test_operation_cycles_in_x() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_x = 0xc0;
         assert_eq!(cpu.adc_in_x(0x70), 6);
     }
 
     #[test]
     fn test_operation_cycles_in_y() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.register_y = 0xc0;
         assert_eq!(cpu.adc_in_y(0x70), 5);
     }
 
     #[test]
     fn test_operation_cycles_in_y_page_cross() {
-        let mut cpu = CPU::new();
+        let mut cpu = Cpu::new();
         cpu.memory.write_addr(0x70, 0x1470);
         cpu.register_y = 0xc0;
         assert_eq!(cpu.adc_in_y(0x70), 6);
