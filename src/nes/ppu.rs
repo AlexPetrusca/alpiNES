@@ -7,11 +7,12 @@ use crate::util::rom::Mirroring;
 use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
-use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
 use crate::nes::ppu::registers::ctrl::ControlRegister;
+use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
 use crate::nes::ppu::registers::mask::MaskRegister;
-use crate::nes::ppu::registers::stat::StatusFlag::VerticalBlank;
+use crate::nes::ppu::registers::mask::MaskFlag::ShowSprites;
 use crate::nes::ppu::registers::stat::StatusRegister;
+use crate::nes::ppu::registers::stat::StatusFlag::{SpriteZeroHit, VerticalBlank};
 
 pub struct PPU {
     pub addr: AddressRegister,
@@ -58,6 +59,9 @@ impl PPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles >= 341 {
+            // todo: condition x <= cycles is always true in is_sprite_0_hit()
+            self.stat.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
+
             self.cycles = self.cycles - 341;
             self.scanline += 1;
 
@@ -67,19 +71,28 @@ impl PPU {
 
             if self.scanline == 241 {
                 self.stat.set(VerticalBlank);
+                self.stat.clear(SpriteZeroHit);
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
                     self.set_nmi();
                 }
             }
 
-            if self.scanline >= 262 {
+            if self.scanline > 261 {
                 self.scanline = 0;
+                self.clear_nmi();
                 self.stat.clear(VerticalBlank);
+                self.stat.clear(SpriteZeroHit);
                 return Ok(true);
             }
         }
         Ok(false)
+    }
+
+    pub fn is_sprite_0_hit(&self, cycles: usize) -> bool {
+        let y = self.oam.read_byte(0) as u16;
+        let x = self.oam.read_byte(3) as usize;
+        return y == self.scanline && x <= cycles && self.mask.is_set(ShowSprites);
     }
 
     pub fn write_addr_register(&mut self, value: u8) {
@@ -140,7 +153,11 @@ impl PPU {
     }
 
     pub fn read_status_register(&mut self) -> u8 {
-        self.stat.get_value()
+        let status = self.stat.get_value();
+        // Reading the status register will clear bit 7 mentioned above
+        self.stat.clear(VerticalBlank);
+        // todo: and also the address latch used by PPUSCROLL and PPUADDR.
+        status
     }
 
     pub fn poll_nmi(&self) -> bool {
