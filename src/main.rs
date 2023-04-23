@@ -105,7 +105,7 @@ fn run_snake() {
             canvas.present();
         }
 
-        std::thread::sleep(Duration::new(0, 70_000));
+        sleep(Duration::new(0, 70_000));
     });
 }
 
@@ -214,5 +214,5 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/duck_hunt.nes");
+    run_game("rom/mapper0/super_mario_bros.nes");
 }

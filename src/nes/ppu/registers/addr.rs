@@ -1,6 +1,6 @@
 pub struct AddressRegister {
     value: (u8, u8),
-    hi_ptr: bool,
+    latch: bool,
 }
 
 impl AddressRegister {
@@ -9,12 +9,12 @@ impl AddressRegister {
     pub fn new() -> Self {
         AddressRegister {
             value: (0, 0), // high byte first, lo byte second
-            hi_ptr: true,
+            latch: true,
         }
     }
 
     pub fn write(&mut self, data: u8) {
-        if self.hi_ptr {
+        if self.latch {
             self.value.0 = data;
         } else {
             self.value.1 = data;
@@ -24,7 +24,7 @@ impl AddressRegister {
             // mirror down addr above 0x3fff
             self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
-        self.hi_ptr = !self.hi_ptr;
+        self.latch = !self.latch;
     }
 
     pub fn increment(&mut self, inc: u8) {
@@ -40,7 +40,7 @@ impl AddressRegister {
     }
 
     pub fn reset_latch(&mut self) {
-        self.hi_ptr = true;
+        self.latch = true;
     }
 
     pub fn get(&self) -> u16 {

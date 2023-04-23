@@ -7,19 +7,21 @@ use crate::util::rom::Mirroring;
 use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
+use crate::nes::ppu::registers::scroll::ScrollRegister;
 use crate::nes::ppu::registers::ctrl::ControlRegister;
 use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
 use crate::nes::ppu::registers::mask::MaskRegister;
 use crate::nes::ppu::registers::mask::MaskFlag::ShowSprites;
-use crate::nes::ppu::registers::stat::StatusRegister;
-use crate::nes::ppu::registers::stat::StatusFlag::{SpriteZeroHit, VerticalBlank};
+use crate::nes::ppu::registers::status::StatusRegister;
+use crate::nes::ppu::registers::status::StatusFlag::{SpriteZeroHit, VerticalBlank};
 
 pub struct PPU {
     pub addr: AddressRegister,
     pub data: u8, // todo: Use DataRegister instead?
     pub ctrl: ControlRegister,
-    pub stat: StatusRegister,
+    pub status: StatusRegister,
     pub mask: MaskRegister,
+    pub scroll: ScrollRegister,
     pub oam_addr: u8, // todo: Use OAMAddrRegister instead?
     pub oam_data: u8, // todo: Use OAMDataRegister instead?
 
@@ -38,8 +40,9 @@ impl PPU {
             addr: AddressRegister::new(),
             data: 0,
             ctrl: ControlRegister::new(),
-            stat: StatusRegister::new(),
+            status: StatusRegister::new(),
             mask: MaskRegister::new(),
+            scroll: ScrollRegister::new(),
             oam_addr: 0,
             oam_data: 0,
 
@@ -60,7 +63,7 @@ impl PPU {
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles >= 341 {
             // todo: condition x <= cycles is always true in is_sprite_0_hit()
-            self.stat.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
+            self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
 
             self.cycles = self.cycles - 341;
             self.scanline += 1;
@@ -70,8 +73,8 @@ impl PPU {
             }
 
             if self.scanline == 241 {
-                self.stat.set(VerticalBlank);
-                self.stat.clear(SpriteZeroHit);
+                self.status.set(VerticalBlank);
+                self.status.clear(SpriteZeroHit);
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
                     self.set_nmi();
@@ -81,8 +84,8 @@ impl PPU {
             if self.scanline > 261 {
                 self.scanline = 0;
                 self.clear_nmi();
-                self.stat.clear(VerticalBlank);
-                self.stat.clear(SpriteZeroHit);
+                self.status.clear(VerticalBlank);
+                self.status.clear(SpriteZeroHit);
                 return Ok(true);
             }
         }
@@ -93,6 +96,10 @@ impl PPU {
         let y = self.oam.read_byte(0) as u16;
         let x = self.oam.read_byte(3) as usize;
         return y == self.scanline && x <= cycles && self.mask.is_set(ShowSprites);
+    }
+
+    pub fn write_scroll_register(&mut self, value: u8) {
+        self.scroll.write(value);
     }
 
     pub fn write_addr_register(&mut self, value: u8) {
@@ -143,7 +150,7 @@ impl PPU {
         //  2. "Generate NMI" bit in the control Register is updated from 0 to 1.
         let before_nmi_status = self.ctrl.is_set(GenerateNmi);
         self.ctrl.set_value(value);
-        if !before_nmi_status && self.ctrl.is_set(GenerateNmi) && self.stat.is_set(VerticalBlank) {
+        if !before_nmi_status && self.ctrl.is_set(GenerateNmi) && self.status.is_set(VerticalBlank) {
             self.set_nmi();
         }
     }
@@ -153,9 +160,9 @@ impl PPU {
     }
 
     pub fn read_status_register(&mut self) -> u8 {
-        let status = self.stat.get_value();
+        let status = self.status.get_value();
         // Reading the status register will clear bit 7 mentioned above
-        self.stat.clear(VerticalBlank);
+        self.status.clear(VerticalBlank);
         // todo: and also the address latch used by PPUSCROLL and PPUADDR.
         status
     }

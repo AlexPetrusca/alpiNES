@@ -139,6 +139,7 @@ impl Memory {
                         self.ppu.write_oam_data_register(data);
                     },
                     Memory::PPU_SCROLL_REGISTER => {
+                        self.ppu.write_scroll_register(data);
                     },
                     _ => {
                         panic!("Attempt to write to unmapped PPU address memory: 0x{:0>4X}", mirror_addr);

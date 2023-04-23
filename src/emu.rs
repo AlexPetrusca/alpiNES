@@ -8,7 +8,7 @@ use sdl2::render::{Canvas, Texture, WindowCanvas};
 use sdl2::{EventPump, Sdl};
 use sdl2::video::Window;
 use crate::nes::NES;
-use crate::util::rom::ROM;
+use crate::util::rom::{Mirroring, ROM};
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;
@@ -16,6 +16,7 @@ use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::io::frame::Frame;
 use crate::nes::io::joycon::Joycon;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
+use crate::nes::io::viewport::ViewPort;
 
 pub struct Emulator {
     pub nes: NES,
@@ -144,10 +145,44 @@ impl Emulator {
         }
     }
 
+    // todo: rewrite
     fn render(ppu: &PPU, frame: &mut Frame) {
         frame.clear();
         Emulator::render_sprites(ppu, frame);
-        Emulator::render_background(ppu, frame);
+        // Emulator::render_background(ppu, frame);
+
+        let scroll_x = (ppu.scroll.get_scroll_x()) as usize;
+        let scroll_y = (ppu.scroll.get_scroll_y()) as usize;
+
+        let (main_nametable, second_nametable) = match (&ppu.memory.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (&ppu.memory.memory[0x2000..0x2400], &ppu.memory.memory[0x2400..0x2800])
+            }
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                ( &ppu.memory.memory[0x2400..0x2800], &ppu.memory.memory[0x2000..0x2400])
+            }
+            (_,_) => {
+                panic!("Not supported mirroring type {:?}", ppu.memory.screen_mirroring);
+            }
+        };
+
+        Emulator::render_name_table(ppu, frame, main_nametable,
+                          ViewPort::new(scroll_x, scroll_y, 256, 240),
+                          -(scroll_x as isize), -(scroll_y as isize)
+        );
+        if scroll_x > 0 {
+            Emulator::render_name_table(ppu, frame, second_nametable,
+                              ViewPort::new(0, 0, scroll_x, 240),
+                              (256 - scroll_x) as isize, 0
+            );
+        } else if scroll_y > 0 {
+            Emulator::render_name_table(ppu, frame, second_nametable,
+                              ViewPort::new(0, 0, 256, scroll_y),
+                              0, (240 - scroll_y) as isize
+            );
+        }
     }
 
     fn render_background(ppu: &PPU, frame: &mut Frame) {
@@ -220,6 +255,47 @@ impl Emulator {
                         (true, false) => frame.set_pixel(tile_x + 7 - x, tile_y + y + 1, rgb),
                         (false, true) => frame.set_pixel(tile_x + x, tile_y + 8 - y, rgb),
                         (true, true) => frame.set_pixel(tile_x + 7 - x, tile_y + 8 - y, rgb),
+                    }
+                }
+            }
+        }
+    }
+
+    // todo: rewrite
+    fn render_name_table(ppu: &PPU, frame: &mut Frame, name_table: &[u8],
+                         view_port: ViewPort, shift_x: isize, shift_y: isize) {
+        let bank = ppu.ctrl.get_background_chrtable_address();
+
+        let attribute_table = &name_table[0x3c0..0x400];
+
+        for i in 0..0x3c0 {
+            let tile_x = i % 32;
+            let tile_y = i / 32;
+            let tile_idx = name_table[i] as u16;
+            let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
+            let palette = Emulator::bg_palette(ppu, tile_x, tile_y);
+
+            for y in 0..=7 {
+                let mut upper = tile[y];
+                let mut lower = tile[y + 8];
+
+                for x in (0..=7).rev() {
+                    let value = (1 & lower) << 1 | (1 & upper);
+                    upper = upper >> 1;
+                    lower = lower >> 1;
+                    let rgb = match value {
+                        0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+                        1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+                        2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+                        3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+                        _ => panic!("can't be"),
+                    };
+                    let pixel_x = 8 * tile_x as usize + x;
+                    let pixel_y = 8 * tile_y as usize + y;
+                    if pixel_x >= view_port.x1 && pixel_x < view_port.x2 && pixel_y >= view_port.y1 && pixel_y < view_port.y2 {
+                        if !(value == 0 && frame.is_pixel_set((shift_x + pixel_x as isize) as usize, (shift_y + pixel_y as isize) as usize)) {
+                            frame.set_pixel((shift_x + pixel_x as isize) as usize, (shift_y + pixel_y as isize) as usize, rgb);
+                        }
                     }
                 }
             }
