@@ -11,7 +11,8 @@ pub struct PPUMemory {
 }
 
 impl PPUMemory {
-    const MEM_SIZE: usize = 0x4000 as usize; // 16kB
+    pub const MEM_SIZE: usize = 0x4000 as usize; // 16kB
+    pub const NAMETABLE_SIZE: u16 = 0x03c0;
 
     pub const CHR_ROM_START: u16 = *chr_rom_range!().start();
     pub const VRAM_START: u16 = *vram_range!().start();

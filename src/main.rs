@@ -160,7 +160,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
     }
 }
 
-fn run_chrdump() {
+fn run_chrdump(filepath: &str) {
     const SCALE: f32 = 3.0;
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -173,9 +173,8 @@ fn run_chrdump() {
     let creator = canvas.texture_creator();
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
 
-    let cartridge_path = "rom/nestest.nes";
     let mut emulator = Emulator::new();
-    let rom = ROM::from_filepath(cartridge_path).unwrap();
+    let rom = ROM::from_filepath(filepath).unwrap();
     emulator.load_rom(&rom);
 
     let mut tile_frame = Frame::new();
@@ -205,15 +204,15 @@ fn run_chrdump() {
 
 // pacman - run pacman for the nes
 
-fn run_pacman() {
+fn run_game(filepath: &str) {
     let mut emu = Emulator::new();
-    let rom = ROM::from_filepath("rom/pacman.nes").unwrap();
+    let rom = ROM::from_filepath(filepath).unwrap();
     emu.run_rom(&rom);
 }
 
 fn main() {
     // run_snake();
     // run_nestest();
-    // run_chrdump();
-    run_pacman();
+    // run_chrdump("rom/mapper0/duck_hunt.nes");
+    run_game("rom/mapper0/duck_hunt.nes");
 }

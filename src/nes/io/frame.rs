@@ -12,6 +12,22 @@ impl Frame {
         }
     }
 
+    pub fn clear(&mut self) {
+        for i in 0..self.data.len() {
+            self.data[i] = 0;
+        }
+    }
+
+    pub fn is_pixel_set(&self, x: usize, y: usize) -> bool {
+        let base = 3 * y * Frame::WIDTH + 3 * x;
+        return self.data[base] != 0 || self.data[base + 1] != 0 || self.data[base + 2] != 0
+    }
+
+    pub fn get_pixel(&self, x: usize, y: usize) -> (u8, u8, u8) {
+        let base = 3 * y * Frame::WIDTH + 3 * x;
+        (self.data[base], self.data[base + 1], self.data[base + 2])
+    }
+
     pub fn set_pixel(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
         let base = 3 * y * Frame::WIDTH + 3 * x;
         if base + 2 < self.data.len() {

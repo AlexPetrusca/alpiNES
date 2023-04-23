@@ -3,7 +3,7 @@ pub struct OAM {
 }
 
 impl OAM {
-    const MEM_SIZE: usize = 0x100 as usize; // 256 bytes
+    pub const MEM_SIZE: usize = 0x100 as usize; // 256 bytes
 
     pub fn new() -> Self {
         OAM {
@@ -29,16 +29,6 @@ impl OAM {
     #[inline]
     pub fn write_byte(&mut self, addr: u8, data: u8) {
         self.memory[addr as usize] = data;
-    }
-
-    #[inline]
-    pub fn oam_read_byte(&self, address: u8) -> u8 {
-        todo!();
-    }
-
-    #[inline]
-    pub fn oam_write_byte(&mut self, address: u8, data: u8) {
-        todo!();
     }
 }
 

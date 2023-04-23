@@ -18,7 +18,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    const MEM_SIZE: usize = 0x10000 as usize; // 64kB
+    pub const MEM_SIZE: usize = 0x10000 as usize; // 64kB
 
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
     pub const PPU_CTRL_REGISTER: u16 = 0x2000;
