@@ -37,18 +37,6 @@ impl PPUMemory {
     }
 
     #[inline]
-    pub fn mirror_vram_addr(&self, addr: u16) -> u16 {
-        let mirrored_addr = addr & 0b0010_1111_1111_1111; // mirror down 0x3000-0x3eff to 0x2000 - 0x2eff
-        let name_table = (mirrored_addr - 0x2000) / 0x400; // to the name table index
-        match (&self.screen_mirroring, name_table) {
-            (Mirroring::Vertical, 2) | (Mirroring::Vertical, 3) => mirrored_addr - 0x800,
-            (Mirroring::Horizontal, 1) | (Mirroring::Horizontal, 2) => mirrored_addr - 0x400,
-            (Mirroring::Horizontal, 3) => mirrored_addr - 0x800,
-            _ => mirrored_addr,
-        }
-    }
-
-    #[inline]
     pub fn read_byte(&self, address: u16) -> u8 {
         let ppu_addr = address % PPUMemory::MEM_SIZE as u16;
         match ppu_addr {
@@ -60,7 +48,7 @@ impl PPUMemory {
                 self.memory[mirror_addr as usize]
             },
             palletes_range!() => {
-                let mirror_addr = ppu_addr & 0b0011_1111_0001_1111;
+                let mirror_addr = PPUMemory::mirror_palette_addr(ppu_addr);
                 self.memory[mirror_addr as usize]
             },
             _ => {
@@ -68,6 +56,7 @@ impl PPUMemory {
             }
         }
     }
+
 
     #[inline]
     pub fn write_byte(&mut self, address: u16, data: u8) {
@@ -81,12 +70,36 @@ impl PPUMemory {
                 self.memory[mirror_addr as usize] = data;
             },
             palletes_range!() => {
-                let mirror_addr = ppu_addr & 0b0011_1111_0001_1111;
+                let mirror_addr = PPUMemory::mirror_palette_addr(ppu_addr);
                 self.memory[mirror_addr as usize] = data;
             },
             _ => {
                 panic!("Attempt to write to unmapped PPU memory: 0x{:0>4X}", ppu_addr);
             }
+        }
+    }
+
+    #[inline]
+    fn mirror_vram_addr(&self, addr: u16) -> u16 {
+        let mirrored_addr = addr & 0b0010_1111_1111_1111; // mirror down 0x3000-0x3eff to 0x2000 - 0x2eff
+        let name_table = (mirrored_addr - 0x2000) / 0x400; // to the name table index
+        match (&self.screen_mirroring, name_table) {
+            (Mirroring::Vertical, 2) | (Mirroring::Vertical, 3) => mirrored_addr - 0x800,
+            (Mirroring::Horizontal, 1) | (Mirroring::Horizontal, 2) => mirrored_addr - 0x400,
+            (Mirroring::Horizontal, 3) => mirrored_addr - 0x800,
+            _ => mirrored_addr,
+        }
+    }
+
+    #[inline]
+    fn mirror_palette_addr(ppu_addr: u16) -> u16 {
+        let mirror_addr = ppu_addr & 0b0011_1111_0001_1111;
+        match mirror_addr {
+            0x3F10 => 0x3F00,
+            0x3F14 => 0x3F04,
+            0x3F18 => 0x3F08,
+            0x3F1C => 0x3F0C,
+            _ => mirror_addr
         }
     }
 }
