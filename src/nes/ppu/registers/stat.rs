@@ -61,7 +61,7 @@ impl StatusRegister {
         StatusRegister { value: 0 }
     }
 
-    pub fn from(value :u8) -> Self {
+    pub fn from(value: u8) -> Self {
         StatusRegister { value }
     }
 

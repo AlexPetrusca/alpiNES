@@ -1,4 +1,5 @@
 use crate::nes::cpu::CPU;
+use crate::nes::io::joycon::Joycon;
 use crate::util::rom::ROM;
 use crate::nes::ppu::PPU;
 
@@ -11,6 +12,8 @@ macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
     pub ppu: PPU,
+    pub joycon1: Joycon,
+    pub joycon2: Joycon,
     pub prg_mirror_enabled: bool,
 }
 
@@ -37,6 +40,8 @@ impl Memory {
         Memory {
             memory: [0; Memory::MEM_SIZE],
             ppu: PPU::new(),
+            joycon1: Joycon::new(),
+            joycon2: Joycon::new(),
             prg_mirror_enabled: false,
         }
     }
@@ -87,10 +92,10 @@ impl Memory {
                 }
             }
             Memory::JOYCON_ONE_REGISTER => {
-                0
+                self.joycon1.read()
             },
             Memory::JOYCON_TWO_REGISTER => {
-                0
+                self.joycon2.read()
             },
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
@@ -115,9 +120,6 @@ impl Memory {
             ppu_registers_range!() => {
                 let mirror_addr = address & 0b0010_0000_0000_0111;
                 match mirror_addr {
-                    // 0x => {
-                    //     panic!("Attempt to write to read-only PPU address {:x}", mirror_addr);
-                    // },
                     Memory::PPU_CTRL_REGISTER => {
                         self.ppu.write_ctrl_register(data);
                     },
@@ -153,13 +155,11 @@ impl Memory {
                 // todo: this op takes between 513 - 514 CPU cycles to execute
             },
             Memory::JOYCON_ONE_REGISTER => {
-
+                self.joycon1.write(data);
+                self.joycon2.write(data);
             },
-            Memory::JOYCON_TWO_REGISTER => {
-
-            },
-            0x4015 => {
-                // todo: implement
+            0x4000..=0x401F => {
+                // todo: implement APU
             }
             prg_rom_range!() => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)

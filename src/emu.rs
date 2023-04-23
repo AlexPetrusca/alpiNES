@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use sdl2::event::Event;
@@ -13,6 +14,8 @@ use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;
 use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::io::frame::Frame;
+use crate::nes::io::joycon::Joycon;
+use crate::nes::io::joycon::joycon_status::JoyconButton;
 
 pub struct Emulator {
     pub nes: NES,
@@ -65,20 +68,60 @@ impl Emulator {
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
 
-                for event in event_pump.poll_iter() {
-                    match event {
-                        Event::Quit { .. } |
-                        Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                            std::process::exit(0)
-                        },
-                        _ => { }
-                    }
-                }
+                Emulator::handle_input(&mut self.nes.cpu.memory.joycon1, &mut self.nes.cpu.memory.joycon2, &mut event_pump);
 
                 self.sleep_frame();
             }
 
             let Ok(_) = self.nes.step() else { return };
+        }
+    }
+
+    fn handle_input(joycon1: &mut Joycon, joycon2: &mut Joycon, event_pump: &mut EventPump) {
+        let mut keymap_one = HashMap::new();
+        keymap_one.insert(Keycode::Down, JoyconButton::Down);
+        keymap_one.insert(Keycode::Up, JoyconButton::Up);
+        keymap_one.insert(Keycode::Right, JoyconButton::Right);
+        keymap_one.insert(Keycode::Left, JoyconButton::Left);
+        keymap_one.insert(Keycode::Space, JoyconButton::Select);
+        keymap_one.insert(Keycode::Return, JoyconButton::Start);
+        keymap_one.insert(Keycode::Z, JoyconButton::A);
+        keymap_one.insert(Keycode::X, JoyconButton::B);
+
+        let mut keymap_two = HashMap::new();
+        keymap_two.insert(Keycode::Semicolon, JoyconButton::Down);
+        keymap_two.insert(Keycode::P, JoyconButton::Up);
+        keymap_two.insert(Keycode::Quote, JoyconButton::Right);
+        keymap_two.insert(Keycode::L, JoyconButton::Left);
+        keymap_two.insert(Keycode::Minus, JoyconButton::Select);
+        keymap_two.insert(Keycode::Plus, JoyconButton::Start);
+        keymap_two.insert(Keycode::A, JoyconButton::A);
+        keymap_two.insert(Keycode::S, JoyconButton::B);
+
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. } |
+                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    std::process::exit(0)
+                },
+                Event::KeyDown { keycode, .. } => {
+                    if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joycon1.set_button((*key).clone());
+                    }
+                    if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joycon2.set_button((*key).clone());
+                    }
+                }
+                Event::KeyUp { keycode, .. } => {
+                    if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joycon1.clear_button((*key).clone());
+                    }
+                    if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joycon2.clear_button((*key).clone());
+                    }
+                }
+                _ => {}
+            }
         }
     }
 
