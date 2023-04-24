@@ -11,8 +11,8 @@ pub struct PPUMemory {
 }
 
 impl PPUMemory {
-    pub const MEM_SIZE: usize = 0x4000 as usize; // 16kB
-    pub const NAMETABLE_SIZE: u16 = 0x03c0;
+    pub const MEM_SIZE: usize = 0x4000; // 16kB
+    pub const NAMETABLE_SIZE: usize = 0x03c0;
 
     pub const CHR_ROM_START: u16 = *chr_rom_range!().start();
     pub const VRAM_START: u16 = *vram_range!().start();
@@ -81,8 +81,8 @@ impl PPUMemory {
 
     #[inline]
     fn mirror_vram_addr(&self, addr: u16) -> u16 {
-        let mirrored_addr = addr & 0b0010_1111_1111_1111; // mirror down 0x3000-0x3eff to 0x2000 - 0x2eff
-        let name_table = (mirrored_addr - 0x2000) / 0x400; // to the name table index
+        let mirrored_addr = addr & 0b0010_1111_1111_1111; // mirror down 0x3000-0x3eff to 0x2000-0x2eff
+        let name_table = (mirrored_addr - PPUMemory::VRAM_START) / 0x400; // to the name table index
         match (&self.screen_mirroring, name_table) {
             (Mirroring::Vertical, 2) | (Mirroring::Vertical, 3) => mirrored_addr - 0x800,
             (Mirroring::Horizontal, 1) | (Mirroring::Horizontal, 2) => mirrored_addr - 0x400,

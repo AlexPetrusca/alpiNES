@@ -1,6 +1,6 @@
 pub mod mem;
-mod oam;
-mod registers;
+pub mod oam;
+pub mod registers;
 
 use crate::util::bitvec::BitVector;
 use crate::util::rom::Mirroring;

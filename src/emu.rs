@@ -16,7 +16,9 @@ use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::io::frame::Frame;
 use crate::nes::io::joycon::Joycon;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
-use crate::nes::io::viewport::ViewPort;
+use crate::nes::io::viewport::Viewport;
+use crate::nes::ppu::registers::mask::MaskFlag;
+use crate::util::bitvec::BitVector;
 
 pub struct Emulator {
     pub nes: NES,
@@ -62,13 +64,12 @@ impl Emulator {
                 self.nes.cpu.handle_nmi();
                 self.nes.cpu.memory.ppu.clear_nmi();
 
-                Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
+                self.handle_input(&mut event_pump);
 
+                Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
                 texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
-
-                Emulator::handle_input(&mut self.nes.cpu.memory.joycon1, &mut self.nes.cpu.memory.joycon2, &mut event_pump);
 
                 self.sleep_frame();
             }
@@ -77,7 +78,7 @@ impl Emulator {
         }
     }
 
-    fn handle_input(joycon1: &mut Joycon, joycon2: &mut Joycon, event_pump: &mut EventPump) {
+    fn handle_input(&mut self, event_pump: &mut EventPump) {
         let mut keymap_one = HashMap::new();
         keymap_one.insert(Keycode::Down, JoyconButton::Down);
         keymap_one.insert(Keycode::Up, JoyconButton::Up);
@@ -98,11 +99,20 @@ impl Emulator {
         keymap_two.insert(Keycode::A, JoyconButton::A);
         keymap_two.insert(Keycode::S, JoyconButton::B);
 
+        let joycon1 = &mut self.nes.cpu.memory.joycon1;
+        let joycon2 = &mut self.nes.cpu.memory.joycon2;
+        let ppu = &mut self.nes.cpu.memory.ppu;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     std::process::exit(0)
+                },
+                Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
+                    ppu.mask.update(MaskFlag::ShowBackground, !ppu.mask.is_set(MaskFlag::ShowBackground))
+                },
+                Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
+                    ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
                 },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
@@ -145,16 +155,21 @@ impl Emulator {
         }
     }
 
-    // todo: rewrite
     fn render(ppu: &PPU, frame: &mut Frame) {
         frame.clear();
-        Emulator::render_sprites(ppu, frame);
-        // Emulator::render_background(ppu, frame);
+        Emulator::render_sprites(ppu, frame, false);
+        Emulator::render_background(ppu, frame);
+        Emulator::render_sprites(ppu, frame, true);
+    }
 
-        let scroll_x = (ppu.scroll.get_scroll_x()) as usize;
-        let scroll_y = (ppu.scroll.get_scroll_y()) as usize;
+    // todo: rewrite
+    fn render_background(ppu: &PPU, frame: &mut Frame) {
+        if ppu.mask.is_clear(MaskFlag::ShowBackground) { return }
 
-        let (main_nametable, second_nametable) = match (&ppu.memory.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
+        let scroll_x = ppu.scroll.get_scroll_x() as usize;
+        let scroll_y = ppu.scroll.get_scroll_y() as usize;
+
+        let (nametable1, nametable2) = match (&ppu.memory.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
             (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
             (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
                 (&ppu.memory.memory[0x2000..0x2400], &ppu.memory.memory[0x2400..0x2800])
@@ -168,63 +183,65 @@ impl Emulator {
             }
         };
 
-        Emulator::render_name_table(ppu, frame, main_nametable,
-                          ViewPort::new(scroll_x, scroll_y, 256, 240),
-                          -(scroll_x as isize), -(scroll_y as isize)
+        Emulator::render_name_table(ppu, frame, nametable1,
+            Viewport::new(scroll_x, scroll_y, 256, 240),
+            -(scroll_x as isize), -(scroll_y as isize)
         );
         if scroll_x > 0 {
-            Emulator::render_name_table(ppu, frame, second_nametable,
-                              ViewPort::new(0, 0, scroll_x, 240),
-                              (256 - scroll_x) as isize, 0
+            Emulator::render_name_table(ppu, frame, nametable2,
+                Viewport::new(0, 0, scroll_x, 240),
+                (256 - scroll_x) as isize, 0
             );
         } else if scroll_y > 0 {
-            Emulator::render_name_table(ppu, frame, second_nametable,
-                              ViewPort::new(0, 0, 256, scroll_y),
-                              0, (240 - scroll_y) as isize
+            Emulator::render_name_table(ppu, frame, nametable2,
+                Viewport::new(0, 0, 256, scroll_y),
+                0, (240 - scroll_y) as isize
             );
         }
+
+        // let bank = ppu.ctrl.get_background_chrtable_address();
+        // let nametable = ppu.ctrl.get_base_nametable_address();
+        //
+        // for i in 0..PPUMemory::NAMETABLE_SIZE { // just for now, lets use the first nametable
+        //     let tile = ppu.memory.read_byte(nametable + i) as u16;
+        //     let tile_x = i % 32;
+        //     let tile_y = i / 32;
+        //     let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
+        //     let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
+        //
+        //     for y in 0..8 {
+        //         let mut lower = tile[y as usize];
+        //         let mut upper = tile[y as usize + 8];
+        //
+        //         for x in (0..8).rev() {
+        //             let value = (1 & upper) << 1 | (1 & lower);
+        //             lower = lower >> 1;
+        //             upper = upper >> 1;
+        //             let rgb = match value {
+        //                 0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+        //                 1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+        //                 2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+        //                 3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+        //                 _ => panic!("can't be"),
+        //             };
+        //             let pixel_x = 8 * tile_x as usize + x;
+        //             let pixel_y = 8 * tile_y as usize + y;
+        //             if !(value == 0 && frame.is_pixel_set(pixel_x, pixel_y)) {
+        //                 frame.set_pixel(pixel_x, pixel_y, rgb)
+        //             }
+        //         }
+        //     }
+        // }
     }
 
-    fn render_background(ppu: &PPU, frame: &mut Frame) {
-        let bank = ppu.ctrl.get_background_chrtable_address();
-        let nametable = ppu.ctrl.get_base_nametable_address();
+    fn render_sprites(ppu: &PPU, frame: &mut Frame, foreground: bool) {
+        if ppu.mask.is_clear(MaskFlag::ShowSprites) { return }
 
-        for i in 0..PPUMemory::NAMETABLE_SIZE { // just for now, lets use the first nametable
-            let tile = ppu.memory.read_byte(nametable + i) as u16;
-            let tile_x = i % 32;
-            let tile_y = i / 32;
-            let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
-            let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
-
-            for y in 0..8 {
-                let mut lower = tile[y as usize];
-                let mut upper = tile[y as usize + 8];
-
-                for x in (0..8).rev() {
-                    let value = (1 & upper) << 1 | (1 & lower);
-                    lower = lower >> 1;
-                    upper = upper >> 1;
-                    let rgb = match value {
-                        0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-                        1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-                        2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-                        3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-                        _ => panic!("can't be"),
-                    };
-                    let pixel_x = 8 * tile_x as usize + x;
-                    let pixel_y = 8 * tile_y as usize + y;
-                    if !(value == 0 && frame.is_pixel_set(pixel_x, pixel_y)) {
-                        frame.set_pixel(pixel_x, pixel_y, rgb)
-                    }
-                }
-            }
-        }
-    }
-
-    fn render_sprites(ppu: &PPU, frame: &mut Frame) {
         let bank = ppu.ctrl.get_sprite_chrtable_address();
-
         for i in (0..ppu.oam.memory.len()).step_by(4).rev() {
+            let priority = ppu.oam.memory[i + 2] >> 5 & 1 == 1;
+            if priority == foreground { continue }
+
             let tile_idx = ppu.oam.memory[i + 1] as u16;
             let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
             let tile_x = ppu.oam.memory[i + 3] as usize;
@@ -232,7 +249,6 @@ impl Emulator {
 
             let flip_vertical = ppu.oam.memory[i + 2] >> 7 & 1 == 1;
             let flip_horizontal = ppu.oam.memory[i + 2] >> 6 & 1 == 1;
-            let priority = ppu.oam.memory[i + 2] >> 5 & 1 == 1;
             let palette_idx = ppu.oam.memory[i + 2] & 0b0000_0011;
             let sprite_palette = Emulator::sprite_palette(ppu, palette_idx);
 
@@ -262,24 +278,22 @@ impl Emulator {
     }
 
     // todo: rewrite
-    fn render_name_table(ppu: &PPU, frame: &mut Frame, name_table: &[u8],
-                         view_port: ViewPort, shift_x: isize, shift_y: isize) {
+    fn render_name_table(ppu: &PPU, frame: &mut Frame, nametable: &[u8],
+            viewport: Viewport, shift_x: isize, shift_y: isize) {
         let bank = ppu.ctrl.get_background_chrtable_address();
-
-        let attribute_table = &name_table[0x3c0..0x400];
 
         for i in 0..0x3c0 {
             let tile_x = i % 32;
             let tile_y = i / 32;
-            let tile_idx = name_table[i] as u16;
+            let tile_idx = nametable[i] as u16;
             let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
-            let palette = Emulator::bg_palette(ppu, tile_x, tile_y);
+            let palette = Emulator::bg_palette(ppu, nametable, tile_x, tile_y);
 
-            for y in 0..=7 {
+            for y in 0..8 {
                 let mut upper = tile[y];
                 let mut lower = tile[y + 8];
 
-                for x in (0..=7).rev() {
+                for x in (0..8).rev() {
                     let value = (1 & lower) << 1 | (1 & upper);
                     upper = upper >> 1;
                     lower = lower >> 1;
@@ -292,9 +306,11 @@ impl Emulator {
                     };
                     let pixel_x = 8 * tile_x as usize + x;
                     let pixel_y = 8 * tile_y as usize + y;
-                    if pixel_x >= view_port.x1 && pixel_x < view_port.x2 && pixel_y >= view_port.y1 && pixel_y < view_port.y2 {
-                        if !(value == 0 && frame.is_pixel_set((shift_x + pixel_x as isize) as usize, (shift_y + pixel_y as isize) as usize)) {
-                            frame.set_pixel((shift_x + pixel_x as isize) as usize, (shift_y + pixel_y as isize) as usize, rgb);
+                    if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
+                        let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
+                        let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
+                        if !(value == 0 && frame.is_pixel_set(scroll_pixel_x, scroll_pixel_y)) {
+                            frame.set_pixel(scroll_pixel_x, scroll_pixel_y, rgb);
                         }
                     }
                 }
@@ -302,11 +318,9 @@ impl Emulator {
         }
     }
 
-    fn bg_palette(ppu: &PPU, tile_x: usize, tile_y: usize) -> [u8; 4] {
+    fn bg_palette(ppu: &PPU, nametable: &[u8], tile_x: usize, tile_y: usize) -> [u8; 4] {
         let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
-        let nametable = ppu.ctrl.get_base_nametable_address();
-        let attr_byte = ppu.memory.read_byte(nametable + PPUMemory::NAMETABLE_SIZE + attr_table_idx as u16);
-
+        let attr_byte = nametable[PPUMemory::NAMETABLE_SIZE + attr_table_idx];
         let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
             (0, 0) => attr_byte & 0b0000_0011,
             (1, 0) => (attr_byte >> 2) & 0b0000_0011,
@@ -314,7 +328,6 @@ impl Emulator {
             (1, 1) => (attr_byte >> 6) & 0b0000_0011,
             (_, _) => panic!("can't be"),
         };
-
         let pallete_idx = 4 * pallete as u16;
         [
             ppu.memory.read_byte(PPUMemory::PALLETES_START),
