@@ -6,7 +6,8 @@ use crate::nes::ppu::PPU;
 // CPU memory map
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
 macro_rules! ppu_registers_range {() => {0x2000..=0x3FFF}}
-macro_rules! apu_registers_range {() => {0x4000..=0x4017}}
+macro_rules! apu_io_registers_range {() => {0x4000..=0x401F}}
+macro_rules! prg_ram_range {() => {0x4020..=0x7FFF}}
 macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
@@ -74,8 +75,10 @@ impl Memory {
             ppu_registers_range!() => {
                 let mirror_addr = address & 0b0010_0000_0000_0111;
                 match mirror_addr {
-                    0x2000 | 0x2001 | 0x2003 | 0x2005 | 0x2006 | 0x4014 => {
-                        panic!("Attempt to read from write-only PPU address {:x}", mirror_addr);
+                    Memory::PPU_CTRL_REGISTER | Memory::PPU_MASK_REGISTER |
+                    Memory::PPU_OAM_ADDR_REGISTER | Memory::PPU_SCROLL_REGISTER |
+                    Memory::PPU_ADDR_REGISTER => {
+                        return 0 // todo: simulate ppu open bus here
                     },
                     Memory::PPU_STAT_REGISTER => {
                         self.ppu.read_status_register()
@@ -91,12 +94,22 @@ impl Memory {
                     }
                 }
             }
-            Memory::JOYCON_ONE_REGISTER => {
-                self.joycon1.read()
-            },
-            Memory::JOYCON_TWO_REGISTER => {
-                self.joycon2.read()
-            },
+            apu_io_registers_range!() => {
+                match address {
+                    Memory::JOYCON_ONE_REGISTER => {
+                        self.joycon1.read()
+                    },
+                    Memory::JOYCON_TWO_REGISTER => {
+                        self.joycon2.read()
+                    },
+                    _ => {
+                        panic!("Attempt to read from unmapped APU/IO address memory: 0x{:0>4X}", address);
+                    }
+                }
+            }
+            prg_ram_range!() => {
+                self.memory[address as usize]
+            }
             prg_rom_range!() => {
                 let mut offset = address - Memory::PRG_ROM_START;
                 if self.prg_mirror_enabled && address >= 0x4000 {
@@ -146,21 +159,31 @@ impl Memory {
                     }
                 }
             }
-            Memory::PPU_OAM_DMA_REGISTER => {
-                let read_addr = (data as u16) << 8;
-                let write_addr = self.ppu.oam_addr;
-                for i in 0..256 {
-                    let value = self.read_byte(read_addr.wrapping_add(i));
-                    self.ppu.oam.write_byte(write_addr.wrapping_add(i as u8), value);
+            apu_io_registers_range!() => {
+                match address {
+                    Memory::PPU_OAM_DMA_REGISTER => {
+                        let read_addr = (data as u16) << 8;
+                        let write_addr = self.ppu.oam_addr;
+                        for i in 0..256 {
+                            let value = self.read_byte(read_addr.wrapping_add(i));
+                            self.ppu.oam.write_byte(write_addr.wrapping_add(i as u8), value);
+                        }
+                        // todo: this op takes between 513 - 514 CPU cycles to execute
+                    },
+                    Memory::JOYCON_ONE_REGISTER => {
+                        self.joycon1.write(data);
+                        self.joycon2.write(data);
+                    },
+                    0x4000..=0x4017 => {
+                        // todo: implement APU
+                    }
+                    _ => {
+                        panic!("Attempt to write to unmapped APU/IO address memory: 0x{:0>4X}", address);
+                    }
                 }
-                // todo: this op takes between 513 - 514 CPU cycles to execute
-            },
-            Memory::JOYCON_ONE_REGISTER => {
-                self.joycon1.write(data);
-                self.joycon2.write(data);
-            },
-            0x4000..=0x401F => {
-                // todo: implement APU
+            }
+            prg_ram_range!() => {
+                self.memory[address as usize] = data;
             }
             prg_rom_range!() => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)

@@ -1,5 +1,6 @@
 pub mod cpu;
 pub mod ppu;
+pub mod apu;
 pub mod io;
 
 use crate::util::rom::ROM;

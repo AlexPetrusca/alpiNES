@@ -80,7 +80,7 @@ fn run_snake() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Snake Game", (32.0 * SCALE) as u32, (32.0 * SCALE) as u32)
+        .window("Snake", (32.0 * SCALE) as u32, (32.0 * SCALE) as u32)
         .position_centered()
         .build().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
@@ -165,7 +165,7 @@ fn run_chrdump(filepath: &str) {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Pac-Man", (SCALE * Frame::WIDTH as f32) as u32, (SCALE * Frame::HEIGHT as f32) as u32)
+        .window("alpiNES - CHR Dump", (SCALE * Frame::WIDTH as f32) as u32, (SCALE * Frame::HEIGHT as f32) as u32)
         .position_centered()
         .build().unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
@@ -214,5 +214,5 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/super_mario_bros.nes");
+    run_game("rom/mapper0/ice_climber.nes");
 }
