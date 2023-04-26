@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+use bitvec::ptr::BitPtrError::Null;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::{Canvas, Texture, WindowCanvas};
 use sdl2::{EventPump, Sdl};
+use sdl2::libc::{DLT_NULL, nanosleep};
+use sdl2::sys::timespec;
 use sdl2::video::Window;
 use crate::nes::NES;
 use crate::util::rom::{Mirroring, ROM};
@@ -19,25 +22,28 @@ use crate::nes::io::joycon::joycon_status::JoyconButton;
 use crate::nes::io::viewport::Viewport;
 use crate::nes::ppu::registers::mask::MaskFlag;
 use crate::util::bitvec::BitVector;
+use crate::util::sleep::PreciseSleeper;
 
 pub struct Emulator {
     pub nes: NES,
+    pub sleeper: PreciseSleeper,
 
     pub fps_timestamp: Instant,
     pub frame_timestamp: Instant,
-    pub fps: f32,
+    pub fps: f64,
     pub frames: u64,
 }
 
 impl Emulator {
-    const TARGET_FPS: f32 = 60.0;
+    const TARGET_FPS: f64 = 60.0;
 
     pub fn new() -> Self {
         Emulator {
             nes: NES::new(),
+            sleeper: PreciseSleeper::new(),
 
             fps_timestamp: Instant::now(),
-            frame_timestamp: Instant::now(), // todo use
+            frame_timestamp: Instant::now(),
             fps: 0.0,
             frames: 0,
         }
@@ -137,10 +143,9 @@ impl Emulator {
 
     fn sleep_frame(&mut self) {
         self.tick_fps();
-        const FRAME_SLEEP_OFFSET: f32 = 1.0 / 56.67 - 1.0 / 60.0; // todo: why do I need this? somethings wrong
-        let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f32() - FRAME_SLEEP_OFFSET;
+        let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f64();
         if sleep_time > 0.0 {
-            sleep(Duration::from_secs_f32(sleep_time));
+            PreciseSleeper::new().precise_sleep(sleep_time);
         }
         self.frame_timestamp = Instant::now();
     }
@@ -148,7 +153,7 @@ impl Emulator {
     fn tick_fps(&mut self) {
         self.frames += 1;
         if self.frames % 100 == 0 {
-            self.fps = 100.0 / self.fps_timestamp.elapsed().as_secs_f32();
+            self.fps = 100.0 / self.fps_timestamp.elapsed().as_secs_f64();
             self.fps_timestamp = Instant::now();
             self.frames = 0;
             println!("fps: {:.2}", self.fps);

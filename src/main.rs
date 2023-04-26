@@ -230,6 +230,6 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    // run_game("rom/mapper0/pacman.nes");
-    run_simulate_sound();
+    run_game("rom/mapper0/super_mario_bros.nes");
+    // run_simulate_sound();
 }
