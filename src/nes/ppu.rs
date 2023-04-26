@@ -57,7 +57,7 @@ impl PPU {
     }
 
     pub fn tick(&mut self, cycles: u8) {
-        self.cycles += cycles as usize;
+        self.cycles += 3 * cycles as usize;
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {

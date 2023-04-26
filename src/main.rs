@@ -202,7 +202,7 @@ fn run_chrdump(filepath: &str) {
     }
 }
 
-// pacman - run pacman for the nes
+// run nes game
 
 fn run_game(filepath: &str) {
     let mut emu = Emulator::new();
@@ -210,9 +210,26 @@ fn run_game(filepath: &str) {
     emu.run_rom(&rom);
 }
 
+// simulate sound
+
+fn run_simulate_sound() {
+    // infinite noise
+    let program: Vec<u8> = vec![0xa9, 0x01, 0x8d, 0x15, 0x40, 0xa9, 0xbf, 0x8d, 0x00, 0x40, 0xa9, 0xc9,
+        0x8d, 0x02, 0x40, 0xa9, 0x00, 0x8d, 0x03, 0x40, CPU::JAM_1];
+    let mut emu: Emulator = Emulator::new();
+    emu.load_and_run(&program);
+}
+
+// todo: PPU should own Frame
+//  - Reset frame on VBlank
+//  - Draw background sprites on VBlank
+//  - Draw background w/scroll + screen-split on visible scanlines
+//  - Draw foreground sprites on NMI (right before render)
+
 fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/ice_climber.nes");
+    // run_game("rom/mapper0/pacman.nes");
+    run_simulate_sound();
 }

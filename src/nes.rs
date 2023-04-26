@@ -37,7 +37,8 @@ impl NES {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         self.cpu.step()?;
-        self.cpu.memory.ppu.step()
+        self.cpu.memory.ppu.step()?;
+        self.cpu.memory.apu.step()
     }
 
     pub fn load(&mut self, program: &Vec<u8>) {

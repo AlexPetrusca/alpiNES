@@ -583,7 +583,8 @@ impl CPU {
 
     pub fn tick(&mut self, cycles: u8) {
         self.cycles += cycles as usize;
-        self.memory.ppu.tick(cycles * 3);
+        self.memory.ppu.tick(cycles);
+        self.memory.apu.tick(cycles); // todo: half cycles are dropped
     }
 
     pub fn handle_nmi(&mut self) {

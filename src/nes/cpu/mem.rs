@@ -1,5 +1,7 @@
+use crate::nes::apu::APU;
 use crate::nes::cpu::CPU;
 use crate::nes::io::joycon::Joycon;
+use crate::nes::io::joycon::joycon_status::JoyconButton::Select;
 use crate::util::rom::ROM;
 use crate::nes::ppu::PPU;
 
@@ -13,6 +15,7 @@ macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
     pub ppu: PPU,
+    pub apu: APU,
     pub joycon1: Joycon,
     pub joycon2: Joycon,
     pub prg_mirror_enabled: bool,
@@ -20,8 +23,8 @@ pub struct Memory {
 
 impl Memory {
     pub const MEM_SIZE: usize = 0x10000 as usize; // 64kB
-
     pub const PRG_ROM_START: u16 = *prg_rom_range!().start();
+
     pub const PPU_CTRL_REGISTER: u16 = 0x2000;
     pub const PPU_MASK_REGISTER: u16 = 0x2001;
     pub const PPU_STAT_REGISTER: u16 = 0x2002;
@@ -33,6 +36,30 @@ impl Memory {
     pub const PPU_OAM_DMA_REGISTER: u16 = 0x4014;
     pub const JOYCON_ONE_REGISTER: u16 = 0x4016;
     pub const JOYCON_TWO_REGISTER: u16 = 0x4017;
+
+    pub const APU_PULSE_1_REGISTER_A: u16 = 0x4000;
+    pub const APU_PULSE_1_REGISTER_B: u16 = 0x4001;
+    pub const APU_PULSE_1_REGISTER_C: u16 = 0x4002;
+    pub const APU_PULSE_1_REGISTER_D: u16 = 0x4003;
+    pub const APU_PULSE_2_REGISTER_A: u16 = 0x4004;
+    pub const APU_PULSE_2_REGISTER_B: u16 = 0x4005;
+    pub const APU_PULSE_2_REGISTER_C: u16 = 0x4006;
+    pub const APU_PULSE_2_REGISTER_D: u16 = 0x4007;
+    pub const APU_TRIANGLE_REGISTER_A: u16 = 0x4008;
+    pub const APU_TRIANGLE_REGISTER_B: u16 = 0x4009;
+    pub const APU_TRIANGLE_REGISTER_C: u16 = 0x400A;
+    pub const APU_TRIANGLE_REGISTER_D: u16 = 0x400B;
+    pub const APU_NOISE_REGISTER_A: u16 = 0x400C;
+    pub const APU_NOISE_REGISTER_B: u16 = 0x400D;
+    pub const APU_NOISE_REGISTER_C: u16 = 0x400E;
+    pub const APU_NOISE_REGISTER_D: u16 = 0x400F;
+    pub const APU_DMC_REGISTER_A: u16 = 0x4010;
+    pub const APU_DMC_REGISTER_B: u16 = 0x4011;
+    pub const APU_DMC_REGISTER_C: u16 = 0x4012;
+    pub const APU_DMC_REGISTER_D: u16 = 0x4013;
+    pub const APU_STATUS_REGISTER: u16 = 0x4015;
+    pub const APU_FRAME_COUNTER_REGISTER: u16 = 0x4017;
+
     pub const IRQ_INT_VECTOR: u16 = 0xFFFE;
     pub const RESET_INT_VECTOR: u16 = 0xFFFC;
     pub const NMI_INT_VECTOR: u16 = 0xFFFA;
@@ -41,6 +68,7 @@ impl Memory {
         Memory {
             memory: [0; Memory::MEM_SIZE],
             ppu: PPU::new(),
+            apu: APU::new(),
             joycon1: Joycon::new(),
             joycon2: Joycon::new(),
             prg_mirror_enabled: false,
@@ -102,6 +130,9 @@ impl Memory {
                     Memory::JOYCON_TWO_REGISTER => {
                         self.joycon2.read()
                     },
+                    Memory::APU_PULSE_1_REGISTER_A..=Memory::APU_PULSE_1_REGISTER_D => {
+                        self.apu.pulse_one.read(address as u8 % 4)
+                    }
                     _ => {
                         panic!("Attempt to read from unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
@@ -174,6 +205,9 @@ impl Memory {
                         self.joycon1.write(data);
                         self.joycon2.write(data);
                     },
+                    Memory::APU_PULSE_1_REGISTER_A..=Memory::APU_PULSE_1_REGISTER_D => {
+                        self.apu.pulse_one.write(address as u8 % 4, data)
+                    }
                     0x4000..=0x4017 => {
                         // todo: implement APU
                     }
