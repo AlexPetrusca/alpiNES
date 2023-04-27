@@ -31,7 +31,8 @@ impl AudioCallback for APUMixer {
 pub struct PulseWave {
     pub phase: f32,
     pub phase_inc: f32,
-    pub volume: f32
+    pub volume: f32,
+    pub duty: u8,
 }
 
 impl PulseWave {
@@ -39,19 +40,30 @@ impl PulseWave {
         Self {
             phase: 0.0,
             phase_inc: 0.0,
-            volume: 0.0
+            volume: 0.0,
+            duty: 0,
         }
     }
 
     #[inline]
     pub fn sample(&mut self) -> f32 {
-        let sample = if self.phase <= 0.125 || self.phase > 0.625 {
-            self.volume
-        } else {
-            -self.volume
+        let sample = match self.duty {
+            0 => if self.phase >= 0.125 && self.phase <= 0.250 { self.volume } else { -self.volume },
+            1 => if self.phase >= 0.125 && self.phase <= 0.375 { self.volume } else { -self.volume },
+            2 => if self.phase >= 0.125 && self.phase <= 0.625 { self.volume } else { -self.volume },
+            3 => if self.phase >= 0.125 && self.phase <= 0.375 { -self.volume } else { self.volume },
+            _ => panic!("can't be")
         };
         self.phase = (self.phase + self.phase_inc) % 1.0;
         sample
+    }
+
+    #[inline]
+    pub fn reset(&mut self) {
+        self.phase = 0.0;
+        self.phase_inc = 0.0;
+        self.volume = 0.0;
+        self.duty = 0;
     }
 }
 

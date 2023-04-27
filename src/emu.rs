@@ -380,10 +380,9 @@ impl Emulator {
             let length_counter = apu.pulse_one.get_length_counter();
             let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
             if self.mute || length_counter == 0 || timer < 8 {
-                guard.pulse_one.phase = 0.0;
-                guard.pulse_one.volume = 0.0;
-                guard.pulse_one.phase_inc = 0.0;
+                guard.pulse_one.reset();
             } else {
+                guard.pulse_one.duty = duty;
                 guard.pulse_one.volume = self.volume * volume as f32 / 15.0;
                 guard.pulse_one.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }
@@ -397,10 +396,9 @@ impl Emulator {
             let length_counter = apu.pulse_two.get_length_counter();
             let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
             if self.mute || length_counter == 0 || timer < 8 {
-                guard.pulse_two.phase = 0.0;
-                guard.pulse_two.volume = 0.0;
-                guard.pulse_two.phase_inc = 0.0;
+                guard.pulse_two.reset();
             } else {
+                guard.pulse_two.duty = duty;
                 guard.pulse_two.volume = self.volume * volume as f32 / 15.0;
                 guard.pulse_two.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }
