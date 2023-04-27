@@ -1,7 +1,7 @@
-use std::ops::Sub;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use rand::Rng;
+use sdl2::audio::AudioSpecDesired;
 
 use sdl2::event::Event;
 use sdl2::EventPump;

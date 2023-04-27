@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use bitvec::ptr::BitPtrError::Null;
@@ -6,10 +7,11 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::{Canvas, Texture, WindowCanvas};
-use sdl2::{EventPump, Sdl};
-use sdl2::libc::{DLT_NULL, nanosleep};
+use sdl2::{AudioSubsystem, EventPump, Sdl};
+use sdl2::libc::{DLT_NULL, nanosleep, time};
 use sdl2::sys::timespec;
 use sdl2::video::Window;
+use crate::nes::apu::APU;
 use crate::nes::NES;
 use crate::util::rom::{Mirroring, ROM};
 use crate::nes::cpu::CPU;
@@ -21,6 +23,7 @@ use crate::nes::io::joycon::Joycon;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
 use crate::nes::io::viewport::Viewport;
 use crate::nes::ppu::registers::mask::MaskFlag;
+use crate::util::audio::AudioPlayer;
 use crate::util::bitvec::BitVector;
 use crate::util::sleep::PreciseSleeper;
 
@@ -32,6 +35,9 @@ pub struct Emulator {
     pub frame_timestamp: Instant,
     pub fps: f64,
     pub frames: u64,
+
+    pub volume: f32,
+    pub mute: bool,
 }
 
 impl Emulator {
@@ -46,6 +52,9 @@ impl Emulator {
             frame_timestamp: Instant::now(),
             fps: 0.0,
             frames: 0,
+
+            volume: 0.01,
+            mute: false,
         }
     }
 
@@ -59,6 +68,8 @@ impl Emulator {
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem.window("alpiNES", WINDOW_WIDTH, WINDOW_HEIGHT)
             .position_centered().build().unwrap();
+        let audio_subsystem = sdl_context.audio().unwrap();
+        let mut audio_player = AudioPlayer::new(audio_subsystem);
         let mut canvas = window.into_canvas().build().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let creator = canvas.texture_creator();
@@ -72,7 +83,10 @@ impl Emulator {
 
                 self.handle_input(&mut event_pump);
 
+
                 Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
+                self.play_audio(&mut audio_player);
+
                 texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
@@ -119,6 +133,9 @@ impl Emulator {
                 },
                 Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
                     ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
+                },
+                Event::KeyDown { keycode: Some(Keycode::F12), .. } => {
+                    self.mute = !self.mute;
                 },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
@@ -350,6 +367,45 @@ impl Emulator {
             ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
             ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
         ]
+    }
+
+    pub fn play_audio(&mut self, audio_player: &mut AudioPlayer) {
+        let apu = &mut self.nes.cpu.memory.apu;
+        let mut guard = audio_player.device.lock();
+
+        {
+            let timer = apu.pulse_one.get_timer();
+            let mut volume = apu.pulse_one.get_volume();
+            let duty = apu.pulse_one.get_duty();
+            let length_counter = apu.pulse_one.get_length_counter();
+            let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
+            if self.mute || length_counter == 0 || timer < 8 {
+                guard.pulse_one.phase = 0.0;
+                guard.pulse_one.volume = 0.0;
+                guard.pulse_one.phase_inc = 0.0;
+            } else {
+                guard.pulse_one.volume = self.volume * volume as f32 / 15.0;
+                guard.pulse_one.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
+            }
+            println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        }
+
+        {
+            let timer = apu.pulse_two.get_timer();
+            let mut volume = apu.pulse_two.get_volume();
+            let duty = apu.pulse_two.get_duty();
+            let length_counter = apu.pulse_two.get_length_counter();
+            let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
+            if self.mute || length_counter == 0 || timer < 8 {
+                guard.pulse_two.phase = 0.0;
+                guard.pulse_two.volume = 0.0;
+                guard.pulse_two.phase_inc = 0.0;
+            } else {
+                guard.pulse_two.volume = self.volume * volume as f32 / 15.0;
+                guard.pulse_two.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
+            }
+            println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

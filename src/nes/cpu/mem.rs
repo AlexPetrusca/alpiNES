@@ -37,14 +37,14 @@ impl Memory {
     pub const JOYCON_ONE_REGISTER: u16 = 0x4016;
     pub const JOYCON_TWO_REGISTER: u16 = 0x4017;
 
-    pub const APU_PULSE_1_REGISTER_A: u16 = 0x4000;
-    pub const APU_PULSE_1_REGISTER_B: u16 = 0x4001;
-    pub const APU_PULSE_1_REGISTER_C: u16 = 0x4002;
-    pub const APU_PULSE_1_REGISTER_D: u16 = 0x4003;
-    pub const APU_PULSE_2_REGISTER_A: u16 = 0x4004;
-    pub const APU_PULSE_2_REGISTER_B: u16 = 0x4005;
-    pub const APU_PULSE_2_REGISTER_C: u16 = 0x4006;
-    pub const APU_PULSE_2_REGISTER_D: u16 = 0x4007;
+    pub const APU_PULSE_ONE_REGISTER_A: u16 = 0x4000;
+    pub const APU_PULSE_ONE_REGISTER_B: u16 = 0x4001;
+    pub const APU_PULSE_ONE_REGISTER_C: u16 = 0x4002;
+    pub const APU_PULSE_ONE_REGISTER_D: u16 = 0x4003;
+    pub const APU_PULSE_TWO_REGISTER_A: u16 = 0x4004;
+    pub const APU_PULSE_TWO_REGISTER_B: u16 = 0x4005;
+    pub const APU_PULSE_TWO_REGISTER_C: u16 = 0x4006;
+    pub const APU_PULSE_TWO_REGISTER_D: u16 = 0x4007;
     pub const APU_TRIANGLE_REGISTER_A: u16 = 0x4008;
     pub const APU_TRIANGLE_REGISTER_B: u16 = 0x4009;
     pub const APU_TRIANGLE_REGISTER_C: u16 = 0x400A;
@@ -130,9 +130,15 @@ impl Memory {
                     Memory::JOYCON_TWO_REGISTER => {
                         self.joycon2.read()
                     },
-                    Memory::APU_PULSE_1_REGISTER_A..=Memory::APU_PULSE_1_REGISTER_D => {
+                    Memory::APU_PULSE_ONE_REGISTER_A..=Memory::APU_PULSE_ONE_REGISTER_D => {
                         self.apu.pulse_one.read(address as u8 % 4)
                     }
+                    Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
+                        self.apu.pulse_two.read(address as u8 % 4)
+                    }
+                    Memory::APU_STATUS_REGISTER => {
+                        self.apu.read_status_register()
+                    },
                     _ => {
                         panic!("Attempt to read from unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
@@ -205,9 +211,15 @@ impl Memory {
                         self.joycon1.write(data);
                         self.joycon2.write(data);
                     },
-                    Memory::APU_PULSE_1_REGISTER_A..=Memory::APU_PULSE_1_REGISTER_D => {
+                    Memory::APU_PULSE_ONE_REGISTER_A..=Memory::APU_PULSE_ONE_REGISTER_D => {
                         self.apu.pulse_one.write(address as u8 % 4, data)
                     }
+                    Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
+                        self.apu.pulse_two.write(address as u8 % 4, data)
+                    }
+                    Memory::APU_STATUS_REGISTER => {
+                        self.apu.write_status_register(data)
+                    },
                     0x4000..=0x4017 => {
                         // todo: implement APU
                     }

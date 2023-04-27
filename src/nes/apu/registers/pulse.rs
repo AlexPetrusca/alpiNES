@@ -39,7 +39,7 @@ impl PulseRegisters {
         }
     }
 
-    pub fn get_duty_bits(&self) -> u8 {
+    pub fn get_duty(&self) -> u8 {
         (self.register_a & 0b1100_0000) >> 6
     }
 
@@ -87,8 +87,12 @@ impl PulseRegisters {
         ((self.register_d as u16 & 0b0000_0111) << 8) | self.register_c as u16
     }
 
-    pub fn get_length_counter_load(&self) -> u8 {
+    pub fn get_length_counter(&self) -> u8 {
         (self.register_d & 0b1111_1000) >> 3
+    }
+
+    pub fn clear_length_counter(&mut self) {
+        self.register_d = self.register_d & 0b0000_0111;
     }
 
     // pub fn get_frequency(&self) -> f32 {
