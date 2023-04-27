@@ -73,10 +73,10 @@ impl TriangleWave {
     #[inline]
     pub fn sample(&mut self) -> f32 {
         // todo: triangle is too perfect; should have lower resolution
-        let sample = if self.phase > 0.5 {
-            self.volume * (1.0 - self.phase / 0.5)
+        let sample = if self.phase < 0.5 {
+            self.volume * (1.0 - self.phase / 0.25) // 1.0 .. -1.0
         } else {
-            self.volume * (self.phase / 0.5 - 1.0)
+            self.volume * ((self.phase - 0.5) / 0.25 - 1.0) // -1.0 .. 1.0
         };
         self.phase = (self.phase + self.phase_inc) % 1.0;
         sample
