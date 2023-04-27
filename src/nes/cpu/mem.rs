@@ -132,10 +132,19 @@ impl Memory {
                     },
                     Memory::APU_PULSE_ONE_REGISTER_A..=Memory::APU_PULSE_ONE_REGISTER_D => {
                         self.apu.pulse_one.read(address as u8 % 4)
-                    }
+                    },
                     Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
                         self.apu.pulse_two.read(address as u8 % 4)
-                    }
+                    },
+                    Memory::APU_TRIANGLE_REGISTER_A..=Memory::APU_TRIANGLE_REGISTER_D => {
+                        self.apu.triangle.read(address as u8 % 4)
+                    },
+                    Memory::APU_NOISE_REGISTER_A..=Memory::APU_NOISE_REGISTER_D => {
+                        self.apu.noise.read(address as u8 % 4)
+                    },
+                    Memory::APU_DMC_REGISTER_A..=Memory::APU_DMC_REGISTER_D => {
+                        self.apu.dmc.read(address as u8 % 4)
+                    },
                     Memory::APU_STATUS_REGISTER => {
                         self.apu.read_status_register()
                     },
@@ -217,6 +226,15 @@ impl Memory {
                     Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
                         self.apu.pulse_two.write(address as u8 % 4, data)
                     }
+                    Memory::APU_TRIANGLE_REGISTER_A..=Memory::APU_TRIANGLE_REGISTER_D => {
+                        self.apu.triangle.write(address as u8 % 4, data)
+                    }
+                    Memory::APU_NOISE_REGISTER_A..=Memory::APU_NOISE_REGISTER_D => {
+                        self.apu.noise.write(address as u8 % 4, data)
+                    },
+                    Memory::APU_DMC_REGISTER_A..=Memory::APU_DMC_REGISTER_D => {
+                        self.apu.dmc.write(address as u8 % 4, data)
+                    },
                     Memory::APU_STATUS_REGISTER => {
                         self.apu.write_status_register(data)
                     },

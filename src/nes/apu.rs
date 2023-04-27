@@ -2,7 +2,7 @@ use crate::nes::apu::registers::frame_counter::FrameCounterRegister;
 use crate::nes::apu::registers::dmc::DMCRegisters;
 use crate::nes::apu::registers::noise::NoiseRegisters;
 use crate::nes::apu::registers::pulse::PulseRegisters;
-use crate::nes::apu::registers::status::StatusFlag::{FrameInterrupt, PulseOneEnable, PulseTwoEnable};
+use crate::nes::apu::registers::status::StatusFlag::{FrameInterrupt, PulseOneEnable, PulseTwoEnable, TriangleEnable};
 use crate::nes::apu::registers::status::StatusRegister;
 use crate::nes::apu::registers::triangle::TriangleRegisters;
 use crate::util::bitvec::BitVector;
@@ -51,6 +51,9 @@ impl APU {
         }
         if self.status.is_clear(PulseTwoEnable) {
             self.pulse_two.clear_length_counter();
+        }
+        if self.status.is_clear(TriangleEnable) {
+            self.triangle.clear_length_counter();
         }
         // todo: implement rest
     }

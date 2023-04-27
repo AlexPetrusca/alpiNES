@@ -406,6 +406,22 @@ impl Emulator {
             }
             println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
         }
+
+        {
+            let timer = apu.triangle.get_timer();
+            let length_counter = apu.triangle.get_length_counter();
+            let linear_counter = apu.triangle.get_linear_counter();
+            let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
+            if self.mute || length_counter == 0 || timer < 2 {
+                guard.triangle.phase = 0.0;
+                guard.triangle.volume = 0.0;
+                guard.triangle.phase_inc = 0.0;
+            } else {
+                guard.triangle.volume = self.volume;
+                guard.triangle.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
+            }
+            println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
+        }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
