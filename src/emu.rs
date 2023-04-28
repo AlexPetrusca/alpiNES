@@ -53,7 +53,7 @@ impl Emulator {
             fps: 0.0,
             frames: 0,
 
-            volume: 0.01,
+            volume: 1.00,
             mute: false,
         }
     }
@@ -373,6 +373,8 @@ impl Emulator {
         let apu = &mut self.nes.cpu.memory.apu;
         let mut guard = audio_player.device.lock();
 
+        guard.volume = self.volume;
+
         {
             let timer = apu.pulse_one.get_timer();
             let mut volume = apu.pulse_one.get_volume();
@@ -383,7 +385,7 @@ impl Emulator {
                 guard.pulse_one.reset();
             } else {
                 guard.pulse_one.duty = duty;
-                guard.pulse_one.volume = self.volume * volume as f32 / 15.0;
+                guard.pulse_one.volume = volume;
                 guard.pulse_one.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }
             println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
@@ -399,7 +401,7 @@ impl Emulator {
                 guard.pulse_two.reset();
             } else {
                 guard.pulse_two.duty = duty;
-                guard.pulse_two.volume = self.volume * volume as f32 / 15.0;
+                guard.pulse_two.volume = volume;
                 guard.pulse_two.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }
             println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
@@ -412,10 +414,8 @@ impl Emulator {
             let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
             if self.mute || length_counter == 0 || timer < 2 {
                 guard.triangle.phase = 0.0;
-                guard.triangle.volume = 0.0;
                 guard.triangle.phase_inc = 0.0;
             } else {
-                guard.triangle.volume = self.volume;
                 guard.triangle.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }
             println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
