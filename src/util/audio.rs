@@ -5,7 +5,9 @@ pub struct APUMixer {
     pub pulse_one: PulseWave,
     pub pulse_two: PulseWave,
     pub triangle: TriangleWave,
+
     pub volume: f32,
+    pub mute: bool,
 }
 
 impl APUMixer {
@@ -14,7 +16,9 @@ impl APUMixer {
             pulse_one: PulseWave::new(),
             pulse_two: PulseWave::new(),
             triangle: TriangleWave::new(),
-            volume: 1.0
+
+            volume: 1.0,
+            mute: false,
         }
     }
 }
@@ -35,7 +39,8 @@ impl AudioCallback for APUMixer {
             let tnd_out = 159.79 / (tnd + 100.0);
 
             let sample_out = pulse_out + tnd_out;
-            *sample = self.volume * sample_out;
+            let system_volume = if self.mute { 0.0 } else { 1.0 } * self.volume;
+            *sample = system_volume * sample_out;
         }
     }
 }

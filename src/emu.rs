@@ -300,8 +300,7 @@ impl Emulator {
     }
 
     // todo: rewrite
-    fn render_name_table(ppu: &PPU, frame: &mut Frame, nametable: &[u8],
-            viewport: Viewport, shift_x: isize, shift_y: isize) {
+    fn render_name_table(ppu: &PPU, frame: &mut Frame, nametable: &[u8], viewport: Viewport, shift_x: isize, shift_y: isize) {
         let bank = ppu.ctrl.get_background_chrtable_address();
 
         for i in 0..0x3c0 {
@@ -374,6 +373,7 @@ impl Emulator {
         let mut guard = audio_player.device.lock();
 
         guard.volume = self.volume;
+        guard.mute = self.mute;
 
         {
             let timer = apu.pulse_one.get_timer();
@@ -381,7 +381,7 @@ impl Emulator {
             let duty = apu.pulse_one.get_duty();
             let length_counter = apu.pulse_one.get_length_counter();
             let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-            if self.mute || length_counter == 0 || timer < 8 {
+            if length_counter == 0 || timer < 8 {
                 guard.pulse_one.reset();
             } else {
                 guard.pulse_one.duty = duty;
@@ -397,7 +397,7 @@ impl Emulator {
             let duty = apu.pulse_two.get_duty();
             let length_counter = apu.pulse_two.get_length_counter();
             let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-            if self.mute || length_counter == 0 || timer < 8 {
+            if length_counter == 0 || timer < 8 {
                 guard.pulse_two.reset();
             } else {
                 guard.pulse_two.duty = duty;
@@ -412,7 +412,7 @@ impl Emulator {
             let length_counter = apu.triangle.get_length_counter();
             let linear_counter = apu.triangle.get_linear_counter();
             let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
-            if self.mute || length_counter == 0 || timer < 2 {
+            if length_counter == 0 || timer < 2 {
                 guard.triangle.phase = 0.0;
                 guard.triangle.phase_inc = 0.0;
             } else {
