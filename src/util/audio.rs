@@ -108,6 +108,12 @@ impl TriangleWave {
         self.phase = (self.phase + self.phase_inc) % 1.0;
         TriangleWave::WAVEFORM[index]
     }
+
+    #[inline]
+    pub fn reset(&mut self) {
+        self.phase = 0.0;
+        self.phase_inc = 0.0;
+    }
 }
 
 pub struct AudioPlayer {

@@ -412,9 +412,8 @@ impl Emulator {
             let length_counter = apu.triangle.get_length_counter();
             let linear_counter = apu.triangle.get_linear_counter();
             let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
-            if length_counter == 0 || timer < 2 {
-                guard.triangle.phase = 0.0;
-                guard.triangle.phase_inc = 0.0;
+            if length_counter == 0 || linear_counter == 0 || timer < 2 {
+                guard.triangle.reset();
             } else {
                 guard.triangle.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
             }

@@ -51,6 +51,17 @@ impl TriangleRegisters {
         self.register_a & 0b0111_1111
     }
 
+    fn set_linear_counter(&mut self, value: u8) {
+        self.register_a = (self.register_a & 0b1000_0000) | value;
+    }
+
+    pub fn decrement_linear_counter(&mut self) {
+        let length_counter = self.get_linear_counter();
+        if length_counter != 0 {
+            self.set_linear_counter(length_counter - 1);
+        }
+    }
+
     pub fn get_timer(&self) -> u16 {
         ((self.register_d as u16 & 0b0000_0111) << 8) | self.register_c as u16
     }
@@ -59,7 +70,18 @@ impl TriangleRegisters {
         (self.register_d & 0b1111_1000) >> 3
     }
 
+    fn set_length_counter(&mut self, value: u8) {
+        self.register_d = (self.register_d & 0b0000_0111) | (value << 3);
+    }
+
+    pub fn decrement_length_counter(&mut self) {
+        let length_counter = self.get_length_counter();
+        if length_counter != 0 {
+            self.set_length_counter(length_counter - 1);
+        }
+    }
+
     pub fn clear_length_counter(&mut self) {
-        self.register_d = self.register_d & 0b0000_0111;
+        self.set_length_counter(0);
     }
 }

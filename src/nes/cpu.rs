@@ -582,9 +582,9 @@ impl CPU {
     }
 
     pub fn tick(&mut self, cycles: u8) {
-        self.cycles += cycles as usize;
+        self.cycles = self.cycles.wrapping_add(cycles as usize);
         self.memory.ppu.tick(cycles);
-        self.memory.apu.tick(cycles); // todo: half cycles are dropped
+        self.memory.apu.tick(cycles);
     }
 
     pub fn handle_nmi(&mut self) {
