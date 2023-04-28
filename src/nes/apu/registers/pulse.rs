@@ -95,7 +95,7 @@ impl PulseRegisters {
         self.register_d = self.register_d & 0b0000_0111;
     }
 
-    // pub fn get_frequency(&self) -> f32 {
-    //
-    // }
+    pub fn get_frequency(&self) -> f32 {
+        1_789_773.0 / (16.0 * (self.get_timer() as f32 + 1.0))
+    }
  }

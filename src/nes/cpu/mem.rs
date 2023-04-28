@@ -221,22 +221,22 @@ impl Memory {
                         self.joycon2.write(data);
                     },
                     Memory::APU_PULSE_ONE_REGISTER_A..=Memory::APU_PULSE_ONE_REGISTER_D => {
-                        self.apu.pulse_one.write(address as u8 % 4, data)
+                        self.apu.write_pulse_one_registers(address as u8 % 4, data);
                     }
                     Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
-                        self.apu.pulse_two.write(address as u8 % 4, data)
+                        self.apu.write_pulse_two_registers(address as u8 % 4, data);
                     }
                     Memory::APU_TRIANGLE_REGISTER_A..=Memory::APU_TRIANGLE_REGISTER_D => {
-                        self.apu.triangle.write(address as u8 % 4, data)
+                        self.apu.write_triangle_registers(address as u8 % 4, data);
                     }
                     Memory::APU_NOISE_REGISTER_A..=Memory::APU_NOISE_REGISTER_D => {
-                        self.apu.noise.write(address as u8 % 4, data)
+                        self.apu.write_noise_registers(address as u8 % 4, data);
                     },
                     Memory::APU_DMC_REGISTER_A..=Memory::APU_DMC_REGISTER_D => {
-                        self.apu.dmc.write(address as u8 % 4, data)
+                        self.apu.write_dmc_registers(address as u8 % 4, data);
                     },
                     Memory::APU_STATUS_REGISTER => {
-                        self.apu.write_status_register(data)
+                        self.apu.write_status_register(data);
                     },
                     0x4000..=0x4017 => {
                         // todo: implement APU

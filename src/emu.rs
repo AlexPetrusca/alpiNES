@@ -68,13 +68,13 @@ impl Emulator {
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem.window("alpiNES", WINDOW_WIDTH, WINDOW_HEIGHT)
             .position_centered().build().unwrap();
-        let audio_subsystem = sdl_context.audio().unwrap();
-        let mut audio_player = AudioPlayer::new(audio_subsystem);
         let mut canvas = window.into_canvas().build().unwrap();
         let mut event_pump = sdl_context.event_pump().unwrap();
         let creator = canvas.texture_creator();
         let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
         let mut frame = Frame::new();
+
+        self.nes.cpu.memory.apu.init_audio_player(&sdl_context);
 
         loop {
             if self.nes.cpu.memory.ppu.poll_nmi() {
@@ -82,10 +82,8 @@ impl Emulator {
                 self.nes.cpu.memory.ppu.clear_nmi();
 
                 self.handle_input(&mut event_pump);
-
-
                 Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
-                self.play_audio(&mut audio_player);
+                self.play_audio();
 
                 texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
@@ -368,57 +366,57 @@ impl Emulator {
         ]
     }
 
-    pub fn play_audio(&mut self, audio_player: &mut AudioPlayer) {
+    pub fn play_audio(&mut self) {
         let apu = &mut self.nes.cpu.memory.apu;
-        let mut guard = audio_player.device.lock();
+        let mut guard = apu.audio_player.as_mut().unwrap().device.lock();
 
         guard.volume = self.volume;
         guard.mute = self.mute;
 
-        {
-            let timer = apu.pulse_one.get_timer();
-            let mut volume = apu.pulse_one.get_volume();
-            let duty = apu.pulse_one.get_duty();
-            let length_counter = apu.pulse_one.get_length_counter();
-            let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-            if length_counter == 0 || timer < 8 {
-                guard.pulse_one.reset();
-            } else {
-                guard.pulse_one.duty = duty;
-                guard.pulse_one.volume = volume;
-                guard.pulse_one.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
-            }
-            println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
-        }
+        // {
+        //     let timer = apu.pulse_one.get_timer();
+        //     let mut volume = apu.pulse_one.get_volume();
+        //     let duty = apu.pulse_one.get_duty();
+        //     let length_counter = apu.pulse_one.get_length_counter();
+        //     let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
+        //     if length_counter == 0 || timer < 8 {
+        //         guard.pulse_one.reset();
+        //     } else {
+        //         guard.pulse_one.duty = duty;
+        //         guard.pulse_one.volume = volume;
+        //         guard.pulse_one.phase_inc = freq / AudioPlayer::FREQ as f32;
+        //     }
+        //     // println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        // }
+        //
+        // {
+        //     let timer = apu.pulse_two.get_timer();
+        //     let mut volume = apu.pulse_two.get_volume();
+        //     let duty = apu.pulse_two.get_duty();
+        //     let length_counter = apu.pulse_two.get_length_counter();
+        //     let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
+        //     if length_counter == 0 || timer < 8 {
+        //         guard.pulse_two.reset();
+        //     } else {
+        //         guard.pulse_two.duty = duty;
+        //         guard.pulse_two.volume = volume;
+        //         guard.pulse_two.phase_inc = freq / AudioPlayer::FREQ as f32;
+        //     }
+        //     // println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        // }
 
-        {
-            let timer = apu.pulse_two.get_timer();
-            let mut volume = apu.pulse_two.get_volume();
-            let duty = apu.pulse_two.get_duty();
-            let length_counter = apu.pulse_two.get_length_counter();
-            let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-            if length_counter == 0 || timer < 8 {
-                guard.pulse_two.reset();
-            } else {
-                guard.pulse_two.duty = duty;
-                guard.pulse_two.volume = volume;
-                guard.pulse_two.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
-            }
-            println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
-        }
-
-        {
-            let timer = apu.triangle.get_timer();
-            let length_counter = apu.triangle.get_length_counter();
-            let linear_counter = apu.triangle.get_linear_counter();
-            let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
-            if length_counter == 0 || linear_counter == 0 || timer < 2 {
-                guard.triangle.reset();
-            } else {
-                guard.triangle.phase_inc = freq / audio_player.spec.freq.unwrap() as f32;
-            }
-            println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
-        }
+        // {
+        //     let timer = apu.triangle.get_timer();
+        //     let length_counter = apu.triangle.get_length_counter();
+        //     let linear_counter = apu.triangle.get_linear_counter();
+        //     let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
+        //     if length_counter == 0 || linear_counter == 0 || timer < 2 {
+        //         guard.triangle.reset();
+        //     } else {
+        //         guard.triangle.phase_inc = freq / AudioPlayer::FREQ as f32;
+        //     }
+        //     // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
+        // }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

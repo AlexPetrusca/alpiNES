@@ -76,17 +76,18 @@ impl PulseWave {
     }
 
     #[inline]
-    pub fn reset(&mut self) {
+    pub fn silence(&mut self) {
         self.phase = 0.0;
-        self.phase_inc = 0.0;
         self.volume = 0;
-        self.duty = 0;
     }
 }
 
 pub struct TriangleWave {
     pub phase: f32,
     pub phase_inc: f32,
+
+    pub duration: f32,
+    pub duration_counter: f32,
 }
 
 impl TriangleWave {
@@ -99,20 +100,25 @@ impl TriangleWave {
         Self {
             phase: 0.0,
             phase_inc: 0.0,
+            duration: 0.0,
+            duration_counter: 0.0
         }
     }
 
     #[inline]
     pub fn sample(&mut self) -> u8 {
+        if self.duration_counter < self.duration {
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+            self.duration_counter += 1.0;
+        }
         let index = (32.0 * self.phase).floor() as usize;
-        self.phase = (self.phase + self.phase_inc) % 1.0;
         TriangleWave::WAVEFORM[index]
     }
 
     #[inline]
-    pub fn reset(&mut self) {
+    pub fn silence(&mut self) {
         self.phase = 0.0;
-        self.phase_inc = 0.0;
+        self.duration = 0.0;
     }
 }
 
@@ -127,7 +133,7 @@ impl AudioPlayer {
 
     pub fn new(sdl_audio: AudioSubsystem) -> Self {
         let spec = AudioSpecDesired {
-            freq: Some(44100),
+            freq: Some(AudioPlayer::FREQ),
             channels: Some(1),
             samples: None
         };

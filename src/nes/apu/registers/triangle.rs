@@ -84,4 +84,8 @@ impl TriangleRegisters {
     pub fn clear_length_counter(&mut self) {
         self.set_length_counter(0);
     }
+
+    pub fn get_frequency(&self) -> f32 {
+        1_789_773.0 / (32.0 * (self.get_timer() as f32 + 1.0))
+    }
 }
