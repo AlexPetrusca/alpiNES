@@ -65,8 +65,12 @@ impl PulseRegisters {
         self.register_a & 0b0000_1111
     }
 
-    pub fn get_envelope_rate(&self) -> u8 {
+    pub fn get_envelope(&self) -> u8 {
         self.get_volume()
+    }
+
+    pub fn get_envelope_frequency(&self) -> f32 {
+        240.0 / (self.get_envelope() as f32 + 1.0)
     }
 
     pub fn is_sweep_enabled(&self) -> bool {

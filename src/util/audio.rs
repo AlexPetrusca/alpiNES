@@ -59,11 +59,14 @@ impl AudioCallback for APUMixer {
 pub struct PulseWave {
     phase: f32,
     phase_inc: f32,
+    envelope_enable: bool,
+    env_phase: f32,
+    env_phase_inc: f32,
+    duration_enable: bool,
     duration: f32,
     duration_counter: f32,
     volume: u8,
     duty: u8,
-    is_loop: bool,
 }
 
 impl PulseWave {
@@ -71,16 +74,20 @@ impl PulseWave {
         Self {
             phase: 0.0,
             phase_inc: 0.0,
+            envelope_enable: false,
+            env_phase: 0.0,
+            env_phase_inc: 0.0,
+            duration_enable: false,
             duration: 0.0,
             duration_counter: 0.0,
             volume: 0,
             duty: 0,
-            is_loop: false,
         }
     }
 
     #[inline]
     pub fn sample(&mut self) -> u8 {
+        // duty
         let sample = match self.duty {
             0 => if self.phase >= 0.125 && self.phase <= 0.250 { self.volume } else { 0 },
             1 => if self.phase >= 0.125 && self.phase <= 0.375 { self.volume } else { 0 },
@@ -88,11 +95,21 @@ impl PulseWave {
             3 => if self.phase >= 0.125 && self.phase <= 0.375 { 0 } else { self.volume },
             _ => panic!("can't be")
         };
-        if self.is_loop {
-            self.phase = (self.phase + self.phase_inc) % 1.0;
+
+        // waveform
+        self.phase = (self.phase + self.phase_inc) % 1.0;
+
+        // envelope
+        let old_env_phase = self.env_phase;
+        self.env_phase = (self.env_phase + self.env_phase_inc) % 1.0;
+        if self.env_phase < old_env_phase && self.volume > 0 {
+            self.volume -= 1;
+        }
+
+        // loop vs one-shot
+        if !self.duration_enable {
             return sample;
         } else if self.duration_counter < self.duration {
-            self.phase = (self.phase + self.phase_inc) % 1.0;
             self.duration_counter += 1.0;
             return sample;
         }
@@ -105,18 +122,28 @@ impl PulseWave {
         self.volume = 0;
     }
 
+    pub fn set_frequency(&mut self, freq: f32) {
+        self.phase_inc = freq / AudioPlayer::FREQ as f32;
+        self.phase = 0.0;
+    }
+
+    pub fn set_duration_enable(&mut self, duration_enable: bool) {
+        self.duration_enable = duration_enable;
+    }
+
     pub fn set_duration(&mut self, duration: f32) {
         self.duration = duration;
         self.duration_counter = 0.0;
     }
 
-    pub fn set_is_loop(&mut self, is_loop: bool) {
-        self.is_loop = is_loop;
+    pub fn set_envelope_enable(&mut self, envelope_enable: bool) {
+        self.envelope_enable = envelope_enable;
+        self.volume = 15;
     }
 
-    pub fn set_frequency(&mut self, freq: f32) {
-        self.phase_inc = freq / AudioPlayer::FREQ as f32;
-        self.phase = 0.0;
+    pub fn set_envelope_frequency(&mut self, env_freq: f32) {
+        self.env_phase_inc = env_freq / AudioPlayer::FREQ as f32;
+        self.env_phase = 0.0;
     }
 
     pub fn set_volume(&mut self, volume: u8) {
