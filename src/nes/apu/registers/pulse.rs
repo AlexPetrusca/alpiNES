@@ -89,6 +89,10 @@ impl PulseRegisters {
         self.register_b & 0b0000_0111
     }
 
+    pub fn get_sweep_frequency(&self) -> f32 {
+        120.0 / (self.get_sweep_period() as f32 + 1.0)
+    }
+
     pub fn get_timer(&self) -> u16 {
         ((self.register_d as u16 & 0b0000_0111) << 8) | self.register_c as u16
     }

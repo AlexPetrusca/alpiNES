@@ -38,6 +38,11 @@ pub struct Emulator {
 
     pub volume: f32,
     pub mute: bool,
+    pub mute_pulse_one: bool,
+    pub mute_pulse_two: bool,
+    pub mute_triangle: bool,
+    pub mute_noise: bool,
+    pub mute_dmc: bool,
 }
 
 impl Emulator {
@@ -53,8 +58,13 @@ impl Emulator {
             fps: 0.0,
             frames: 0,
 
-            volume: 1.00,
+            volume: 1.00, // todo: implement
             mute: false,
+            mute_pulse_one: false,
+            mute_pulse_two: false,
+            mute_triangle: false,
+            mute_noise: false,
+            mute_dmc: false,
         }
     }
 
@@ -83,7 +93,6 @@ impl Emulator {
 
                 self.handle_input(&mut event_pump);
                 Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
-                self.play_audio();
 
                 texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
@@ -126,14 +135,35 @@ impl Emulator {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     std::process::exit(0)
                 },
+                // Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
+                //     ppu.mask.update(MaskFlag::ShowBackground, !ppu.mask.is_set(MaskFlag::ShowBackground))
+                // },
+                // Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
+                //     ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
+                // },
                 Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
-                    ppu.mask.update(MaskFlag::ShowBackground, !ppu.mask.is_set(MaskFlag::ShowBackground))
+                    self.mute_pulse_one = !self.mute_pulse_one;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_one = self.mute_pulse_one;
                 },
                 Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
-                    ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
+                    self.mute_pulse_two = !self.mute_pulse_two;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_two = self.mute_pulse_two;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F3), .. } => {
+                    self.mute_triangle = !self.mute_triangle;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_triangle = self.mute_triangle;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F4), .. } => {
+                    self.mute_noise = !self.mute_noise;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_noise = self.mute_noise;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
+                    self.mute_dmc = !self.mute_dmc;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_dmc = self.mute_dmc;
                 },
                 Event::KeyDown { keycode: Some(Keycode::F12), .. } => {
                     self.mute = !self.mute;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute = self.mute;
                 },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
@@ -364,14 +394,6 @@ impl Emulator {
             ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
             ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
         ]
-    }
-
-    pub fn play_audio(&mut self) {
-        let apu = &mut self.nes.cpu.memory.apu;
-        let mut guard = apu.audio_player.as_mut().unwrap().device.lock();
-
-        guard.volume = self.volume;
-        guard.mute = self.mute;
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

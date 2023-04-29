@@ -108,20 +108,26 @@ impl APU {
                 guard.pulse_one.set_volume(self.pulse_one.get_volume());
             }
         }
+        if register_idx == APU::REGISTER_B {
+            guard.pulse_one.set_sweep_enable(self.pulse_one.is_sweep_enabled());
+            guard.pulse_one.set_sweep_negate(self.pulse_one.is_sweep_negate());
+            guard.pulse_one.set_sweep_shift(self.pulse_one.get_sweep_shift());
+            guard.pulse_one.set_sweep_frequency(self.pulse_one.get_sweep_frequency());
+        }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_one.get_length_counter() == 0 || self.pulse_one.get_timer() < 8 {
                 guard.pulse_one.silence(); // todo: can we get rid of this?
             } else {
-                guard.pulse_one.set_frequency(self.pulse_one.get_frequency());
+                guard.pulse_one.set_frequency_from_timer(self.pulse_one.get_timer());
                 if self.pulse_one.is_one_shot() {
                     guard.pulse_one.set_duration(self.pulse_one.get_duration());
                 }
             }
         }
-        if self.pulse_one.is_envelope_volume() {
+        if !guard.mute_pulse_one {
             println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
-                  is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
-                  sweep_period: {}, sweep_shift: {}",
+              is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
+              sweep_period: {}, sweep_shift: {}",
                 self.pulse_one.get_frequency(), self.pulse_one.get_timer(), self.pulse_one.get_volume(),
                 self.pulse_one.get_duty(), self.pulse_one.get_length_counter(), self.pulse_one.is_loop(),
                 self.pulse_one.is_envelope_volume(), self.pulse_one.is_sweep_enabled(),
@@ -144,20 +150,26 @@ impl APU {
                 guard.pulse_two.set_volume(self.pulse_two.get_volume());
             }
         }
+        if register_idx == APU::REGISTER_B {
+            guard.pulse_two.set_sweep_enable(self.pulse_two.is_sweep_enabled());
+            guard.pulse_two.set_sweep_negate(self.pulse_two.is_sweep_negate());
+            guard.pulse_two.set_sweep_shift(self.pulse_two.get_sweep_shift());
+            guard.pulse_two.set_sweep_frequency(self.pulse_two.get_sweep_frequency());
+        }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_two.get_length_counter() == 0 || self.pulse_two.get_timer() < 8 {
                 guard.pulse_two.silence(); // todo: can we get rid of this?
             } else {
-                guard.pulse_two.set_frequency(self.pulse_two.get_frequency());
+                guard.pulse_two.set_frequency_from_timer(self.pulse_two.get_timer());
                 if self.pulse_two.is_one_shot() {
                     guard.pulse_two.set_duration(self.pulse_two.get_duration());
                 }
             }
         }
-        if self.pulse_two.is_envelope_volume() {
+        if !guard.mute_pulse_two {
             println!("pulse_two: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
-                  is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
-                  sweep_period: {}, sweep_shift: {}",
+              is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
+              sweep_period: {}, sweep_shift: {}",
                 self.pulse_two.get_frequency(), self.pulse_two.get_timer(), self.pulse_two.get_volume(),
                 self.pulse_two.get_duty(), self.pulse_two.get_length_counter(), self.pulse_two.is_loop(),
                 self.pulse_two.is_envelope_volume(), self.pulse_two.is_sweep_enabled(),
@@ -185,9 +197,11 @@ impl APU {
                 guard.triangle.set_frequency(self.triangle.get_frequency());
             }
         }
-        // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}",
-        //     self.triangle.get_frequency(), self.triangle.get_timer(),
-        //     self.triangle.get_length_counter(), self.triangle.get_linear_counter());
+        if !guard.mute_triangle {
+            println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}",
+                self.triangle.get_frequency(), self.triangle.get_timer(),
+                self.triangle.get_length_counter(), self.triangle.get_linear_counter());
+        }
     }
 
     pub fn write_noise_registers(&mut self, register_idx: u8, data: u8) {
@@ -207,10 +221,12 @@ impl APU {
                 guard.noise.set_duration(rate * self.noise.get_length_counter() as f32);
             }
         }
-        // println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
-        //     self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
-        //     self.noise.get_length_counter(), self.noise.is_mode_enabled(),
-        //     self.noise.is_constant_volume(), self.noise.is_one_shot_play());
+        if !guard.mute_noise {
+            println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
+                self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
+                self.noise.get_length_counter(), self.noise.is_mode_enabled(),
+                self.noise.is_constant_volume(), self.noise.is_one_shot_play());
+        }
     }
 
     pub fn write_dmc_registers(&mut self, register_idx: u8, data: u8) {
@@ -222,9 +238,11 @@ impl APU {
         if register_idx == APU::REGISTER_B {
             guard.dmc.set_volume(self.dmc.get_volume());
         }
-        // println!("dmc: volume: {}, rate: {}, sample_address: 0x{:x}, sample_length: {}",
-        //     self.dmc.get_volume(), self.dmc.get_rate_idx(), self.dmc.get_sample_address(),
-        //     self.dmc.get_sample_length());
+        if !guard.mute_dmc {
+            println!("dmc: volume: {}, rate: {}, sample_address: 0x{:x}, sample_length: {}",
+                self.dmc.get_volume(), self.dmc.get_rate_idx(), self.dmc.get_sample_address(),
+                self.dmc.get_sample_length());
+        }
     }
 
     pub fn tick(&mut self, cycles: u8) {
