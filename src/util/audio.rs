@@ -176,16 +176,18 @@ impl NoiseWave {
             self.duration_counter += 1.0;
         }
         if self.phase < old_phase {
-            let feedback = (self.shift_register & 1) ^ ((self.shift_register >> 6) & 1); // todo: mode flag impl
+            let feedback = (self.shift_register & 1) ^ ((self.shift_register >> 1) & 1); // todo: mode flag impl
             self.shift_register = self.shift_register >> 1;
-            self.shift_register = self.shift_register | (feedback << 14)
+            self.shift_register = self.shift_register | (feedback << 14);
         }
-        self.volume * (self.shift_register as u8 & 1)
+        self.volume * (self.shift_register & 1) as u8
 
-
-        // // Generate white noise
-        // let mut rng = thread_rng();
-        // (rng.gen_range(0.0..1.0) * self.volume as f32).round() as u8
+        // todo: this is the fceux implementation. Which one is better?
+        // if self.phase < old_phase {
+        //     self.shift_register = (self.shift_register << 1) + (((self.shift_register >> 13) ^ ( self.shift_register >> 14)) & 1);
+        //     // self.shift_register = ( self.shift_register<<1)+(((self.shift_register>>8)^( self.shift_register>>14))&1);
+        // }
+        // self.volume * ((self.shift_register >> 14) & 1) as u8
     }
 
     #[inline]
