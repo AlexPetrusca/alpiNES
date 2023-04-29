@@ -234,6 +234,17 @@ impl Memory {
                     },
                     Memory::APU_DMC_REGISTER_A..=Memory::APU_DMC_REGISTER_D => {
                         self.apu.write_dmc_registers(address as u8 % 4, data);
+                        if address == Memory::APU_DMC_REGISTER_C || address == Memory::APU_DMC_REGISTER_D {
+                            println!("DMC HIT");
+                            // let sample_addr = self.apu.dmc.get_sample_address();
+                            // let sample_length = self.apu.dmc.get_sample_length();
+                            // for addr in sample_addr..(sample_addr + sample_length) {
+                            //     let sample = self.read_byte(addr);
+                            //     // todo: don't lock in a loop...
+                            //     let mut guard = self.apu.audio_player.as_mut().unwrap().device.lock(); // todo: pulling the guard out like this sucks. Write a helper method
+                            //     guard.dmc.add_dpcm_sample(sample);
+                            // }
+                        }
                     },
                     Memory::APU_STATUS_REGISTER => {
                         self.apu.write_status_register(data);

@@ -1,6 +1,7 @@
 use rand::{Rng, thread_rng};
 use sdl2::audio::{AudioCallback, AudioDevice, AudioQueue, AudioSpecDesired};
 use sdl2::AudioSubsystem;
+use crate::nes::cpu::mem::Memory;
 
 pub struct APUMixer {
     pub pulse_one: PulseWave,
@@ -221,6 +222,7 @@ pub struct DMCWave {
     duration_counter: f32,
     volume: u8,
     silence: bool,
+    dpcm_samples: Vec<u8>,
 }
 
 impl DMCWave {
@@ -232,6 +234,7 @@ impl DMCWave {
             duration_counter: 0.0,
             volume: 0,
             silence: false,
+            dpcm_samples: Vec::new(),
         }
     }
 
@@ -262,6 +265,10 @@ impl DMCWave {
 
     pub fn set_volume(&mut self, volume: u8) {
         self.volume = volume;
+    }
+
+    pub fn add_dpcm_sample(&mut self, sample: u8) {
+        self.dpcm_samples.push(sample);
     }
 }
 

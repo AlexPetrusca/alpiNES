@@ -109,7 +109,9 @@ impl APU {
                 guard.pulse_one.set_frequency(self.pulse_one.get_frequency());
             }
         }
-        // println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        // println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}",
+        //     self.pulse_one.get_frequency(), self.pulse_one.get_timer(), self.pulse_one.get_volume(),
+        //     self.pulse_one.get_duty(), self.pulse_one.get_length_counter());
     }
 
     pub fn write_pulse_two_registers(&mut self, register_idx: u8, data: u8) {
@@ -126,7 +128,9 @@ impl APU {
                 guard.pulse_two.set_frequency(self.pulse_two.get_frequency());
             }
         }
-        // println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
+        // println!("pulse_two: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}",
+        //     self.pulse_two.get_frequency(), self.pulse_two.get_timer(), self.pulse_two.get_volume(),
+        //     self.pulse_two.get_duty(), self.pulse_two.get_length_counter());
     }
 
     pub fn write_triangle_registers(&mut self, register_idx: u8, data: u8) {
@@ -147,7 +151,9 @@ impl APU {
                 guard.triangle.set_frequency(self.triangle.get_frequency());
             }
         }
-        // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
+        // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}",
+        //     self.triangle.get_frequency(), self.triangle.get_timer(),
+        //     self.triangle.get_length_counter(), self.triangle.get_linear_counter());
     }
 
     pub fn write_noise_registers(&mut self, register_idx: u8, data: u8) {
@@ -176,11 +182,15 @@ impl APU {
     pub fn write_dmc_registers(&mut self, register_idx: u8, data: u8) {
         self.dmc.write(register_idx, data);
         let mut guard = self.audio_player.as_mut().unwrap().device.lock();
+        if register_idx == APU::REGISTER_A {
+            guard.dmc.set_frequency(self.dmc.get_frequency());
+        }
         if register_idx == APU::REGISTER_B {
             guard.dmc.set_volume(self.dmc.get_volume());
         }
-        println!("dmc: volume: {}, rate: {}, sample_address: 0x{:x}, sample_length: {}",
-            self.dmc.get_volume(), self.dmc.get_rate_idx(), self.dmc.get_sample_address(), self.dmc.get_sample_length());
+        // println!("dmc: volume: {}, rate: {}, sample_address: 0x{:x}, sample_length: {}",
+        //     self.dmc.get_volume(), self.dmc.get_rate_idx(), self.dmc.get_sample_address(),
+        //     self.dmc.get_sample_length());
     }
 
     pub fn tick(&mut self, cycles: u8) {
