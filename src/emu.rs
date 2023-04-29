@@ -372,51 +372,6 @@ impl Emulator {
 
         guard.volume = self.volume;
         guard.mute = self.mute;
-
-        // {
-        //     let timer = apu.pulse_one.get_timer();
-        //     let mut volume = apu.pulse_one.get_volume();
-        //     let duty = apu.pulse_one.get_duty();
-        //     let length_counter = apu.pulse_one.get_length_counter();
-        //     let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-        //     if length_counter == 0 || timer < 8 {
-        //         guard.pulse_one.reset();
-        //     } else {
-        //         guard.pulse_one.duty = duty;
-        //         guard.pulse_one.volume = volume;
-        //         guard.pulse_one.phase_inc = freq / AudioPlayer::FREQ as f32;
-        //     }
-        //     // println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
-        // }
-        //
-        // {
-        //     let timer = apu.pulse_two.get_timer();
-        //     let mut volume = apu.pulse_two.get_volume();
-        //     let duty = apu.pulse_two.get_duty();
-        //     let length_counter = apu.pulse_two.get_length_counter();
-        //     let freq = 1_789_773.0 / (16.0 * (timer as f32 + 1.0));
-        //     if length_counter == 0 || timer < 8 {
-        //         guard.pulse_two.reset();
-        //     } else {
-        //         guard.pulse_two.duty = duty;
-        //         guard.pulse_two.volume = volume;
-        //         guard.pulse_two.phase_inc = freq / AudioPlayer::FREQ as f32;
-        //     }
-        //     // println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
-        // }
-
-        // {
-        //     let timer = apu.triangle.get_timer();
-        //     let length_counter = apu.triangle.get_length_counter();
-        //     let linear_counter = apu.triangle.get_linear_counter();
-        //     let freq = 1_789_773.0 / (32.0 * (timer as f32 + 1.0));
-        //     if length_counter == 0 || linear_counter == 0 || timer < 2 {
-        //         guard.triangle.reset();
-        //     } else {
-        //         guard.triangle.phase_inc = freq / AudioPlayer::FREQ as f32;
-        //     }
-        //     // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
-        // }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

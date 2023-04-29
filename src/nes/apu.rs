@@ -96,32 +96,34 @@ impl APU {
         self.pulse_one.write(register_idx, data);
         let mut guard = self.audio_player.as_mut().unwrap().device.lock();
         if register_idx == APU::REGISTER_A {
-            guard.pulse_one.duty = self.pulse_one.get_duty();
-            guard.pulse_one.volume = self.pulse_one.get_volume();
+            guard.pulse_one.set_duty(self.pulse_one.get_duty());
+            guard.pulse_one.set_volume(self.pulse_one.get_volume());
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_one.get_length_counter() == 0 || self.pulse_one.get_timer() < 8 {
                 guard.pulse_one.silence();
             } else {
-                guard.pulse_one.phase_inc = self.pulse_one.get_frequency() / AudioPlayer::FREQ as f32;
+                guard.pulse_one.set_frequency(self.pulse_one.get_frequency());
             }
         }
+        // println!("pulse1: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
     }
 
     pub fn write_pulse_two_registers(&mut self, register_idx: u8, data: u8) {
         self.pulse_two.write(register_idx, data);
         let mut guard = self.audio_player.as_mut().unwrap().device.lock();
         if register_idx == APU::REGISTER_A {
-            guard.pulse_two.duty = self.pulse_two.get_duty();
-            guard.pulse_two.volume = self.pulse_two.get_volume();
+            guard.pulse_two.set_duty(self.pulse_two.get_duty());
+            guard.pulse_two.set_volume(self.pulse_two.get_volume());
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_two.get_length_counter() == 0 || self.pulse_two.get_timer() < 8 {
                 guard.pulse_two.silence();
             } else {
-                guard.pulse_two.phase_inc = self.pulse_two.get_frequency() / AudioPlayer::FREQ as f32;
+                guard.pulse_two.set_frequency(self.pulse_two.get_frequency());
             }
         }
+        // println!("pulse2: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}", freq, timer, volume, duty, length_counter);
     }
 
     pub fn write_triangle_registers(&mut self, register_idx: u8, data: u8) {
@@ -132,21 +134,40 @@ impl APU {
                 guard.triangle.silence();
             } else {
                 let rate = AudioPlayer::FREQ as f32 / 240.0;
-                guard.triangle.duration = rate * self.triangle.get_linear_counter() as f32;
-                guard.triangle.duration_counter = 0.0;
+                guard.triangle.set_duration(rate * self.triangle.get_linear_counter() as f32);
             }
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.triangle.get_length_counter() == 0 || self.triangle.get_timer() < 2 {
-                guard.pulse_two.silence();
+                guard.triangle.silence();
             } else {
-                guard.triangle.phase_inc = self.triangle.get_frequency() / AudioPlayer::FREQ as f32;
+                guard.triangle.set_frequency(self.triangle.get_frequency());
             }
         }
+        // println!("triangle: freq: {}, timer: {}, length_counter: {}, linear_counter: {}", freq, timer, length_counter, linear_counter);
     }
 
     pub fn write_noise_registers(&mut self, register_idx: u8, data: u8) {
         self.noise.write(register_idx, data);
+        let mut guard = self.audio_player.as_mut().unwrap().device.lock();
+        if register_idx == APU::REGISTER_A {
+            guard.noise.set_volume(self.noise.get_volume());
+        }
+        if register_idx == APU::REGISTER_C {
+            guard.noise.set_frequency(self.noise.get_frequency());
+        }
+        if register_idx == APU::REGISTER_D {
+            if self.noise.get_length_counter() == 0 {
+                guard.noise.silence();
+            } else {
+                let rate = AudioPlayer::FREQ as f32 / 120.0;
+                guard.noise.set_duration(rate * self.noise.get_length_counter() as f32);
+            }
+        }
+        println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
+            self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
+            self.noise.get_length_counter(), self.noise.is_mode_enabled(),
+            self.noise.is_constant_volume(), self.noise.is_one_shot_play());
     }
 
     pub fn write_dmc_registers(&mut self, register_idx: u8, data: u8) {

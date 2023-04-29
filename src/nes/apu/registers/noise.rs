@@ -6,6 +6,10 @@ pub struct NoiseRegisters {
 }
 
 impl NoiseRegisters {
+    const PERIOD_MAPPING: [u16; 16] = [
+        4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+    ];
+
     pub fn new() -> Self {
         NoiseRegisters {
             register_a: 0,
@@ -63,8 +67,12 @@ impl NoiseRegisters {
         self.get_volume()
     }
 
-    pub fn get_period(&self) -> u8 {
+    pub fn get_period_bits(&self) -> u8 {
         self.register_c & 0b0000_1111
+    }
+
+    pub fn get_period(&self) -> u16 {
+        return NoiseRegisters::PERIOD_MAPPING[self.get_period_bits() as usize];
     }
 
     pub fn is_mode_enabled(&self) -> bool {
@@ -77,5 +85,9 @@ impl NoiseRegisters {
 
     pub fn clear_length_counter(&mut self) {
         self.register_d = self.register_d & 0b0000_0111;
+    }
+
+    pub fn get_frequency(&self) -> f32 {
+        (39_375_000.0 / 44.0) / self.get_period() as f32
     }
 }
