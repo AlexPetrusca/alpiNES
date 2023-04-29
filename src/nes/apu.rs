@@ -3,7 +3,7 @@ use crate::nes::apu::registers::frame_counter::FrameCounterRegister;
 use crate::nes::apu::registers::dmc::DMCRegisters;
 use crate::nes::apu::registers::noise::NoiseRegisters;
 use crate::nes::apu::registers::pulse::PulseRegisters;
-use crate::nes::apu::registers::status::StatusFlag::{FrameInterrupt, NoiseEnable, PulseOneEnable, PulseTwoEnable, TriangleEnable};
+use crate::nes::apu::registers::status::StatusFlag::{DmcEnable, FrameInterrupt, NoiseEnable, PulseOneEnable, PulseTwoEnable, TriangleEnable};
 use crate::nes::apu::registers::status::StatusRegister;
 use crate::nes::apu::registers::triangle::TriangleRegisters;
 use crate::nes::cpu::mem::Memory;
@@ -77,9 +77,12 @@ impl APU {
         }
         if self.status.is_clear(NoiseEnable) {
             self.noise.clear_length_counter();
-            // guard.noise.silence();
+            guard.noise.silence();
         }
-        // todo: implement rest
+        if self.status.is_clear(DmcEnable) {
+            // self.dmc.clear_length_counter();
+            guard.dmc.silence();
+        }
     }
 
     pub fn read_frame_counter_register(&self) -> u8 {
@@ -164,14 +167,20 @@ impl APU {
                 guard.noise.set_duration(rate * self.noise.get_length_counter() as f32);
             }
         }
-        println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
-            self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
-            self.noise.get_length_counter(), self.noise.is_mode_enabled(),
-            self.noise.is_constant_volume(), self.noise.is_one_shot_play());
+        // println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
+        //     self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
+        //     self.noise.get_length_counter(), self.noise.is_mode_enabled(),
+        //     self.noise.is_constant_volume(), self.noise.is_one_shot_play());
     }
 
     pub fn write_dmc_registers(&mut self, register_idx: u8, data: u8) {
         self.dmc.write(register_idx, data);
+        let mut guard = self.audio_player.as_mut().unwrap().device.lock();
+        if register_idx == APU::REGISTER_B {
+            guard.dmc.set_volume(self.dmc.get_volume());
+        }
+        println!("dmc: volume: {}, rate: {}, sample_address: 0x{:x}, sample_length: {}",
+            self.dmc.get_volume(), self.dmc.get_rate_idx(), self.dmc.get_sample_address(), self.dmc.get_sample_length());
     }
 
     pub fn tick(&mut self, cycles: u8) {

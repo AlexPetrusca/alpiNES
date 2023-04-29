@@ -43,12 +43,12 @@ impl PulseRegisters {
         (self.register_a & 0b1100_0000) >> 6
     }
 
-    pub fn is_infinite_play(&self) -> bool {
+    pub fn is_loop(&self) -> bool {
         self.register_a & 0b0010_0000 > 0
     }
 
-    pub fn is_one_shot_play(&self) -> bool {
-        !self.is_infinite_play()
+    pub fn is_one_shot(&self) -> bool {
+        !self.is_loop()
     }
 
     pub fn is_constant_volume(&self) -> bool {

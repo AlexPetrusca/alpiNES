@@ -7,6 +7,7 @@ pub struct APUMixer {
     pub pulse_two: PulseWave,
     pub triangle: TriangleWave,
     pub noise: NoiseWave,
+    pub dmc: DMCWave,
 
     pub volume: f32,
     pub mute: bool,
@@ -19,6 +20,7 @@ impl APUMixer {
             pulse_two: PulseWave::new(),
             triangle: TriangleWave::new(),
             noise: NoiseWave::new(),
+            dmc: DMCWave::new(),
 
             volume: 1.0,
             mute: false,
@@ -37,7 +39,7 @@ impl AudioCallback for APUMixer {
 
             let triangle = self.triangle.sample() as f32;
             let noise = self.noise.sample() as f32;
-            let dmc = 0 as f32; // todo: implement
+            let dmc = self.dmc.sample() as f32;
             let tnd = 1.0 / (triangle / 8227.0 + noise / 12241.0 + dmc / 22638.0);
             let tnd_out = 159.79 / (tnd + 100.0);
 
@@ -195,6 +197,57 @@ impl NoiseWave {
         self.phase = 0.0;
         self.volume = 0;
         self.duration = 0.0;
+    }
+
+    pub fn set_frequency(&mut self, freq: f32) {
+        self.phase_inc = freq / AudioPlayer::FREQ as f32;
+        self.phase = 0.0;
+    }
+
+    pub fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
+        self.duration_counter = 0.0;
+    }
+
+    pub fn set_volume(&mut self, volume: u8) {
+        self.volume = volume;
+    }
+}
+
+pub struct DMCWave {
+    phase: f32,
+    phase_inc: f32,
+    duration: f32,
+    duration_counter: f32,
+    volume: u8,
+    silence: bool,
+}
+
+impl DMCWave {
+    pub fn new() -> Self {
+        Self {
+            phase: 0.0,
+            phase_inc: 0.0,
+            duration: 0.0,
+            duration_counter: 0.0,
+            volume: 0,
+            silence: false,
+        }
+    }
+
+    #[inline]
+    pub fn sample(&mut self) -> u8 {
+        if self.duration_counter < self.duration {
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+            self.duration_counter += 1.0;
+        }
+        self.volume
+    }
+
+    #[inline]
+    pub fn silence(&mut self) {
+        self.phase = 0.0;
+        self.silence = true;
     }
 
     pub fn set_frequency(&mut self, freq: f32) {

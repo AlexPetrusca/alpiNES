@@ -6,7 +6,7 @@ pub struct NoiseRegisters {
 }
 
 impl NoiseRegisters {
-    const PERIOD_MAPPING: [u16; 16] = [
+    const PERIOD_LOOKUP: [u16; 16] = [
         4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
     ];
 
@@ -67,12 +67,12 @@ impl NoiseRegisters {
         self.get_volume()
     }
 
-    pub fn get_period_bits(&self) -> u8 {
+    pub fn get_period_idx(&self) -> u8 {
         self.register_c & 0b0000_1111
     }
 
     pub fn get_period(&self) -> u16 {
-        return NoiseRegisters::PERIOD_MAPPING[self.get_period_bits() as usize];
+        return NoiseRegisters::PERIOD_LOOKUP[self.get_period_idx() as usize];
     }
 
     pub fn is_mode_enabled(&self) -> bool {
