@@ -35,12 +35,17 @@ impl AudioCallback for APUMixer {
     fn callback(&mut self, out: &mut [f32]) {
         for sample in out.iter_mut() {
             let pulse_one = self.pulse_one.sample() as f32;
+            // let pulse_one = 0.0;
             let pulse_two = self.pulse_two.sample() as f32;
+            // let pulse_two = 0.0;
             let pulse_out = 95.88 / (8128.0 / (pulse_one + pulse_two) + 100.0);
 
             let triangle = self.triangle.sample() as f32;
+            // let triangle = 0.0;
             let noise = self.noise.sample() as f32;
+            // let noise = 0.0;
             let dmc = self.dmc.sample() as f32;
+            // let dmc = 0.0;
             let tnd = 1.0 / (triangle / 8227.0 + noise / 12241.0 + dmc / 22638.0);
             let tnd_out = 159.79 / (tnd + 100.0);
 
@@ -54,8 +59,11 @@ impl AudioCallback for APUMixer {
 pub struct PulseWave {
     phase: f32,
     phase_inc: f32,
+    duration: f32,
+    duration_counter: f32,
     volume: u8,
     duty: u8,
+    is_loop: bool,
 }
 
 impl PulseWave {
@@ -63,8 +71,11 @@ impl PulseWave {
         Self {
             phase: 0.0,
             phase_inc: 0.0,
+            duration: 0.0,
+            duration_counter: 0.0,
             volume: 0,
             duty: 0,
+            is_loop: false,
         }
     }
 
@@ -77,14 +88,30 @@ impl PulseWave {
             3 => if self.phase >= 0.125 && self.phase <= 0.375 { 0 } else { self.volume },
             _ => panic!("can't be")
         };
-        self.phase = (self.phase + self.phase_inc) % 1.0;
-        sample
+        if self.is_loop {
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+            return sample;
+        } else if self.duration_counter < self.duration {
+            self.phase = (self.phase + self.phase_inc) % 1.0;
+            self.duration_counter += 1.0;
+            return sample;
+        }
+        return 0;
     }
 
     #[inline]
     pub fn silence(&mut self) {
         self.phase = 0.0;
         self.volume = 0;
+    }
+
+    pub fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
+        self.duration_counter = 0.0;
+    }
+
+    pub fn set_is_loop(&mut self, is_loop: bool) {
+        self.is_loop = is_loop;
     }
 
     pub fn set_frequency(&mut self, freq: f32) {
@@ -280,6 +307,10 @@ pub struct AudioPlayer {
 
 impl AudioPlayer {
     pub const FREQ: i32 = 16 * 44100;
+    pub const LENGTH_LOOKUP: [u16; 32] = [
+        10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
+        12, 16,  24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30
+    ];
 
     pub fn new(sdl_audio: AudioSubsystem) -> Self {
         let spec = AudioSpecDesired {

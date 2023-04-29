@@ -1,3 +1,5 @@
+use crate::util::audio::AudioPlayer;
+
 pub struct PulseRegisters {
     register_a: u8, // DDLC VVVV	Duty (D), envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
     register_b: u8, // EPPP NSSS	Sweep unit: enabled (E), period (P), negate (N), shift (S)
@@ -8,7 +10,7 @@ pub struct PulseRegisters {
 impl PulseRegisters {
     pub fn new() -> Self {
         PulseRegisters {
-            register_a: 0b0011_0000,
+            register_a: 0,
             register_b: 0,
             register_c: 0,
             register_d: 0,
@@ -89,6 +91,15 @@ impl PulseRegisters {
 
     pub fn get_length_counter(&self) -> u8 {
         (self.register_d & 0b1111_1000) >> 3
+    }
+
+    pub fn get_length(&self) -> u16 {
+        AudioPlayer::LENGTH_LOOKUP[self.get_length_counter() as usize]
+    }
+
+    pub fn get_duration(&self) -> f32 {
+        let rate = AudioPlayer::FREQ as f32 / 120.0;
+        return rate * self.get_length() as f32;
     }
 
     pub fn clear_length_counter(&mut self) {

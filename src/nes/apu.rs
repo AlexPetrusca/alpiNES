@@ -104,14 +104,22 @@ impl APU {
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_one.get_length_counter() == 0 || self.pulse_one.get_timer() < 8 {
-                guard.pulse_one.silence();
+                guard.pulse_one.silence(); // todo: can we get rid of this?
             } else {
+                guard.pulse_one.set_is_loop(self.pulse_one.is_loop());
                 guard.pulse_one.set_frequency(self.pulse_one.get_frequency());
+                guard.pulse_one.set_duration(self.pulse_one.get_duration());
             }
         }
-        // println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}",
+        // println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
+        //           is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
+        //           sweep_period: {}, sweep_shift: {}",
         //     self.pulse_one.get_frequency(), self.pulse_one.get_timer(), self.pulse_one.get_volume(),
-        //     self.pulse_one.get_duty(), self.pulse_one.get_length_counter());
+        //     self.pulse_one.get_duty(), self.pulse_one.get_length_counter(), self.pulse_one.is_loop(),
+        //     self.pulse_one.is_envelope_volume(), self.pulse_one.is_sweep_enabled(),
+        //     self.pulse_one.is_sweep_negate(), self.pulse_one.get_sweep_period(),
+        //     self.pulse_one.get_sweep_shift()
+        // );
     }
 
     pub fn write_pulse_two_registers(&mut self, register_idx: u8, data: u8) {
@@ -123,14 +131,22 @@ impl APU {
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
             if self.pulse_two.get_length_counter() == 0 || self.pulse_two.get_timer() < 8 {
-                guard.pulse_two.silence();
+                guard.pulse_two.silence(); // todo: can we get rid of this?
             } else {
+                guard.pulse_two.set_is_loop(self.pulse_two.is_loop());
                 guard.pulse_two.set_frequency(self.pulse_two.get_frequency());
+                guard.pulse_two.set_duration(self.pulse_two.get_duration());
             }
         }
-        // println!("pulse_two: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}",
+        // println!("pulse_two: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
+        //           is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
+        //           sweep_period: {}, sweep_shift: {}",
         //     self.pulse_two.get_frequency(), self.pulse_two.get_timer(), self.pulse_two.get_volume(),
-        //     self.pulse_two.get_duty(), self.pulse_two.get_length_counter());
+        //     self.pulse_two.get_duty(), self.pulse_two.get_length_counter(), self.pulse_two.is_loop(),
+        //     self.pulse_two.is_envelope_volume(), self.pulse_two.is_sweep_enabled(),
+        //     self.pulse_two.is_sweep_negate(), self.pulse_two.get_sweep_period(),
+        //     self.pulse_two.get_sweep_shift()
+        // );
     }
 
     pub fn write_triangle_registers(&mut self, register_idx: u8, data: u8) {
