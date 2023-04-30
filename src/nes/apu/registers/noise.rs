@@ -75,7 +75,7 @@ impl NoiseRegisters {
         return NoiseRegisters::PERIOD_LOOKUP[self.get_period_idx() as usize];
     }
 
-    pub fn is_mode_enabled(&self) -> bool {
+    pub fn is_tone_mode(&self) -> bool {
         self.register_c & 0b1000_0000 > 0
     }
 

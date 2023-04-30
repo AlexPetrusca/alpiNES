@@ -281,23 +281,25 @@ impl TriangleWave {
 }
 
 pub struct NoiseWave {
+    shift_register: u16,
     phase: f32,
     phase_inc: f32,
     duration: f32,
     duration_counter: f32,
     volume: u8,
-    shift_register: u16,
+    tone_mode: bool,
 }
 
 impl NoiseWave {
     pub fn new() -> Self {
         Self {
+            shift_register: 1,
             phase: 0.0,
             phase_inc: 0.0,
             duration: 0.0,
             duration_counter: 0.0,
             volume: 0,
-            shift_register: 1,
+            tone_mode: true
         }
     }
 
@@ -309,7 +311,8 @@ impl NoiseWave {
             self.duration_counter += 1.0;
         }
         if self.phase < old_phase {
-            let feedback = (self.shift_register & 1) ^ ((self.shift_register >> 1) & 1); // todo: mode flag impl
+            let mode_bit = if self.tone_mode { 6 } else { 1 };
+            let feedback = (self.shift_register & 1) ^ ((self.shift_register >> mode_bit) & 1);
             self.shift_register = self.shift_register >> 1;
             self.shift_register = self.shift_register | (feedback << 14);
         }
@@ -338,6 +341,10 @@ impl NoiseWave {
     pub fn set_duration(&mut self, duration: f32) {
         self.duration = duration;
         self.duration_counter = 0.0;
+    }
+
+    pub fn set_is_tone_mode(&mut self, tone_mode: bool) {
+        self.tone_mode = tone_mode;
     }
 
     pub fn set_volume(&mut self, volume: u8) {

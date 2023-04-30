@@ -201,6 +201,7 @@ impl APU {
             guard.noise.set_volume(self.noise.get_volume());
         }
         if register_idx == APU::REGISTER_C {
+            guard.noise.set_is_tone_mode(self.noise.is_tone_mode());
             guard.noise.set_frequency(self.noise.get_frequency());
         }
         if register_idx == APU::REGISTER_D {
@@ -212,9 +213,9 @@ impl APU {
             }
         }
         if !guard.mute_noise {
-            println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, mode-enabled: {}, constant-volume: {}, one-shot: {}",
+            println!("noise: freq: {}, period: {}, volume: {}, length_counter: {}, tone-mode: {}, constant-volume: {}, one-shot: {}",
                 self.noise.get_frequency(), self.noise.get_period(), self.noise.get_volume(),
-                self.noise.get_length_counter(), self.noise.is_mode_enabled(),
+                self.noise.get_length_counter(), self.noise.is_tone_mode(),
                 self.noise.is_constant_volume(), self.noise.is_one_shot_play());
         }
     }
