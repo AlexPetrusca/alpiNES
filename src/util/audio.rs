@@ -127,6 +127,9 @@ impl PulseWave {
         }
 
         // sweep
+        // todo: sweep has some issues with timing:
+        //  - sometimes extra pitch at the end of mario's jump
+        //  - sometimes fire balls are noticeably higher pitched
         let target_timer = self.get_sweep_target_timer();
         if self.sweep_enable {
             let old_sweep_phase = self.sweep_phase;
@@ -339,6 +342,7 @@ impl NoiseWave {
     }
 }
 
+// todo: fully implement DMC
 pub struct DMCWave {
     phase: f32,
     phase_inc: f32,
