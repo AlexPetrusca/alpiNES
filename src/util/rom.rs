@@ -53,14 +53,18 @@ impl ROM {
         let prg_rom_size = raw[4] as usize * ROM::PRG_ROM_PAGE_SIZE;
         let chr_rom_size = raw[5] as usize * ROM::CHR_ROM_PAGE_SIZE;
 
-        let skip_trainer = raw[6] & 0b100 != 0;
+        let has_trainer = raw[6] & 0b100 != 0;
 
-        let prg_rom_start = 16 + if skip_trainer { 512 } else { 0 };
+        let prg_rom_start = 16 + if has_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
         let prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
         let chr_rom = raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec();
         let prg_rom_mirroring = prg_rom.len() == ROM::PRG_ROM_PAGE_SIZE;
+
+        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, prg_rom_mirroring {}, prg_rom_size: {}, chr_rom_size: {}",
+            mapper, has_trainer, &screen_mirroring, prg_rom_mirroring, prg_rom_size, chr_rom_size);
+
         Ok(ROM { prg_rom, chr_rom, mapper, screen_mirroring, prg_rom_mirroring })
     }
 }

@@ -231,7 +231,7 @@ fn run_simulate_sound() {
 //  - pacman: nothing sounds right
 //  - duck hunt: is broken (also visually broken)
 //  - pinball: shouldn't have audio playing during demo
-//  - ice climber: breaking blocks (noise) doesn't sound right ✅
+//  - ice climber: breaking blocks (noise) doesn't sound right
 //  - balloon fight: shouldn't have any audio during title screen and credits
 //  - donkey kong: footsteps and jumps dont sound right
 
@@ -239,6 +239,9 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/donkey_kong.nes");
     // run_simulate_sound();
+
+    // run_game("rom/mapper0/super_mario_bros.nes");
+    run_game("rom/mapper2/contra.nes");
+    // run_game("rom/mapper3/arkanoid.nes");
 }
