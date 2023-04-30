@@ -217,6 +217,7 @@ fn run_simulate_sound() {
     let program: Vec<u8> = vec![0xa9, 0x01, 0x8d, 0x15, 0x40, 0xa9, 0xbf, 0x8d, 0x00, 0x40, 0xa9, 0xc9,
         0x8d, 0x02, 0x40, 0xa9, 0x00, 0x8d, 0x03, 0x40, CPU::JAM_1];
     let mut emu: Emulator = Emulator::new();
+    emu.nes.cpu.memory.apu.init_audio_player(&sdl2::init().unwrap());
     emu.load_and_run(&program);
 }
 
@@ -230,7 +231,7 @@ fn run_simulate_sound() {
 //  - pacman: nothing sounds right
 //  - duck hunt: is broken (also visually broken)
 //  - pinball: shouldn't have audio playing during demo
-//  - ice climber: breaking blocks (noise) doesn't sound right
+//  - ice climber: breaking blocks (noise) doesn't sound right ✅
 //  - balloon fight: shouldn't have any audio during title screen and credits
 //  - donkey kong: footsteps and jumps dont sound right
 
@@ -238,6 +239,6 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/mario_bros.nes");
+    run_game("rom/mapper0/ice_climber.nes");
     // run_simulate_sound();
 }
