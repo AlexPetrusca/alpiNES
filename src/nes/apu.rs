@@ -115,14 +115,9 @@ impl APU {
             guard.pulse_one.set_sweep_frequency(self.pulse_one.get_sweep_frequency());
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
-            if self.pulse_one.get_length_counter() == 0 || self.pulse_one.get_timer() < 8 {
-                guard.pulse_one.silence(); // todo: can we get rid of this?
-            } else {
-                guard.pulse_one.set_frequency_from_timer(self.pulse_one.get_timer());
-                if self.pulse_one.is_one_shot() {
-                    guard.pulse_one.set_duration(self.pulse_one.get_duration());
-                }
-            }
+            guard.pulse_one.set_frequency_from_timer(self.pulse_one.get_timer());
+            guard.pulse_one.set_duration(self.pulse_one.get_duration());
+            guard.pulse_one.reset();
         }
         if !guard.mute_pulse_one {
             println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
@@ -157,14 +152,9 @@ impl APU {
             guard.pulse_two.set_sweep_frequency(self.pulse_two.get_sweep_frequency());
         }
         if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
-            if self.pulse_two.get_length_counter() == 0 || self.pulse_two.get_timer() < 8 {
-                guard.pulse_two.silence(); // todo: can we get rid of this?
-            } else {
-                guard.pulse_two.set_frequency_from_timer(self.pulse_two.get_timer());
-                if self.pulse_two.is_one_shot() {
-                    guard.pulse_two.set_duration(self.pulse_two.get_duration());
-                }
-            }
+            guard.pulse_two.set_frequency_from_timer(self.pulse_two.get_timer());
+            guard.pulse_two.set_duration(self.pulse_two.get_duration());
+            guard.pulse_two.reset();
         }
         if !guard.mute_pulse_two {
             println!("pulse_two: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \

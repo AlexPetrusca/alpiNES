@@ -50,7 +50,7 @@ impl AudioCallback for APUMixer {
 
             let triangle = if self.mute_triangle { 0.0 } else { self.triangle.sample() as f32 };
             let noise = if self.mute_noise { 0.0 } else { self.noise.sample() as f32 };
-            let dmc = if self.mute_dmc { 0.0 } else { self.dmc.sample() as f32 };;
+            let dmc = if self.mute_dmc { 0.0 } else { self.dmc.sample() as f32 };
             let tnd = 1.0 / (triangle / 8227.0 + noise / 12241.0 + dmc / 22638.0);
             let tnd_out = 159.79 / (tnd + 100.0);
 
@@ -100,11 +100,10 @@ impl PulseWave {
             duration_counter: 0.0,
             volume: 0,
             duty: 0,
-            channel
+            channel: channel
         }
     }
 
-    #[inline]
     pub fn sample(&mut self) -> u8 {
         // duty
         let mut sample = match self.duty {
@@ -150,17 +149,17 @@ impl PulseWave {
         return 0;
     }
 
-    #[inline]
     pub fn silence(&mut self) {
-        self.phase = 0.0;
-        self.env_phase = 0.0;
-        self.sweep_phase = 0.0;
         self.volume = 0;
     }
 
-    pub fn set_frequency_from_timer(&mut self, timer: u16) {
-        self.sweep_timer = timer;
-        self.set_frequency(1_789_773.0 / (16.0 * (timer as f32 + 1.0)));
+    pub fn reset(&mut self) {
+        self.phase = 0.0;
+        self.sweep_phase = 0.0; // todo: do I need to reset this?
+        if self.envelope_enable {
+            self.env_phase = 0.0;
+            self.volume = 15;
+        }
     }
 
     fn get_sweep_target_timer(&mut self) -> u16 {
@@ -171,6 +170,11 @@ impl PulseWave {
         self.sweep_timer.wrapping_add(delta)
     }
 
+    pub fn set_frequency_from_timer(&mut self, timer: u16) {
+        self.sweep_timer = timer;
+        self.set_frequency(1_789_773.0 / (16.0 * (timer as f32 + 1.0)));
+    }
+
     fn set_frequency(&mut self, freq: f32) {
         self.phase_inc = freq / AudioPlayer::FREQ as f32;
         self.phase = 0.0;
@@ -178,7 +182,6 @@ impl PulseWave {
 
     pub fn set_envelope_enable(&mut self, envelope_enable: bool) {
         self.envelope_enable = envelope_enable;
-        self.volume = 15;
     }
 
     pub fn set_envelope_frequency(&mut self, env_freq: f32) {
