@@ -239,6 +239,6 @@ fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/ice_climber.nes");
+    run_game("rom/mapper0/donkey_kong.nes");
     // run_simulate_sound();
 }

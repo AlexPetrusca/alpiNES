@@ -187,8 +187,12 @@ impl PulseWave {
     }
 
     pub fn set_envelope_enable(&mut self, envelope_enable: bool) {
+        // todo: this is super suspect, but it seems to work. make sure it works!
+        if !self.envelope_enable && envelope_enable {
+            self.env_phase = 0.0;
+            self.volume = 15;
+        }
         self.envelope_enable = envelope_enable;
-        self.volume = 15;
     }
 
     pub fn set_envelope_frequency(&mut self, env_freq: f32) {

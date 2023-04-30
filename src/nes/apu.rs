@@ -114,7 +114,10 @@ impl APU {
             guard.pulse_one.set_sweep_shift(self.pulse_one.get_sweep_shift());
             guard.pulse_one.set_sweep_frequency(self.pulse_one.get_sweep_frequency());
         }
-        if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
+        if register_idx == APU::REGISTER_C {
+            guard.pulse_one.set_frequency_from_timer(self.pulse_one.get_timer());
+        }
+        if register_idx == APU::REGISTER_D {
             guard.pulse_one.set_frequency_from_timer(self.pulse_one.get_timer());
             guard.pulse_one.set_duration(self.pulse_one.get_duration());
             guard.pulse_one.reset();
@@ -151,7 +154,10 @@ impl APU {
             guard.pulse_two.set_sweep_shift(self.pulse_two.get_sweep_shift());
             guard.pulse_two.set_sweep_frequency(self.pulse_two.get_sweep_frequency());
         }
-        if register_idx == APU::REGISTER_C || register_idx == APU::REGISTER_D {
+        if register_idx == APU::REGISTER_C {
+            guard.pulse_two.set_frequency_from_timer(self.pulse_two.get_timer());
+        }
+        if register_idx == APU::REGISTER_D {
             guard.pulse_two.set_frequency_from_timer(self.pulse_two.get_timer());
             guard.pulse_two.set_duration(self.pulse_two.get_duration());
             guard.pulse_two.reset();
