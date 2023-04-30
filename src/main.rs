@@ -227,16 +227,17 @@ fn run_simulate_sound() {
 //  - Draw foreground sprites on NMI (right before render)
 
 // todo: test audio with different games
-//  - pacman doesnt sound right
-//  - duck hunt is broken (also visually broken)
-//  - pinball shouldn't have audio playing during demo
-//  - ice climber breaking blocks (noise) doesn't sound right
-//  - balloon fight shouldn't have any audio during title screen and credits
+//  - pacman: nothing sounds right
+//  - duck hunt: is broken (also visually broken)
+//  - pinball: shouldn't have audio playing during demo
+//  - ice climber: breaking blocks (noise) doesn't sound right
+//  - balloon fight: shouldn't have any audio during title screen and credits
+//  - donkey kong: footsteps and jumps dont sound right
 
 fn main() {
     // run_snake();
     // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    run_game("rom/mapper0/balloon_fight.nes");
+    run_game("rom/mapper0/mario_bros.nes");
     // run_simulate_sound();
 }

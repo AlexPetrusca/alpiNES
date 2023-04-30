@@ -154,6 +154,9 @@ impl PulseWave {
 
     pub fn silence(&mut self) {
         self.volume = 0;
+        // self.phase = 0.0;
+        // self.env_phase = 0.0;
+        // self.sweep_phase = 0.0;
     }
 
     pub fn reset(&mut self) {
