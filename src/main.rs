@@ -235,6 +235,11 @@ fn run_simulate_sound() {
 //  - balloon fight: shouldn't have any audio during title screen and credits
 //  - donkey kong: footsteps and jumps dont sound right
 
+// todo: continue mapper2 debugging
+//  - contra: only left half of the background shows up; only top half of sprites show up
+//  - castlevania: some sprites don't show up properly
+//  - metal gear: crashes during intro (wrapping subtract exception in ppu scroll handling)
+
 fn main() {
     // run_snake();
     // run_nestest();
@@ -242,6 +247,6 @@ fn main() {
     // run_simulate_sound();
 
     // run_game("rom/mapper0/super_mario_bros.nes");
-    run_game("rom/mapper2/contra.nes");
+    run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/arkanoid.nes");
 }

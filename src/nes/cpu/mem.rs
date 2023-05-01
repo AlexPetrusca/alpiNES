@@ -16,6 +16,7 @@ pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],
     pub ppu: PPU,
     pub apu: APU,
+    pub rom: ROM, // todo: should this be Option<ROM>?
     pub joycon1: Joycon,
     pub joycon2: Joycon,
     pub prg_mirror_enabled: bool,
@@ -69,6 +70,7 @@ impl Memory {
             memory: [0; Memory::MEM_SIZE],
             ppu: PPU::new(),
             apu: APU::new(),
+            rom: ROM::new(),
             joycon1: Joycon::new(),
             joycon2: Joycon::new(),
             prg_mirror_enabled: false,
@@ -76,12 +78,9 @@ impl Memory {
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
+        self.rom = rom.clone();
+        self.prg_mirror_enabled = rom.is_prg_rom_mirror;
         self.ppu.memory.load_rom(rom);
-        self.prg_mirror_enabled = rom.prg_rom_mirroring;
-        for i in 0..rom.prg_rom.len() {
-            let idx = Memory::PRG_ROM_START.wrapping_add(i as u16);
-            self.memory[idx as usize] = rom.prg_rom[i];
-        }
     }
 
     pub fn load_at_addr(&mut self, address: u16, program: &Vec<u8>) {
@@ -161,7 +160,7 @@ impl Memory {
                 if self.prg_mirror_enabled && address >= 0x4000 {
                     offset = offset % 0x4000;
                 }
-                self.memory[(Memory::PRG_ROM_START + offset) as usize]
+                self.rom.read_byte(Memory::PRG_ROM_START + offset)
             },
             _ => {
                 panic!("Attempt to read from unmapped memory: 0x{:0>4X}", address);
@@ -261,7 +260,7 @@ impl Memory {
                 self.memory[address as usize] = data;
             }
             prg_rom_range!() => {
-                panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
+                self.rom.write_byte(address, data);
             },
             _ => {
                 panic!("Attempt to write to unmapped memory: 0x{:0>4X}", address);

@@ -8,6 +8,7 @@ macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
 pub struct PPUMemory {
     pub memory: [u8; PPUMemory::MEM_SIZE],
     pub screen_mirroring: Mirroring,
+    pub is_chr_ram: bool,
 }
 
 impl PPUMemory {
@@ -24,12 +25,14 @@ impl PPUMemory {
     pub fn new() -> Self {
         PPUMemory {
             memory: [0; PPUMemory::MEM_SIZE],
-            screen_mirroring: Mirroring::FourScreen,
+            screen_mirroring: Mirroring::Horizontal,
+            is_chr_ram: false,
         }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
         self.screen_mirroring = rom.screen_mirroring.clone();
+        self.is_chr_ram = rom.is_chr_ram;
         for i in 0..rom.chr_rom.len() {
             let idx = PPUMemory::CHR_ROM_START.wrapping_add(i as u16);
             self.memory[idx as usize] = rom.chr_rom[i];
@@ -63,7 +66,11 @@ impl PPUMemory {
         let ppu_addr = address % PPUMemory::MEM_SIZE as u16;
         match ppu_addr {
             chr_rom_range!() => {
-                panic!("Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", ppu_addr)
+                if self.is_chr_ram {
+                    self.memory[address as usize] = data;
+                } else {
+                    panic!("Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", ppu_addr)
+                }
             },
             vram_range!() => {
                 let mirror_addr = self.mirror_vram_addr(ppu_addr);

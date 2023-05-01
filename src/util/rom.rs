@@ -1,6 +1,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::Read;
+use crate::nes::cpu::mem::Memory;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Mirroring {
@@ -9,18 +10,35 @@ pub enum Mirroring {
     FourScreen,
 }
 
+#[derive(Clone)]
 pub struct ROM {
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub mapper: u8,
     pub screen_mirroring: Mirroring,
-    pub prg_rom_mirroring: bool
+    pub is_prg_rom_mirror: bool,
+    pub is_chr_ram: bool,
+
+    pub bank_select: u8, // todo: move?
 }
 
 impl ROM {
     const NES_SIGNATURE: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
     const CHR_ROM_PAGE_SIZE: usize = 0x2000; // 8kB
     const PRG_ROM_PAGE_SIZE: usize = 0x4000; // 16kB
+
+    pub fn new() -> Self {
+        ROM {
+            prg_rom: Vec::new(),
+            chr_rom: Vec::new(),
+            mapper: 0,
+            screen_mirroring: Mirroring::Horizontal,
+            is_prg_rom_mirror: false,
+            is_chr_ram: false,
+
+            bank_select: 0,
+        }
+    }
 
     pub fn from_filepath(filepath: &str) -> Result<ROM, String> {
         let mut f = File::open(filepath).expect("no file found");
@@ -60,11 +78,60 @@ impl ROM {
 
         let prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
         let chr_rom = raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec();
-        let prg_rom_mirroring = prg_rom.len() == ROM::PRG_ROM_PAGE_SIZE;
+        let is_prg_rom_mirror = prg_rom.len() == ROM::PRG_ROM_PAGE_SIZE;
+        let is_chr_ram = chr_rom.len() == 0;
 
-        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, prg_rom_mirroring {}, prg_rom_size: {}, chr_rom_size: {}",
-            mapper, has_trainer, &screen_mirroring, prg_rom_mirroring, prg_rom_size, chr_rom_size);
+        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring {}, is_chr_ram: {}, prg_rom_size: {}, chr_rom_size: {}",
+            mapper, has_trainer, &screen_mirroring, is_prg_rom_mirror, is_chr_ram, prg_rom_size, chr_rom_size);
+        Ok(ROM {prg_rom, chr_rom, mapper, screen_mirroring, is_prg_rom_mirror, is_chr_ram, bank_select: 0 })
+    }
 
-        Ok(ROM { prg_rom, chr_rom, mapper, screen_mirroring, prg_rom_mirroring })
+    pub fn read_byte(&mut self, address: u16) -> u8 {
+        match self.mapper {
+            0 => {
+                self.prg_rom[(address - 0x8000) as usize]
+            }
+            2 => {
+                match address {
+                    0x8000..=0xBFFF => {
+                        let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.bank_select as usize;
+                        let mut offset = (address - 0x8000) as usize;
+                        self.prg_rom[bank_start + offset]
+                    },
+                    0xC000..=0xFFFF => {
+                        let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
+                        let mut offset = (address - 0xC000) as usize;
+                        self.prg_rom[last_bank_start + offset]
+                    },
+                    _ => {
+                        panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                    }
+                }
+            }
+            _ => {
+                panic!("Unsupported mapper: {}", self.mapper);
+            }
+        }
+    }
+
+    pub fn write_byte(&mut self, address: u16, data: u8) {
+        match self.mapper {
+            2 => {
+                self.bank_select = data & 0b0000_1111; // write bank select
+            }
+            _ => {
+                panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn get_prg_bank_count(&self) -> usize {
+        self.prg_rom.len() / ROM::PRG_ROM_PAGE_SIZE
+    }
+
+    #[inline]
+    pub fn get_chr_bank_count(&self) -> usize {
+        self.chr_rom.len() / ROM::CHR_ROM_PAGE_SIZE
     }
 }
