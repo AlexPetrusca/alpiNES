@@ -41,10 +41,10 @@ impl ROM {
     }
 
     pub fn from_filepath(filepath: &str) -> Result<ROM, String> {
-        let mut f = File::open(filepath).expect("no file found");
+        let mut file = File::open(filepath).expect("no file found");
         let metadata = fs::metadata(filepath).expect("unable to read metadata");
         let mut buffer = vec![0; metadata.len() as usize];
-        f.read(&mut buffer).expect("buffer overflow");
+        file.read(&mut buffer).expect("buffer overflow");
         ROM::from_buffer(&buffer)
     }
 
@@ -81,18 +81,19 @@ impl ROM {
         let is_prg_rom_mirror = prg_rom.len() == ROM::PRG_ROM_PAGE_SIZE;
         let is_chr_ram = chr_rom.len() == 0;
 
-        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring {}, is_chr_ram: {}, prg_rom_size: {}, chr_rom_size: {}",
+        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: {}, chr_rom_size: {}",
             mapper, has_trainer, &screen_mirroring, is_prg_rom_mirror, is_chr_ram, prg_rom_size, chr_rom_size);
         Ok(ROM {prg_rom, chr_rom, mapper, screen_mirroring, is_prg_rom_mirror, is_chr_ram, bank_select: 0 })
     }
 
-    pub fn read_byte(&mut self, address: u16) -> u8 {
+    pub fn read_prg_byte(&mut self, address: u16) -> u8 {
+        let mirror_address = self.mirror_prg_address(address);
         match self.mapper {
             0 => {
                 self.prg_rom[(address - 0x8000) as usize]
             }
             2 => {
-                match address {
+                match mirror_address {
                     0x8000..=0xBFFF => {
                         let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.bank_select as usize;
                         let mut offset = (address - 0x8000) as usize;
@@ -114,15 +115,45 @@ impl ROM {
         }
     }
 
-    pub fn write_byte(&mut self, address: u16, data: u8) {
+    pub fn write_prg_byte(&mut self, address: u16, data: u8) {
         match self.mapper {
             2 => {
-                self.bank_select = data & 0b0000_1111; // write bank select
+                self.bank_select = data & 0b0000_1111;
             }
             _ => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
             }
         }
+    }
+
+    pub fn read_chr_byte(&self, address: u16) -> u8 {
+        match self.mapper {
+            0 => {
+                self.chr_rom[address as usize]
+            },
+            2 => {
+                self.chr_rom[address as usize]
+            },
+            _ => {
+                panic!("Unsupported mapper: {}", self.mapper);
+            }
+        }
+    }
+
+    pub fn write_chr_byte(&mut self, address: u16, data: u8) {
+        // if self.is_chr_ram {
+        //     self.memory[address as usize] = data;
+        // } else {
+        //     panic!("Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", address)
+        // }
+    }
+
+    fn mirror_prg_address(&mut self, address: u16) -> u16 {
+        let mut offset = address - Memory::PRG_ROM_START;
+        if self.is_prg_rom_mirror && address >= 0x4000 {
+            offset = offset % 0x4000;
+        }
+        Memory::PRG_ROM_START + offset
     }
 
     #[inline]

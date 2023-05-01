@@ -219,7 +219,7 @@ impl Emulator {
         let scroll_x = ppu.scroll.get_scroll_x() as usize;
         let scroll_y = ppu.scroll.get_scroll_y() as usize;
 
-        let (nametable1, nametable2) = match (&ppu.memory.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
+        let (nametable1, nametable2) = match (&ppu.memory.rom.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
             (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
             (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
                 (&ppu.memory.memory[0x2000..0x2400], &ppu.memory.memory[0x2400..0x2800])
@@ -228,8 +228,8 @@ impl Emulator {
             (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
                 ( &ppu.memory.memory[0x2400..0x2800], &ppu.memory.memory[0x2000..0x2400])
             }
-            (_,_) => {
-                panic!("Not supported mirroring type {:?}", ppu.memory.screen_mirroring);
+            (_, _) => {
+                panic!("Not supported mirroring type {:?}", ppu.memory.rom.screen_mirroring);
             }
         };
 

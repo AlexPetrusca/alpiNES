@@ -19,7 +19,6 @@ pub struct Memory {
     pub rom: ROM, // todo: should this be Option<ROM>?
     pub joycon1: Joycon,
     pub joycon2: Joycon,
-    pub prg_mirror_enabled: bool,
 }
 
 impl Memory {
@@ -73,13 +72,11 @@ impl Memory {
             rom: ROM::new(),
             joycon1: Joycon::new(),
             joycon2: Joycon::new(),
-            prg_mirror_enabled: false,
         }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
         self.rom = rom.clone();
-        self.prg_mirror_enabled = rom.is_prg_rom_mirror;
         self.ppu.memory.load_rom(rom);
     }
 
@@ -117,7 +114,7 @@ impl Memory {
                         self.ppu.read_oam_data_register()
                     },
                     _ => {
-                        panic!("Attempt to read from unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
+                        panic!("Attempt to read from write-only PPU address memory: 0x{:0>4X}", mirror_addr);
                     }
                 }
             }
@@ -151,16 +148,12 @@ impl Memory {
                         panic!("Attempt to read from unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
                 }
-            }
+            },
             prg_ram_range!() => {
                 self.memory[address as usize]
-            }
+            },
             prg_rom_range!() => {
-                let mut offset = address - Memory::PRG_ROM_START;
-                if self.prg_mirror_enabled && address >= 0x4000 {
-                    offset = offset % 0x4000;
-                }
-                self.rom.read_byte(Memory::PRG_ROM_START + offset)
+                self.rom.read_prg_byte(address)
             },
             _ => {
                 panic!("Attempt to read from unmapped memory: 0x{:0>4X}", address);
@@ -221,13 +214,13 @@ impl Memory {
                     },
                     Memory::APU_PULSE_ONE_REGISTER_A..=Memory::APU_PULSE_ONE_REGISTER_D => {
                         self.apu.write_pulse_one_registers(address as u8 % 4, data);
-                    }
+                    },
                     Memory::APU_PULSE_TWO_REGISTER_A..=Memory::APU_PULSE_TWO_REGISTER_D => {
                         self.apu.write_pulse_two_registers(address as u8 % 4, data);
-                    }
+                    },
                     Memory::APU_TRIANGLE_REGISTER_A..=Memory::APU_TRIANGLE_REGISTER_D => {
                         self.apu.write_triangle_registers(address as u8 % 4, data);
-                    }
+                    },
                     Memory::APU_NOISE_REGISTER_A..=Memory::APU_NOISE_REGISTER_D => {
                         self.apu.write_noise_registers(address as u8 % 4, data);
                     },
@@ -250,7 +243,7 @@ impl Memory {
                     },
                     0x4000..=0x4017 => {
                         // todo: implement APU
-                    }
+                    },
                     _ => {
                         panic!("Attempt to write to unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
@@ -258,9 +251,9 @@ impl Memory {
             }
             prg_ram_range!() => {
                 self.memory[address as usize] = data;
-            }
+            },
             prg_rom_range!() => {
-                self.rom.write_byte(address, data);
+                self.rom.write_prg_byte(address, data);
             },
             _ => {
                 panic!("Attempt to write to unmapped memory: 0x{:0>4X}", address);
