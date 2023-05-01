@@ -247,6 +247,6 @@ fn main() {
     // run_simulate_sound();
 
     // run_game("rom/mapper0/super_mario_bros.nes");
-    run_game("rom/mapper2/castlevania.nes");
-    // run_game("rom/mapper3/arkanoid.nes");
+    // run_game("rom/mapper2/castlevania.nes");
+    run_game("rom/mapper3/arkanoid.nes");
 }

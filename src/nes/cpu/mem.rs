@@ -9,7 +9,7 @@ use crate::nes::ppu::PPU;
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
 macro_rules! ppu_registers_range {() => {0x2000..=0x3FFF}}
 macro_rules! apu_io_registers_range {() => {0x4000..=0x401F}}
-macro_rules! prg_ram_range {() => {0x4020..=0x7FFF}}
+macro_rules! prg_ram_range {() => {0x6000..=0x7FFF}}
 macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
 pub struct Memory {
