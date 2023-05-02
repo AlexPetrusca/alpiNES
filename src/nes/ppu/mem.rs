@@ -30,10 +30,6 @@ impl PPUMemory {
 
     pub fn load_rom(&mut self, rom: &ROM) {
         self.rom = rom.clone();
-        for i in 0..rom.chr_rom.len() {
-            let idx = PPUMemory::CHR_ROM_START.wrapping_add(i as u16);
-            self.memory[idx as usize] = rom.chr_rom[i];
-        }
     }
 
     #[inline]

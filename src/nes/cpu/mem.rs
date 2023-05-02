@@ -9,6 +9,7 @@ use crate::nes::ppu::PPU;
 macro_rules! ram_range {() => {0x0000..=0x1FFF}}
 macro_rules! ppu_registers_range {() => {0x2000..=0x3FFF}}
 macro_rules! apu_io_registers_range {() => {0x4000..=0x401F}}
+macro_rules! custom_ram_range {() => {0x4020..=0x6000}}
 macro_rules! prg_ram_range {() => {0x6000..=0x7FFF}}
 macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
 
@@ -95,7 +96,7 @@ impl Memory {
             ram_range!() => {
                 let mirror_addr = address & 0b0000_0111_1111_1111;
                 self.memory[mirror_addr as usize]
-            }
+            },
             ppu_registers_range!() => {
                 let mirror_addr = address & 0b0010_0000_0000_0111;
                 match mirror_addr {
@@ -117,7 +118,7 @@ impl Memory {
                         panic!("Attempt to read from write-only PPU address memory: 0x{:0>4X}", mirror_addr);
                     }
                 }
-            }
+            },
             apu_io_registers_range!() => {
                 match address {
                     Memory::JOYCON_ONE_REGISTER => {
@@ -148,6 +149,10 @@ impl Memory {
                         panic!("Attempt to read from unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
                 }
+            },
+            custom_ram_range!() => {
+                println!("Read from custom ram range: 0x{:0>4X}", address);
+                self.memory[address as usize]
             },
             prg_ram_range!() => {
                 self.memory[address as usize]
@@ -193,7 +198,7 @@ impl Memory {
                         self.ppu.write_scroll_register(data);
                     },
                     _ => {
-                        panic!("Attempt to write to unmapped PPU address memory: 0x{:0>4X}", mirror_addr);
+                        println!("Attempt to write to read-only PPU register: 0x{:0>4X}", mirror_addr);
                     }
                 }
             }
@@ -241,19 +246,24 @@ impl Memory {
                     Memory::APU_STATUS_REGISTER => {
                         self.apu.write_status_register(data);
                     },
-                    0x4000..=0x4017 => {
-                        // todo: implement APU
+                    Memory::APU_FRAME_COUNTER_REGISTER => {
+                        // todo: implement or replace
                     },
                     _ => {
                         panic!("Attempt to write to unmapped APU/IO address memory: 0x{:0>4X}", address);
                     }
                 }
             }
+            custom_ram_range!() => {
+                println!("Write to custom ram range: 0x{:0>4X}", address);
+                self.memory[address as usize] = data;
+            },
             prg_ram_range!() => {
                 self.memory[address as usize] = data;
             },
             prg_rom_range!() => {
                 self.rom.write_prg_byte(address, data);
+                self.ppu.memory.rom.write_prg_byte(address, data);
             },
             _ => {
                 panic!("Attempt to write to unmapped memory: 0x{:0>4X}", address);

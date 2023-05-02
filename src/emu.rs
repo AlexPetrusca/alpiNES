@@ -223,11 +223,11 @@ impl Emulator {
             (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
             (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
                 (&ppu.memory.memory[0x2000..0x2400], &ppu.memory.memory[0x2400..0x2800])
-            }
+            },
             (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
             (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                ( &ppu.memory.memory[0x2400..0x2800], &ppu.memory.memory[0x2000..0x2400])
-            }
+                (&ppu.memory.memory[0x2400..0x2800], &ppu.memory.memory[0x2000..0x2400])
+            },
             (_, _) => {
                 panic!("Not supported mirroring type {:?}", ppu.memory.rom.screen_mirroring);
             }
@@ -293,7 +293,8 @@ impl Emulator {
             if priority == foreground { continue }
 
             let tile_idx = ppu.oam.memory[i + 1] as u16;
-            let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
+            // todo: use helper function to get tile
+            let tile = &ppu.memory.rom.chr_rom[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
             let tile_x = ppu.oam.memory[i + 3] as usize;
             let tile_y = ppu.oam.memory[i] as usize;
 
@@ -335,12 +336,12 @@ impl Emulator {
             let tile_x = i % 32;
             let tile_y = i / 32;
             let tile_idx = nametable[i] as u16;
-            let tile = &ppu.memory.memory[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
             let palette = Emulator::bg_palette(ppu, nametable, tile_x, tile_y);
 
             for y in 0..8 {
-                let mut upper = tile[y];
-                let mut lower = tile[y + 8];
+                let tile_addr = bank + tile_idx * 16 + y;
+                let mut upper = ppu.memory.read_byte(tile_addr);
+                let mut lower = ppu.memory.read_byte(tile_addr + 8);
 
                 for x in (0..8).rev() {
                     let value = (1 & lower) << 1 | (1 & upper);
@@ -353,8 +354,8 @@ impl Emulator {
                         3 => NES::SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be"),
                     };
-                    let pixel_x = 8 * tile_x as usize + x;
-                    let pixel_y = 8 * tile_y as usize + y;
+                    let pixel_x = 8 * tile_x + x as usize;
+                    let pixel_y = 8 * tile_y + y as usize;
                     if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
                         let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
                         let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
