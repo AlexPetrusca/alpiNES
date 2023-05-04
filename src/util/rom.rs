@@ -106,25 +106,25 @@ impl ROM {
         let mirror_address = self.mirror_prg_address(address);
         match self.mapper {
             0 => {
-                self.prg_rom[(address - 0x8000) as usize]
+                self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             2 => {
                 match mirror_address {
                     0x8000..=0xBFFF => {
                         let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
-                        self.prg_rom[bank_start + (address - 0x8000) as usize]
+                        self.prg_rom[bank_start + (mirror_address - 0x8000) as usize]
                     },
                     0xC000..=0xFFFF => {
                         let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
-                        self.prg_rom[last_bank_start + (address - 0xC000) as usize]
+                        self.prg_rom[last_bank_start + (mirror_address - 0xC000) as usize]
                     },
                     _ => {
-                        panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                        panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
                     }
                 }
             },
             3 => {
-                self.prg_rom[(address - 0x8000) as usize]
+                self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             _ => {
                 panic!("Unsupported mapper: {}", self.mapper);
