@@ -243,10 +243,17 @@ impl Emulator {
                 (256 - scroll_x) as isize, 0
             );
         } else if scroll_y > 0 {
-            Emulator::render_name_table(ppu, frame, nametable2,
-                Viewport::new(0, 0, 256, scroll_y),
-                0, (240 - scroll_y) as isize
-            );
+            if scroll_y >= 240 {
+                Emulator::render_name_table(ppu, frame, nametable1,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (256 - scroll_y) as isize
+                );
+            } else {
+                Emulator::render_name_table(ppu, frame, nametable2,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (240 - scroll_y) as isize
+                );
+            }
         }
 
         // let bank = ppu.ctrl.get_background_chrtable_address();
