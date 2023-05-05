@@ -87,7 +87,7 @@ impl ROM {
             raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec()
         };
 
-        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: {}, chr_rom_size: {}",
+        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
             mapper, has_trainer, &screen_mirroring, is_prg_rom_mirror, is_chr_ram, prg_rom_size, chr_rom_size);
 
         Ok(ROM {
@@ -112,7 +112,7 @@ impl ROM {
                 match mirror_address {
                     0x8000..=0xBFFF => {
                         let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
-                        self.prg_rom[bank_start + (mirror_address - 0x8000) as usize]
+                        self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
                     },
                     0xC000..=0xFFFF => {
                         let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;

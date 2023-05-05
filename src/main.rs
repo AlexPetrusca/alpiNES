@@ -239,10 +239,13 @@ fn run_simulate_sound() {
 //  - contra: only left half of the background shows up; only top half of sprites show up
 //  - castlevania: some sprites don't show up properly
 //  - metal gear: crashes during intro (wrapping subtract exception in ppu scroll handling)
+//  - top gun: background doesnt render
 
 // todo: continue mapper3 debugging
 //  - friday the 13th + tetris + qbert: background tiles look messed up
 //  - friday the 13th: completely visually broken
+//  - arkistras ring: background doesn't scroll when moving
+//  - solomons key: doesn't play whatsoever
 
 fn main() {
     // run_snake();
@@ -250,9 +253,9 @@ fn main() {
     // run_chrdump("rom/mapper0/duck_hunt.nes");
     // run_simulate_sound();
 
-    run_game("rom/mapper0/golf.nes");
+    // run_game("rom/mapper0/golf.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
-    // run_game("rom/mapper2/castlevania.nes");
+    run_game("rom/mapper2/top_gun.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
