@@ -151,7 +151,7 @@ impl Memory {
                 }
             },
             custom_ram_range!() => {
-                println!("Read from custom ram range: 0x{:0>4X}", address);
+                println!("[WARNING] Read from custom ram range: 0x{:0>4X}", address);
                 self.memory[address as usize]
             },
             prg_ram_range!() => {
@@ -198,7 +198,7 @@ impl Memory {
                         self.ppu.write_scroll_register(data);
                     },
                     _ => {
-                        println!("Attempt to write to read-only PPU register: 0x{:0>4X}", mirror_addr);
+                        println!("[WARNING] Attempt to write to read-only PPU register: 0x{:0>4X}", mirror_addr);
                     }
                 }
             }
@@ -255,7 +255,7 @@ impl Memory {
                 }
             }
             custom_ram_range!() => {
-                println!("Write to custom ram range: 0x{:0>4X}", address);
+                println!("[WARNING] Write to custom ram range: 0x{:0>4X}", address);
                 self.memory[address as usize] = data;
             },
             prg_ram_range!() => {

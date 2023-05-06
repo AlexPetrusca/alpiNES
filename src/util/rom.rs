@@ -126,6 +126,10 @@ impl ROM {
             3 => {
                 self.prg_rom[(mirror_address - 0x8000) as usize]
             },
+            66 => {
+                let bank_start = 2 * ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
+                self.prg_rom[bank_start + (mirror_address - 0x8000) as usize]
+            },
             _ => {
                 panic!("Unsupported mapper: {}", self.mapper);
             }
@@ -139,6 +143,10 @@ impl ROM {
             },
             3 => {
                 self.chr_bank_select = data;
+            },
+            66 => {
+                self.chr_bank_select = data & 0b0000_0011;
+                self.prg_bank_select = (data >> 4) & 0b0000_0011;
             },
             _ => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
@@ -156,6 +164,11 @@ impl ROM {
                 // todo: is below even correct?
                 self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
             },
+            66 => {
+                // todo: merge logic with mapper 3?
+                let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
+                self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
+            },
             _ => {
                 panic!("Unsupported mapper: {}", self.mapper);
             }
@@ -166,7 +179,7 @@ impl ROM {
         if self.is_chr_ram {
             self.chr_rom[address as usize] = data;
         } else {
-            panic!("Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", address)
+            println!("[WARNING] Attempt to write to Cartridge CHR ROM space: 0x{:0>4X}", address)
         }
     }
 
