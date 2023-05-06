@@ -19,7 +19,7 @@ use alpines::util::logger::Logger;
 use alpines::util::bitvec::BitVector;
 use alpines::logln;
 
-// snake - 6502 game
+// snake - 6502 CPU game
 
 fn color(byte: u8) -> Color {
     match byte {
@@ -88,7 +88,7 @@ fn run_snake() {
     let creator = canvas.texture_creator();
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
 
-    let cartridge_path = "rom/snake.nes";
+    let cartridge_path = "rom/test/cpu/snake.nes";
     let mut emulator = Emulator::new();
     emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
 
@@ -106,24 +106,6 @@ fn run_snake() {
         }
 
         sleep(Duration::new(0, 70_000));
-    });
-}
-
-// nestest - cpu golden standard test
-
-fn run_nestest() {
-    let cartridge_path = "rom/nestest.nes";
-    let mut emulator = Emulator::new();
-    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
-    emulator.nes.cpu.program_counter = 0xC000;
-
-    let log_path = cartridge_path.replace(".nes", ".log");
-    let mut logger = Logger::new(&log_path);
-    emulator.run_with_callback(|nes| {
-        let op = nes.cpu.memory.read_byte(nes.cpu.program_counter);
-        logln!(logger, "{:0>4X}  {:0>2X}    A:{:0>2X} X:{:0>2X} Y:{:0>2X} P:{:0>2X} SP:{:0>2X}",
-            nes.cpu.program_counter, op, nes.cpu.register_a, nes.cpu.register_x,
-            nes.cpu.register_y, nes.cpu.status, nes.cpu.stack);
     });
 }
 
@@ -210,17 +192,6 @@ fn run_game(filepath: &str) {
     emu.run_rom(&rom);
 }
 
-// simulate sound
-
-fn run_simulate_sound() {
-    // infinite noise
-    let program: Vec<u8> = vec![0xa9, 0x01, 0x8d, 0x15, 0x40, 0xa9, 0xbf, 0x8d, 0x00, 0x40, 0xa9, 0xc9,
-        0x8d, 0x02, 0x40, 0xa9, 0x00, 0x8d, 0x03, 0x40, CPU::JAM_1];
-    let mut emu: Emulator = Emulator::new();
-    emu.nes.cpu.memory.apu.init_audio_player(&sdl2::init().unwrap());
-    emu.load_and_run(&program);
-}
-
 // todo: PPU should own Frame
 //  - Reset frame on VBlank
 //  - Draw background sprites on VBlank
@@ -238,7 +209,6 @@ fn run_simulate_sound() {
 // todo: continue mapper2 debugging
 //  - contra: only left half of the background shows up; only top half of sprites show up
 //  - castlevania: some sprites don't show up properly
-//  - metal gear: crashes during intro (wrapping subtract exception in ppu scroll handling)
 //  - top gun: background doesnt render
 
 // todo: continue mapper3 debugging
@@ -249,13 +219,14 @@ fn run_simulate_sound() {
 
 fn main() {
     // run_snake();
-    // run_nestest();
     // run_chrdump("rom/mapper0/duck_hunt.nes");
-    // run_simulate_sound();
+    // run_game("rom/test/cpu/nestest.nes");
+    // run_game("rom/test/ppu/nes15.nes");
+    // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/golf.nes");
+    // run_game("rom/mapper0/duck_hunt.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
-    run_game("rom/mapper2/top_gun.nes");
+    // run_game("rom/mapper2/contra.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl

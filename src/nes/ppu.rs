@@ -139,7 +139,7 @@ impl PPU {
 
     pub fn write_oam_data_register(&mut self, value: u8) {
         let addr = self.oam_addr;
-        self.oam_addr += 1;
+        self.oam_addr += 1; // todo: handle oam_addr overflow
 
         self.oam.write_byte(addr, value);
     }
