@@ -147,6 +147,7 @@ impl ROM {
             66 => {
                 self.chr_bank_select = data & 0b0000_0011;
                 self.prg_bank_select = (data >> 4) & 0b0000_0011;
+                println!("[INFO] prg_bank: {:b}, chr_bank: {:b}", self.prg_bank_select, self.chr_bank_select);
             },
             _ => {
                 panic!("Attempt to write to Cartridge PRG ROM space: 0x{:0>4X}", address)
