@@ -25,8 +25,8 @@ pub struct ROM {
 
 impl ROM {
     const NES_SIGNATURE: [u8; 4] = [0x4e, 0x45, 0x53, 0x1a];
-    const CHR_ROM_PAGE_SIZE: usize = 0x2000; // 8kB
-    const PRG_ROM_PAGE_SIZE: usize = 0x4000; // 16kB
+    pub const CHR_ROM_PAGE_SIZE: usize = 0x2000; // 8kB
+    pub const PRG_ROM_PAGE_SIZE: usize = 0x4000; // 16kB
 
     pub fn new() -> Self {
         ROM {
@@ -185,8 +185,8 @@ impl ROM {
 
     fn mirror_prg_address(&mut self, address: u16) -> u16 {
         let mut offset = address - Memory::PRG_ROM_START;
-        if self.is_prg_rom_mirror && address >= 0x4000 {
-            offset = offset % 0x4000;
+        if self.is_prg_rom_mirror && address >= ROM::PRG_ROM_PAGE_SIZE as u16 {
+            offset = offset % ROM::PRG_ROM_PAGE_SIZE as u16;
         }
         Memory::PRG_ROM_START + offset
     }

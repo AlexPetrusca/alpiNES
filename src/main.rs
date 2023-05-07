@@ -120,10 +120,10 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
         for x in (0..8).rev() {
             let value = (1 & high_byte) << 1 | (1 & low_byte);
             let rgb = match value {
-                0 => NES::SYSTEM_PALLETE[0x01],
-                1 => NES::SYSTEM_PALLETE[0x23],
-                2 => NES::SYSTEM_PALLETE[0x27],
-                3 => NES::SYSTEM_PALLETE[0x30],
+                0 => (0, 0, 0),
+                1 => (170, 170, 170),
+                2 => (255, 255, 255),
+                3 => (85, 85, 85),
                 _ => panic!("chr_rom value out of range: {}", value),
             };
             const TILE_SIZE: usize = 8;
@@ -132,9 +132,9 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
             const TILES_PER_ROW: usize = Frame::WIDTH / BOX_SIZE;
             const TILES_PER_COL_BANK: usize = 256 / TILES_PER_ROW + (256 % TILES_PER_ROW > 0) as usize;
             const MARGIN: usize = (Frame::WIDTH - BOX_SIZE * TILES_PER_ROW) / 2;
+            let bank_offset: usize = (TILES_PER_COL_BANK + 1) * BOX_SIZE * (bank % 2);
             let tile_x = x + BOX_SIZE * (tile_n % TILES_PER_ROW) + PADDING + MARGIN;
-            let tile_y = y + BOX_SIZE * (tile_n / TILES_PER_ROW) + PADDING + MARGIN
-                + (TILES_PER_COL_BANK + 1) * BOX_SIZE * bank;
+            let tile_y = y + BOX_SIZE * (tile_n / TILES_PER_ROW) + PADDING + MARGIN + bank_offset;
             frame.set_pixel(tile_x, tile_y, rgb);
             high_byte = high_byte >> 1;
             low_byte = low_byte >> 1;
@@ -157,24 +157,39 @@ fn run_chrdump(filepath: &str) {
 
     let mut emulator = Emulator::new();
     let rom = ROM::from_filepath(filepath).unwrap();
+    let mut tile_frame = Frame::new();
     emulator.load_rom(&rom);
 
-    let mut tile_frame = Frame::new();
-    for i in 0..256 {
-        render_tile(&rom.chr_rom, 0, i, &mut tile_frame);
-        render_tile(&rom.chr_rom, 1, i, &mut tile_frame);
-    }
 
-    texture.update(None, &tile_frame.data, Frame::WIDTH * 3).unwrap();
-    canvas.copy(&texture, None, None).unwrap();
-    canvas.present();
+    let max_page = rom.chr_rom.len() / ROM::CHR_ROM_PAGE_SIZE;
+    let mut page  = 0;
 
     loop {
+        for i in 0..256 {
+            tile_frame.clear();
+            render_tile(&rom.chr_rom, page * 2, i, &mut tile_frame);
+            render_tile(&rom.chr_rom, page * 2 + 1, i, &mut tile_frame);
+        }
+
+        texture.update(None, &tile_frame.data, Frame::WIDTH * 3).unwrap();
+        canvas.copy(&texture, None, None).unwrap();
+        canvas.present();
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     std::process::exit(0)
+                },
+                Event::KeyDown { keycode: Some(Keycode::Right), .. } => {
+                    if page + 1 < max_page {
+                        page += 1;
+                    }
+                },
+                Event::KeyDown { keycode: Some(Keycode::Left), .. } => {
+                    if page > 0 {
+                        page -= 1;
+                    }
                 },
                 _ => {
                     // do nothing
@@ -219,7 +234,7 @@ fn run_game(filepath: &str) {
 
 fn main() {
     // run_snake();
-    // run_chrdump("rom/mapper0/duck_hunt.nes");
+    run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/test/cpu/nestest.nes");
     // run_game("rom/test/ppu/nes15.nes");
     // run_game("rom/test/apu/sndtest.nes");
@@ -230,5 +245,5 @@ fn main() {
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
-    run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 }
