@@ -160,13 +160,12 @@ fn run_chrdump(filepath: &str) {
     let mut tile_frame = Frame::new();
     emulator.load_rom(&rom);
 
-
-    let max_page = rom.chr_rom.len() / ROM::CHR_ROM_PAGE_SIZE;
+    let max_page = rom.get_chr_bank_count();
     let mut page  = 0;
 
     loop {
+        tile_frame.clear();
         for i in 0..256 {
-            tile_frame.clear();
             render_tile(&rom.chr_rom, page * 2, i, &mut tile_frame);
             render_tile(&rom.chr_rom, page * 2 + 1, i, &mut tile_frame);
         }
