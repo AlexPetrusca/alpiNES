@@ -82,7 +82,6 @@ impl Emulator {
         let mut event_pump = sdl_context.event_pump().unwrap();
         let creator = canvas.texture_creator();
         let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
-        let mut frame = Frame::new();
 
         self.nes.cpu.memory.apu.init_audio_player(&sdl_context);
 
@@ -92,9 +91,10 @@ impl Emulator {
                 self.nes.cpu.memory.ppu.clear_nmi();
 
                 self.handle_input(&mut event_pump);
-                Emulator::render(&self.nes.cpu.memory.ppu, &mut frame);
+                self.nes.cpu.memory.ppu.render();
 
-                texture.update(None, &frame.data, Frame::WIDTH * 3).unwrap();
+                // todo: self.nes.cpu.memory.ppu.frame.data is ridiculous...
+                texture.update(None, &self.nes.cpu.memory.ppu.frame.data, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
 
@@ -205,204 +205,41 @@ impl Emulator {
         }
     }
 
-    fn render(ppu: &PPU, frame: &mut Frame) {
-        frame.clear();
-        Emulator::render_sprites(ppu, frame, false);
-        Emulator::render_background(ppu, frame);
-        Emulator::render_sprites(ppu, frame, true);
-    }
-
-    // todo: rewrite
-    fn render_background(ppu: &PPU, frame: &mut Frame) {
-        if ppu.mask.is_clear(MaskFlag::ShowBackground) { return }
-
-        let scroll_x = ppu.scroll.get_scroll_x() as usize;
-        let scroll_y = ppu.scroll.get_scroll_y() as usize;
-
-        let (nametable1, nametable2) = match (&ppu.memory.rom.screen_mirroring, ppu.ctrl.get_base_nametable_address()) {
-            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
-            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
-                (&ppu.memory.memory[0x2000..0x2400], &ppu.memory.memory[0x2400..0x2800])
-            },
-            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
-            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                (&ppu.memory.memory[0x2400..0x2800], &ppu.memory.memory[0x2000..0x2400])
-            },
-            (_, _) => {
-                panic!("Not supported mirroring type {:?}", ppu.memory.rom.screen_mirroring);
-            }
-        };
-
-        Emulator::render_name_table(ppu, frame, nametable1,
-            Viewport::new(scroll_x, scroll_y, 256, 240),
-            -(scroll_x as isize), -(scroll_y as isize)
-        );
-        if scroll_x > 0 {
-            Emulator::render_name_table(ppu, frame, nametable2,
-                Viewport::new(0, 0, scroll_x, 240),
-                (256 - scroll_x) as isize, 0
-            );
-        } else if scroll_y > 0 {
-            if scroll_y >= 240 {
-                Emulator::render_name_table(ppu, frame, nametable1,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (256 - scroll_y) as isize
-                );
-            } else {
-                Emulator::render_name_table(ppu, frame, nametable2,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (240 - scroll_y) as isize
-                );
-            }
-        }
-
-        // let bank = ppu.ctrl.get_background_chrtable_address();
-        // let nametable = ppu.ctrl.get_base_nametable_address();
-        //
-        // for i in 0..PPUMemory::NAMETABLE_SIZE { // just for now, lets use the first nametable
-        //     let tile = ppu.memory.read_byte(nametable + i) as u16;
-        //     let tile_x = i % 32;
-        //     let tile_y = i / 32;
-        //     let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
-        //     let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
-        //
-        //     for y in 0..8 {
-        //         let mut lower = tile[y as usize];
-        //         let mut upper = tile[y as usize + 8];
-        //
-        //         for x in (0..8).rev() {
-        //             let value = (1 & upper) << 1 | (1 & lower);
-        //             lower = lower >> 1;
-        //             upper = upper >> 1;
-        //             let rgb = match value {
-        //                 0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-        //                 1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-        //                 2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-        //                 3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-        //                 _ => panic!("can't be"),
-        //             };
-        //             let pixel_x = 8 * tile_x as usize + x;
-        //             let pixel_y = 8 * tile_y as usize + y;
-        //             if !(value == 0 && frame.is_pixel_set(pixel_x, pixel_y)) {
-        //                 frame.set_pixel(pixel_x, pixel_y, rgb)
-        //             }
-        //         }
-        //     }
-        // }
-    }
-
-    fn render_sprites(ppu: &PPU, frame: &mut Frame, foreground: bool) {
-        if ppu.mask.is_clear(MaskFlag::ShowSprites) { return }
-
-        let bank = ppu.ctrl.get_sprite_chrtable_address();
-        for i in (0..ppu.oam.memory.len()).step_by(4).rev() {
-            let priority = ppu.oam.memory[i + 2] >> 5 & 1 == 1;
-            if priority == foreground { continue }
-
-            let tile_idx = ppu.oam.memory[i + 1] as u16;
-            // todo: use helper function to get tile
-            let tile = &ppu.memory.rom.chr_rom[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
-            let tile_x = ppu.oam.memory[i + 3] as usize;
-            let tile_y = ppu.oam.memory[i] as usize;
-
-            let flip_vertical = ppu.oam.memory[i + 2] >> 7 & 1 == 1;
-            let flip_horizontal = ppu.oam.memory[i + 2] >> 6 & 1 == 1;
-            let palette_idx = ppu.oam.memory[i + 2] & 0b0000_0011;
-            let sprite_palette = Emulator::sprite_palette(ppu, palette_idx);
-
-            for y in 0..8 {
-                let mut lower = tile[y];
-                let mut upper = tile[y + 8];
-                'sprite_render: for x in (0..8).rev() {
-                    let value = (1 & upper) << 1 | (1 & lower);
-                    lower = lower >> 1;
-                    upper = upper >> 1;
-                    let rgb = match value {
-                        0 => continue 'sprite_render, // skip coloring the pixel
-                        1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
-                        2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
-                        3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
-                        _ => panic!("can't be"),
-                    };
-                    match (flip_horizontal, flip_vertical) {
-                        (false, false) => frame.set_pixel(tile_x + x, tile_y + y + 1, rgb),
-                        (true, false) => frame.set_pixel(tile_x + 7 - x, tile_y + y + 1, rgb),
-                        (false, true) => frame.set_pixel(tile_x + x, tile_y + 8 - y, rgb),
-                        (true, true) => frame.set_pixel(tile_x + 7 - x, tile_y + 8 - y, rgb),
-                    }
-                }
-            }
-        }
-    }
-
-    // todo: rewrite
-    fn render_name_table(ppu: &PPU, frame: &mut Frame, nametable: &[u8], viewport: Viewport, shift_x: isize, shift_y: isize) {
-        let bank = ppu.ctrl.get_background_chrtable_address();
-
-        for i in 0..0x3c0 {
-            let tile_x = i % 32;
-            let tile_y = i / 32;
-            let tile_idx = nametable[i] as u16;
-            let palette = Emulator::bg_palette(ppu, nametable, tile_x, tile_y);
-
-            for y in 0..8 {
-                let tile_addr = bank + tile_idx * 16 + y;
-                let mut upper = ppu.memory.read_byte(tile_addr);
-                let mut lower = ppu.memory.read_byte(tile_addr + 8);
-
-                for x in (0..8).rev() {
-                    let value = (1 & lower) << 1 | (1 & upper);
-                    upper = upper >> 1;
-                    lower = lower >> 1;
-                    let rgb = match value {
-                        0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-                        1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-                        2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-                        3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-                        _ => panic!("can't be"),
-                    };
-                    let pixel_x = 8 * tile_x + x as usize;
-                    let pixel_y = 8 * tile_y + y as usize;
-                    if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
-                        let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
-                        let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
-                        if !(value == 0 && frame.is_pixel_set(scroll_pixel_x, scroll_pixel_y)) {
-                            frame.set_pixel(scroll_pixel_x, scroll_pixel_y, rgb);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn bg_palette(ppu: &PPU, nametable: &[u8], tile_x: usize, tile_y: usize) -> [u8; 4] {
-        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
-        let attr_byte = nametable[PPUMemory::NAMETABLE_SIZE + attr_table_idx];
-        let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
-            (0, 0) => attr_byte & 0b0000_0011,
-            (1, 0) => (attr_byte >> 2) & 0b0000_0011,
-            (0, 1) => (attr_byte >> 4) & 0b0000_0011,
-            (1, 1) => (attr_byte >> 6) & 0b0000_0011,
-            (_, _) => panic!("can't be"),
-        };
-        let pallete_idx = 4 * pallete as u16;
-        [
-            ppu.memory.read_byte(PPUMemory::PALLETES_START),
-            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
-            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
-            ppu.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
-        ]
-    }
-
-    fn sprite_palette(ppu: &PPU, pallete: u8) -> [u8; 4] {
-        let pallete_idx = 4 * pallete as u16;
-        [
-            0,
-            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx),
-            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
-            ppu.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
-        ]
-    }
+    // fn render_background(ppu: &mut PPU) {
+    //     let bank = ppu.ctrl.get_background_chrtable_address();
+    //     let nametable = ppu.ctrl.get_base_nametable_address();
+    //
+    //     for i in 0..PPUMemory::NAMETABLE_SIZE { // just for now, lets use the first nametable
+    //         let tile = ppu.memory.read_byte(nametable + i) as u16;
+    //         let tile_x = i % 32;
+    //         let tile_y = i / 32;
+    //         let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
+    //         let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
+    //
+    //         for y in 0..8 {
+    //             let mut lower = tile[y as usize];
+    //             let mut upper = tile[y as usize + 8];
+    //
+    //             for x in (0..8).rev() {
+    //                 let value = (1 & upper) << 1 | (1 & lower);
+    //                 lower = lower >> 1;
+    //                 upper = upper >> 1;
+    //                 let rgb = match value {
+    //                     0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+    //                     1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+    //                     2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+    //                     3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+    //                     _ => panic!("can't be"),
+    //                 };
+    //                 let pixel_x = 8 * tile_x as usize + x;
+    //                 let pixel_y = 8 * tile_y as usize + y;
+    //                 if !(value == 0 && frame.is_pixel_set(pixel_x, pixel_y)) {
+    //                     frame.set_pixel(pixel_x, pixel_y, rgb)
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
     pub fn load_rom(&mut self, rom: &ROM) {
         self.nes.load_rom(rom);
