@@ -238,10 +238,10 @@ fn main() {
     // run_game("rom/test/ppu/nes15.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/pacman.nes");
+    run_game("rom/mapper0/pacman.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
     // run_game("rom/mapper2/contra.nes");
-    run_game("rom/mapper3/tetris.nes");
+    // run_game("rom/mapper3/friday_the_13th.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");

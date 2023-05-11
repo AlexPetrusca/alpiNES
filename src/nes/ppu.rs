@@ -102,33 +102,80 @@ impl PPU {
     pub fn render_scanline(&mut self) {
         if self.scanline < 240 {
             let bank = self.ctrl.get_background_chrtable_address();
-
             let (nametable, _) = self.get_nametables();
 
             let pixel_y = self.scanline as usize;
-            let tile_y = pixel_y / 8;
             for pixel_x in 0..Frame::WIDTH {
-                let tile_x = pixel_x / 8;
-                let palette = self.bg_palette(nametable, tile_x, tile_y);
-
-                let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
-                let tile_address = bank + 16 * tile_value;
-
-                let chr_y = (pixel_y % 8) as u16;
-                let chr_x = 7 - (pixel_x % 8) as u16;
-                let mut lower = self.memory.read_byte(tile_address + chr_y) >> chr_x;
-                let mut upper = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
-                let palette_value = (1 & upper) << 1 | (1 & lower);
-                let rgb = match palette_value {
-                    0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-                    1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-                    2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-                    3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-                    _ => panic!("can't be"),
-                };
-                self.frame.set_pixel(pixel_x, pixel_y, rgb)
+                self.render_pixel(pixel_x, pixel_y, bank, nametable)
             }
         }
+
+        // if self.mask.is_clear(ShowSprites) { return }
+        //
+        // let bank = self.ctrl.get_sprite_chrtable_address();
+        // for i in (0..self.oam.memory.len()).step_by(4).rev() {
+        //     let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
+        //     if priority == foreground { continue }
+        //
+        //     let tile_idx = self.oam.memory[i + 1] as u16;
+        //     // todo: use helper function to get tile
+        //     let tile = &self.memory.rom.chr_rom[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
+        //     let tile_x = self.oam.memory[i + 3] as usize;
+        //     let tile_y = self.oam.memory[i] as usize;
+        //
+        //     let flip_vertical = self.oam.memory[i + 2] >> 7 & 1 == 1;
+        //     let flip_horizontal = self.oam.memory[i + 2] >> 6 & 1 == 1;
+        //     let palette_idx = self.oam.memory[i + 2] & 0b0000_0011;
+        //     let sprite_palette = self.sprite_palette(palette_idx);
+        //
+        //     for y in 0..8 {
+        //         let mut lower = tile[y];
+        //         let mut upper = tile[y + 8];
+        //         'sprite_render: for x in (0..8).rev() {
+        //             let value = (1 & upper) << 1 | (1 & lower);
+        //             lower = lower >> 1;
+        //             upper = upper >> 1;
+        //             let rgb = match value {
+        //                 0 => continue 'sprite_render, // skip coloring the pixel
+        //                 1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
+        //                 2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
+        //                 3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
+        //                 _ => panic!("can't be"),
+        //             };
+        //             match (flip_horizontal, flip_vertical) {
+        //                 (false, false) => self.frame.set_pixel(tile_x + x, tile_y + y + 1, rgb),
+        //                 (true, false) => self.frame.set_pixel(tile_x + 7 - x, tile_y + y + 1, rgb),
+        //                 (false, true) => self.frame.set_pixel(tile_x + x, tile_y + 8 - y, rgb),
+        //                 (true, true) => self.frame.set_pixel(tile_x + 7 - x, tile_y + 8 - y, rgb),
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
+    #[inline]
+    fn render_pixel(&mut self, pixel_x: usize, pixel_y: usize, bank: u16, nametable: u16) {
+        let tile_x = pixel_x / 8;
+        let tile_y = pixel_y / 8;
+        let palette = self.bg_palette(nametable, tile_x, tile_y);
+
+        let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
+        let tile_address = bank + 16 * tile_value;
+
+        let chr_y = (pixel_y % 8) as u16;
+        let chr_x = 7 - (pixel_x % 8) as u16;
+        let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
+        let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
+
+        let palette_value = (1 & upper_chr) << 1 | (1 & lower_chr);
+        let rgb = match palette_value {
+            0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+            1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+            2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+            3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+            _ => panic!("can't be"),
+        };
+        self.frame.set_pixel(pixel_x, pixel_y, rgb)
     }
 
     fn get_nametables(&mut self) -> (u16, u16) {
@@ -147,56 +194,44 @@ impl PPU {
         }
     }
 
+    fn bg_palette(&self, nametable_addr: u16, tile_x: usize, tile_y: usize) -> [u8; 4] {
+        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
+        let attr_byte = self.memory.read_byte(nametable_addr + PPUMemory::NAMETABLE_SIZE as u16 + attr_table_idx as u16);
+        let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
+            (0, 0) => attr_byte & 0b0000_0011,
+            (1, 0) => (attr_byte >> 2) & 0b0000_0011,
+            (0, 1) => (attr_byte >> 4) & 0b0000_0011,
+            (1, 1) => (attr_byte >> 6) & 0b0000_0011,
+            (_, _) => panic!("can't be"),
+        };
+        let pallete_idx = 4 * pallete as u16;
+        [
+            self.memory.read_byte(PPUMemory::PALLETES_START),
+            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
+            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
+            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
+        ]
+    }
+
+    fn sprite_palette(&self, pallete: u8) -> [u8; 4] {
+        let pallete_idx = 4 * pallete as u16;
+        [
+            0,
+            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx),
+            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
+            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
+        ]
+    }
+
+    // ----------------------------------------------------------------------------------
+    // todo: REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE
+    // ----------------------------------------------------------------------------------
+
     pub fn render(&mut self) {
         self.frame.clear();
         self.render_sprites(false);
         self.render_background();
         self.render_sprites(true);
-    }
-
-    // todo: rewrite
-    fn render_background(&mut self) {
-        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
-
-        let scroll_x = self.scroll.get_scroll_x() as usize;
-        let scroll_y = self.scroll.get_scroll_y() as usize;
-
-        let (nametable1, nametable2) = match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
-            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
-            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
-                (0x2000, 0x2400)
-            },
-            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
-            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                (0x2400, 0x2000)
-            },
-            (_, _) => {
-                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
-            }
-        };
-
-        self.render_name_table(nametable1,
-            Viewport::new(scroll_x, scroll_y, 256, 240),
-            -(scroll_x as isize), -(scroll_y as isize)
-        );
-        if scroll_x > 0 {
-            self.render_name_table(nametable2,
-                Viewport::new(0, 0, scroll_x, 240),
-                (256 - scroll_x) as isize, 0
-            );
-        } else if scroll_y > 0 {
-            if scroll_y >= 240 {
-                self.render_name_table(nametable1,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (256 - scroll_y) as isize
-                );
-            } else {
-                self.render_name_table(nametable2,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (240 - scroll_y) as isize
-                );
-            }
-        }
     }
 
     fn render_sprites(&mut self, foreground: bool) {
@@ -244,6 +279,51 @@ impl PPU {
     }
 
     // todo: rewrite
+    fn render_background(&mut self) {
+        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
+
+        let scroll_x = self.scroll.get_scroll_x() as usize;
+        let scroll_y = self.scroll.get_scroll_y() as usize;
+
+        let (nametable1, nametable2) = match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (0x2000, 0x2400)
+            },
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                (0x2400, 0x2000)
+            },
+            (_, _) => {
+                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
+            }
+        };
+
+        self.render_name_table(nametable1,
+            Viewport::new(scroll_x, scroll_y, 256, 240),
+            -(scroll_x as isize), -(scroll_y as isize)
+        );
+        if scroll_x > 0 {
+            self.render_name_table(nametable2,
+                Viewport::new(0, 0, scroll_x, 240),
+                (256 - scroll_x) as isize, 0
+            );
+        } else if scroll_y > 0 {
+            if scroll_y >= 240 {
+                self.render_name_table(nametable1,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (256 - scroll_y) as isize
+                );
+            } else {
+                self.render_name_table(nametable2,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (240 - scroll_y) as isize
+                );
+            }
+        }
+    }
+
+    // todo: rewrite
     fn render_name_table(&mut self, nametable_addr: u16, viewport: Viewport, shift_x: isize, shift_y: isize) {
         let bank = self.ctrl.get_background_chrtable_address();
 
@@ -283,34 +363,9 @@ impl PPU {
         }
     }
 
-    fn bg_palette(&self, nametable_addr: u16, tile_x: usize, tile_y: usize) -> [u8; 4] {
-        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
-        let attr_byte = self.memory.read_byte(nametable_addr + PPUMemory::NAMETABLE_SIZE as u16 + attr_table_idx as u16);
-        let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
-            (0, 0) => attr_byte & 0b0000_0011,
-            (1, 0) => (attr_byte >> 2) & 0b0000_0011,
-            (0, 1) => (attr_byte >> 4) & 0b0000_0011,
-            (1, 1) => (attr_byte >> 6) & 0b0000_0011,
-            (_, _) => panic!("can't be"),
-        };
-        let pallete_idx = 4 * pallete as u16;
-        [
-            self.memory.read_byte(PPUMemory::PALLETES_START),
-            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
-            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
-            self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
-        ]
-    }
-
-    fn sprite_palette(&self, pallete: u8) -> [u8; 4] {
-        let pallete_idx = 4 * pallete as u16;
-        [
-            0,
-            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx),
-            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
-            self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
-        ]
-    }
+    // ----------------------------------------------------------------------------------
+    // todo: REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE
+    // ----------------------------------------------------------------------------------
 
     pub fn is_sprite_0_hit(&self, cycles: usize) -> bool {
         let y = self.oam.read_byte(0) as u16;
