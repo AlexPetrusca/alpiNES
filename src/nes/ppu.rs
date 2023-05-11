@@ -99,19 +99,47 @@ impl PPU {
         Ok(false)
     }
 
+    #[inline]
     pub fn render_scanline(&mut self) {
-        if self.scanline < 240 {
-            let bank = self.ctrl.get_background_chrtable_address();
-            let (nametable, _) = self.get_nametables();
+        if self.scanline == 240 { self.render_sprites(true); } // todo: remove
+        if self.scanline == 260 { self.frame.clear(); } // todo: remove
+        if self.scanline == 261 { self.render_sprites(false); } // todo: remove
+        if self.scanline > 240 { return }
 
-            let pixel_y = self.scanline as usize;
-            for pixel_x in 0..Frame::WIDTH {
-                self.render_pixel(pixel_x, pixel_y, bank, nametable)
+        let background_bank = self.ctrl.get_background_chrtable_address();
+        let sprite_bank = self.ctrl.get_sprite_chrtable_address();
+        let (nametable, _) = self.get_nametables();
+
+        let pixel_y = self.scanline as usize;
+        for pixel_x in 0..Frame::WIDTH {
+            let tile_x = pixel_x / 8;
+            let tile_y = pixel_y / 8;
+            let palette = self.bg_palette(nametable, tile_x, tile_y);
+
+            let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
+            let tile_address = background_bank + 16 * tile_value;
+
+            let chr_x = 7 - (pixel_x % 8) as u16;
+            let chr_y = (pixel_y % 8) as u16;
+            let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
+            let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
+
+            let palette_value = (1 & upper_chr) << 1 | (1 & lower_chr);
+            let rgb = match palette_value {
+                0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+                1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+                2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+                3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+                _ => panic!("can't be"),
+            };
+            if !(palette_value == 0 && self.frame.is_pixel_set(pixel_x, pixel_y)) {
+                self.frame.set_pixel(pixel_x, pixel_y, rgb)
             }
         }
 
+        // if self.mask.is_clear(ShowBackground) { return }
         // if self.mask.is_clear(ShowSprites) { return }
-        //
+
         // let bank = self.ctrl.get_sprite_chrtable_address();
         // for i in (0..self.oam.memory.len()).step_by(4).rev() {
         //     let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
@@ -151,31 +179,6 @@ impl PPU {
         //         }
         //     }
         // }
-    }
-
-    #[inline]
-    fn render_pixel(&mut self, pixel_x: usize, pixel_y: usize, bank: u16, nametable: u16) {
-        let tile_x = pixel_x / 8;
-        let tile_y = pixel_y / 8;
-        let palette = self.bg_palette(nametable, tile_x, tile_y);
-
-        let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
-        let tile_address = bank + 16 * tile_value;
-
-        let chr_y = (pixel_y % 8) as u16;
-        let chr_x = 7 - (pixel_x % 8) as u16;
-        let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
-        let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
-
-        let palette_value = (1 & upper_chr) << 1 | (1 & lower_chr);
-        let rgb = match palette_value {
-            0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-            1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-            2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-            3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-            _ => panic!("can't be"),
-        };
-        self.frame.set_pixel(pixel_x, pixel_y, rgb)
     }
 
     fn get_nametables(&mut self) -> (u16, u16) {

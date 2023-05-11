@@ -102,6 +102,7 @@ impl ROM {
         })
     }
 
+    #[inline]
     pub fn read_prg_byte(&mut self, address: u16) -> u8 {
         let mirror_address = self.mirror_prg_address(address);
         match self.mapper {
@@ -136,6 +137,7 @@ impl ROM {
         }
     }
 
+    #[inline]
     pub fn write_prg_byte(&mut self, address: u16, data: u8) {
         match self.mapper {
             2 => {
@@ -155,6 +157,7 @@ impl ROM {
         }
     }
 
+    #[inline]
     pub fn read_chr_byte(&self, address: u16) -> u8 {
         match self.mapper {
             0 | 2 => {
@@ -176,6 +179,7 @@ impl ROM {
         }
     }
 
+    #[inline]
     pub fn write_chr_byte(&mut self, address: u16, data: u8) {
         if self.is_chr_ram {
             self.chr_rom[address as usize] = data;
@@ -184,6 +188,7 @@ impl ROM {
         }
     }
 
+    #[inline]
     fn mirror_prg_address(&mut self, address: u16) -> u16 {
         let mut offset = address - Memory::PRG_ROM_START;
         if self.is_prg_rom_mirror && address >= ROM::PRG_ROM_PAGE_SIZE as u16 {

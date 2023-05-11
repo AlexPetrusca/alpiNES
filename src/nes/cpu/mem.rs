@@ -232,7 +232,7 @@ impl Memory {
                     Memory::APU_DMC_REGISTER_A..=Memory::APU_DMC_REGISTER_D => {
                         self.apu.write_dmc_registers(address as u8 % 4, data);
                         if address == Memory::APU_DMC_REGISTER_C || address == Memory::APU_DMC_REGISTER_D {
-                            println!("DMC HIT");
+                            // println!("DMC HIT");
                             // let sample_addr = self.apu.dmc.get_sample_address();
                             // let sample_length = self.apu.dmc.get_sample_length();
                             // for addr in sample_addr..(sample_addr + sample_length) {
