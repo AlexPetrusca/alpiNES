@@ -66,11 +66,6 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-
-        // TODO ----------------------------
-        // TODO: Perform rendering in step()
-        // TODO ----------------------------
-
         if self.cycles >= 341 {
             self.render_scanline();
 
@@ -105,44 +100,24 @@ impl PPU {
     }
 
     pub fn render_scanline(&mut self) {
-        if self.scanline == 0 {
-            print!("\n-----\n");
-        }
-
         if self.scanline < 240 {
             let bank = self.ctrl.get_background_chrtable_address();
-            // let nametable = self.ctrl.get_base_nametable_address();
 
-            let (nametable1, nametable2) = match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
-                (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
-                (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
-                    (0x2000, 0x2400)
-                },
-                (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
-                (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                    (0x2400, 0x2000)
-                },
-                (_, _) => {
-                    panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
-                }
-            };
-            let nametable = nametable1;
+            let (nametable, _) = self.get_nametables();
 
             let pixel_y = self.scanline as usize;
             let tile_y = pixel_y / 8;
-            // if pixel_y % 8 == 0 { println!(); }
             for pixel_x in 0..Frame::WIDTH {
                 let tile_x = pixel_x / 8;
                 let palette = self.bg_palette(nametable, tile_x, tile_y);
-                // println!("{:?} - ({}, {}) - 0x{:x}", palette, tile_x, tile_y, nametable);
 
                 let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
-                // if pixel_y % 8 == 0 && pixel_x % 8 == 0 { print!("{:>3} ", tile_value); }
-                let tile = &self.memory.rom.chr_rom[(bank + 16 * tile_value) as usize..=(bank + 16 * tile_value + 15) as usize];
-                // println!("{:?} - ({}, {}) - 0x{:x} - 0x{:x} ==> {}", palette, tile_x, tile_y, nametable, nametable + 32 * tile_y as u16 + tile_x as u16, tile_value);
+                let tile_address = bank + 16 * tile_value;
 
-                let mut lower = tile[(pixel_y % 8) as usize] >> (7 - (pixel_x % 8));
-                let mut upper = tile[(pixel_y % 8 + 8) as usize] >> (7 - (pixel_x % 8));
+                let chr_y = (pixel_y % 8) as u16;
+                let chr_x = 7 - (pixel_x % 8) as u16;
+                let mut lower = self.memory.read_byte(tile_address + chr_y) >> chr_x;
+                let mut upper = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
                 let palette_value = (1 & upper) << 1 | (1 & lower);
                 let rgb = match palette_value {
                     0 => NES::SYSTEM_PALLETE[palette[0] as usize],
@@ -152,6 +127,22 @@ impl PPU {
                     _ => panic!("can't be"),
                 };
                 self.frame.set_pixel(pixel_x, pixel_y, rgb)
+            }
+        }
+    }
+
+    fn get_nametables(&mut self) -> (u16, u16) {
+        match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (0x2000, 0x2400)
+            },
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                (0x2400, 0x2000)
+            },
+            (_, _) => {
+                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
             }
         }
     }
