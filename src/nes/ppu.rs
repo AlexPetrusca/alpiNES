@@ -67,11 +67,11 @@ impl PPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles >= 341 {
-            // self.render_scanline();
-            self.render_tileline();
-
             // todo: condition x <= cycles is always true in is_sprite_0_hit()
             self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
+
+            // self.render_scanline();
+            self.render_tileline();
 
             self.cycles = self.cycles - 341;
             self.scanline += 1;
@@ -103,7 +103,7 @@ impl PPU {
     #[inline]
     pub fn render_tileline(&mut self) {
         if self.scanline == 261 { self.frame.clear(); } // todo: remove
-        if self.scanline > 240 || (self.scanline + 1) % 8 != 0 { return }
+        if self.scanline > 240 || self.scanline % 8 != 0 { return }
 
         let tile_y = self.scanline / 8;
         self.render_sprites_tileline(tile_y as usize, false);
@@ -168,7 +168,7 @@ impl PPU {
             let sprite_y_end = sprite_y + 8;
 
             if !foreground && !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
-            if foreground && !(sprite_y_end > tile_y * 8 && sprite_y_end <= (tile_y + 1) * 8) { continue }
+            if foreground && !(sprite_y_end >= tile_y * 8 && sprite_y_end < (tile_y + 1) * 8) { continue }
 
             let tile_value = self.oam.memory[i + 1] as u16;
 
