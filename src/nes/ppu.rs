@@ -67,7 +67,8 @@ impl PPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles >= 341 {
-            self.render_scanline();
+            // self.render_scanline();
+            self.render_tileline();
 
             // todo: condition x <= cycles is always true in is_sprite_0_hit()
             self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
@@ -100,6 +101,147 @@ impl PPU {
     }
 
     #[inline]
+    pub fn render_tileline(&mut self) {
+        // if self.scanline == 240 { self.render_sprites(true); } // todo: remove
+        if self.scanline == 260 { self.frame.clear(); } // todo: remove
+        // if self.scanline == 261 { self.render_sprites(false); } // todo: remove
+        if self.scanline > 240 || self.scanline % 8 != 0 { return }
+
+        let tile_y = self.scanline / 8;
+        self.render_sprites_tileline(tile_y as usize, false);
+        self.render_background_tileline(tile_y as usize);
+        self.render_sprites_tileline(tile_y as usize, true);
+    }
+
+    fn render_background_tileline(&mut self, tile_y: usize) {
+        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
+
+        let scroll_x = self.scroll.get_scroll_x() as usize;
+        let scroll_y = self.scroll.get_scroll_y() as usize;
+
+        let (nametable1, nametable2) = match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (0x2000, 0x2400)
+            },
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                (0x2400, 0x2000)
+            },
+            (_, _) => {
+                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
+            }
+        };
+
+        self.render_name_table_tileline(nametable1,
+            Viewport::new(scroll_x, scroll_y, 256, 240),
+            -(scroll_x as isize), -(scroll_y as isize), tile_y
+        );
+        if scroll_x > 0 {
+            self.render_name_table_tileline(nametable2,
+                Viewport::new(0, 0, scroll_x, 240),
+                (256 - scroll_x) as isize, 0, tile_y
+            );
+        } else if scroll_y > 0 {
+            if scroll_y >= 240 {
+                self.render_name_table_tileline(nametable1,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (256 - scroll_y) as isize, tile_y
+                );
+            } else {
+                self.render_name_table_tileline(nametable2,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (240 - scroll_y) as isize, tile_y
+                );
+            }
+        }
+    }
+
+    fn render_sprites_tileline(&mut self, tile_y: usize, foreground: bool) {
+        if self.mask.is_clear(ShowSprites) { return }
+
+        let bank = self.ctrl.get_sprite_chrtable_address();
+        for i in (0..self.oam.memory.len()).step_by(4).rev() {
+            let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
+            if priority == foreground { continue }
+
+            let sprite_x = self.oam.memory[i + 3] as usize;
+            let sprite_y = self.oam.memory[i] as usize;
+            if !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
+
+            let tile_value = self.oam.memory[i + 1] as u16;
+
+            let flip_vertical = self.oam.memory[i + 2] >> 7 & 1 == 1;
+            let flip_horizontal = self.oam.memory[i + 2] >> 6 & 1 == 1;
+            let palette_idx = self.oam.memory[i + 2] & 0b0000_0011;
+            let sprite_palette = self.sprite_palette(palette_idx);
+
+            for y in 0..8 {
+                let tile_addr = bank + 16 * tile_value + y as u16;
+                let mut upper = self.memory.read_byte(tile_addr);
+                let mut lower = self.memory.read_byte(tile_addr + 8);
+                'sprite_render: for x in (0..8).rev() {
+                    let value = (1 & upper) << 1 | (1 & lower);
+                    lower = lower >> 1;
+                    upper = upper >> 1;
+                    let rgb = match value {
+                        0 => continue 'sprite_render, // skip coloring the pixel
+                        1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
+                        2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
+                        3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
+                        _ => panic!("can't be"),
+                    };
+                    match (flip_horizontal, flip_vertical) {
+                        (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgb),
+                        (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgb),
+                        (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgb),
+                        (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgb),
+                    }
+                }
+            }
+        }
+    }
+
+    fn render_name_table_tileline(&mut self, nametable_addr: u16, viewport: Viewport, shift_x: isize, shift_y: isize, tile_y: usize) {
+        let bank = self.ctrl.get_background_chrtable_address();
+
+        for tile_x in 0..32 {
+            let tile_idx = nametable_addr + 32 * tile_y as u16 + tile_x as u16;
+            let tile_value = self.memory.read_byte(tile_idx) as u16;
+            let palette = self.bg_palette(nametable_addr, tile_x, tile_y);
+
+            for y in 0..8 {
+                let tile_addr = bank + 16 * tile_value + y;
+                let mut upper = self.memory.read_byte(tile_addr);
+                let mut lower = self.memory.read_byte(tile_addr + 8);
+
+                for x in (0..8).rev() {
+                    let value = (1 & lower) << 1 | (1 & upper);
+                    upper = upper >> 1;
+                    lower = lower >> 1;
+                    let rgb = match value {
+                        0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+                        1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+                        2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+                        3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+                        _ => panic!("can't be"),
+                    };
+                    let pixel_x = 8 * tile_x + x as usize;
+                    let pixel_y = 8 * tile_y + y as usize;
+                    if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
+                        let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
+                        let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
+                        if !(value == 0 && self.frame.is_pixel_set(scroll_pixel_x, scroll_pixel_y)) {
+                            self.frame.set_pixel(scroll_pixel_x, scroll_pixel_y, rgb);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // todo: render tile row by tile row instead (this way is too expensive)
+    #[inline]
     pub fn render_scanline(&mut self) {
         if self.scanline == 240 { self.render_sprites(true); } // todo: remove
         if self.scanline == 260 { self.frame.clear(); } // todo: remove
@@ -116,7 +258,8 @@ impl PPU {
             let tile_y = pixel_y / 8;
             let palette = self.bg_palette(nametable, tile_x, tile_y);
 
-            let tile_value = self.memory.read_byte(nametable + 32 * tile_y as u16 + tile_x as u16) as u16;
+            let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
+            let tile_value = self.memory.read_byte(tile_idx) as u16;
             let tile_address = background_bank + 16 * tile_value;
 
             let chr_x = 7 - (pixel_x % 8) as u16;
@@ -136,49 +279,6 @@ impl PPU {
                 self.frame.set_pixel(pixel_x, pixel_y, rgb)
             }
         }
-
-        // if self.mask.is_clear(ShowBackground) { return }
-        // if self.mask.is_clear(ShowSprites) { return }
-
-        // let bank = self.ctrl.get_sprite_chrtable_address();
-        // for i in (0..self.oam.memory.len()).step_by(4).rev() {
-        //     let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
-        //     if priority == foreground { continue }
-        //
-        //     let tile_idx = self.oam.memory[i + 1] as u16;
-        //     // todo: use helper function to get tile
-        //     let tile = &self.memory.rom.chr_rom[(bank + tile_idx * 16) as usize..=(bank + tile_idx * 16 + 15) as usize];
-        //     let tile_x = self.oam.memory[i + 3] as usize;
-        //     let tile_y = self.oam.memory[i] as usize;
-        //
-        //     let flip_vertical = self.oam.memory[i + 2] >> 7 & 1 == 1;
-        //     let flip_horizontal = self.oam.memory[i + 2] >> 6 & 1 == 1;
-        //     let palette_idx = self.oam.memory[i + 2] & 0b0000_0011;
-        //     let sprite_palette = self.sprite_palette(palette_idx);
-        //
-        //     for y in 0..8 {
-        //         let mut lower = tile[y];
-        //         let mut upper = tile[y + 8];
-        //         'sprite_render: for x in (0..8).rev() {
-        //             let value = (1 & upper) << 1 | (1 & lower);
-        //             lower = lower >> 1;
-        //             upper = upper >> 1;
-        //             let rgb = match value {
-        //                 0 => continue 'sprite_render, // skip coloring the pixel
-        //                 1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
-        //                 2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
-        //                 3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
-        //                 _ => panic!("can't be"),
-        //             };
-        //             match (flip_horizontal, flip_vertical) {
-        //                 (false, false) => self.frame.set_pixel(tile_x + x, tile_y + y + 1, rgb),
-        //                 (true, false) => self.frame.set_pixel(tile_x + 7 - x, tile_y + y + 1, rgb),
-        //                 (false, true) => self.frame.set_pixel(tile_x + x, tile_y + 8 - y, rgb),
-        //                 (true, true) => self.frame.set_pixel(tile_x + 7 - x, tile_y + 8 - y, rgb),
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     fn get_nametables(&mut self) -> (u16, u16) {
