@@ -238,7 +238,7 @@ fn main() {
     // run_game("rom/test/ppu/nes15.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/duck_hunt.nes");
+    // run_game("rom/mapper0/pacman.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
     // run_game("rom/mapper2/contra.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
