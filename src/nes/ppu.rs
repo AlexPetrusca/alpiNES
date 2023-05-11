@@ -102,10 +102,8 @@ impl PPU {
 
     #[inline]
     pub fn render_tileline(&mut self) {
-        // if self.scanline == 240 { self.render_sprites(true); } // todo: remove
-        if self.scanline == 260 { self.frame.clear(); } // todo: remove
-        // if self.scanline == 261 { self.render_sprites(false); } // todo: remove
-        if self.scanline > 240 || self.scanline % 8 != 0 { return }
+        if self.scanline == 261 { self.frame.clear(); } // todo: remove
+        if self.scanline > 240 || (self.scanline + 1) % 8 != 0 { return }
 
         let tile_y = self.scanline / 8;
         self.render_sprites_tileline(tile_y as usize, false);
@@ -167,7 +165,10 @@ impl PPU {
 
             let sprite_x = self.oam.memory[i + 3] as usize;
             let sprite_y = self.oam.memory[i] as usize;
-            if !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
+            let sprite_y_end = sprite_y + 8;
+
+            if !foreground && !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
+            if foreground && !(sprite_y_end > tile_y * 8 && sprite_y_end <= (tile_y + 1) * 8) { continue }
 
             let tile_value = self.oam.memory[i + 1] as u16;
 
@@ -178,8 +179,8 @@ impl PPU {
 
             for y in 0..8 {
                 let tile_addr = bank + 16 * tile_value + y as u16;
-                let mut upper = self.memory.read_byte(tile_addr);
-                let mut lower = self.memory.read_byte(tile_addr + 8);
+                let mut lower = self.memory.read_byte(tile_addr);
+                let mut upper = self.memory.read_byte(tile_addr + 8);
                 'sprite_render: for x in (0..8).rev() {
                     let value = (1 & upper) << 1 | (1 & lower);
                     lower = lower >> 1;

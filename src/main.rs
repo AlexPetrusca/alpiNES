@@ -206,12 +206,6 @@ fn run_game(filepath: &str) {
     emu.run_rom(&rom);
 }
 
-// todo: PPU should own Frame
-//  - Reset frame on VBlank
-//  - Draw background sprites on VBlank
-//  - Draw background w/scroll + screen-split on visible scanlines
-//  - Draw foreground sprites on NMI (right before render)
-
 // todo: test audio with different games
 //  - pacman: nothing sounds right
 //  - duck hunt: is broken (also visually broken)

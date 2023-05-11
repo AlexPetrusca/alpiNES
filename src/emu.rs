@@ -205,42 +205,6 @@ impl Emulator {
         }
     }
 
-    // fn render_background(ppu: &mut PPU) {
-    //     let bank = ppu.ctrl.get_background_chrtable_address();
-    //     let nametable = ppu.ctrl.get_base_nametable_address();
-    //
-    //     for i in 0..PPUMemory::NAMETABLE_SIZE { // just for now, lets use the first nametable
-    //         let tile = ppu.memory.read_byte(nametable + i) as u16;
-    //         let tile_x = i % 32;
-    //         let tile_y = i / 32;
-    //         let tile = &ppu.memory.memory[(bank + 16 * tile) as usize..=(bank + 16 * tile + 15) as usize];
-    //         let palette = Emulator::bg_palette(ppu, tile_x as usize, tile_y as usize);
-    //
-    //         for y in 0..8 {
-    //             let mut lower = tile[y as usize];
-    //             let mut upper = tile[y as usize + 8];
-    //
-    //             for x in (0..8).rev() {
-    //                 let value = (1 & upper) << 1 | (1 & lower);
-    //                 lower = lower >> 1;
-    //                 upper = upper >> 1;
-    //                 let rgb = match value {
-    //                     0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-    //                     1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-    //                     2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-    //                     3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-    //                     _ => panic!("can't be"),
-    //                 };
-    //                 let pixel_x = 8 * tile_x as usize + x;
-    //                 let pixel_y = 8 * tile_y as usize + y;
-    //                 if !(value == 0 && frame.is_pixel_set(pixel_x, pixel_y)) {
-    //                     frame.set_pixel(pixel_x, pixel_y, rgb)
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn load_rom(&mut self, rom: &ROM) {
         self.nes.load_rom(rom);
     }
