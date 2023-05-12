@@ -7,8 +7,10 @@ impl Frame {
     pub const WIDTH: usize = 256;
     pub const HEIGHT: usize = 240;
 
-    pub const FOREGROUND: u8 = 1;
     pub const BACKGROUND: u8 = 1;
+    pub const BACKGROUND_SPRITE: u8 = 2;
+    pub const FOREGROUND: u8 = 3;
+    pub const FOREGROUND_SPRITE: u8 = 4;
 
     pub fn new() -> Self {
         Frame {
@@ -28,7 +30,7 @@ impl Frame {
     }
 
     #[inline]
-    pub fn is_color_set(&self, x: usize, y: usize) -> bool {
+    fn is_color_set(&self, x: usize, y: usize) -> bool {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
             let base = 3 * Frame::WIDTH * y + 3 * x;
             return self.rgb[base] != 0 || self.rgb[base + 1] != 0 || self.rgb[base + 2] != 0;
@@ -37,7 +39,7 @@ impl Frame {
     }
 
     #[inline]
-    pub fn is_alpha_set(&self, x: usize, y: usize) -> bool {
+    fn is_alpha_set(&self, x: usize, y: usize) -> bool {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
             return self.alpha[Frame::WIDTH * y + x] != 0;
         }
@@ -50,7 +52,7 @@ impl Frame {
     }
 
     #[inline]
-    pub fn get_color(&self, x: usize, y: usize) -> (u8, u8, u8) {
+    fn get_color(&self, x: usize, y: usize) -> (u8, u8, u8) {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
             let base = 3 * Frame::WIDTH * y + 3 * x;
             return (self.rgb[base], self.rgb[base + 1], self.rgb[base + 2]);
@@ -59,7 +61,7 @@ impl Frame {
     }
 
     #[inline]
-    pub fn get_alpha(&self, x: usize, y: usize) -> u8 {
+    fn get_alpha(&self, x: usize, y: usize) -> u8 {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
             return self.alpha[Frame::WIDTH * y + x];
         }
@@ -74,7 +76,7 @@ impl Frame {
     }
 
     #[inline]
-    pub fn set_color(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
+    fn set_color(&mut self, x: usize, y: usize, rgb: (u8, u8, u8)) {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
             let base = 3 * Frame::WIDTH * y + 3 * x;
             self.rgb[base] = rgb.0;
@@ -84,15 +86,17 @@ impl Frame {
     }
 
     #[inline]
-    pub fn set_alpha(&mut self, x: usize, y: usize, alpha: u8) {
+    fn set_alpha(&mut self, x: usize, y: usize, alpha: u8) {
         if x < Frame::WIDTH && y < Frame::HEIGHT {
-            self.rgb[Frame::WIDTH * y + x] = alpha;
+            self.alpha[Frame::WIDTH * y + x] = alpha;
         }
     }
 
     #[inline]
     pub fn set_pixel(&mut self, x: usize, y: usize, rgba: (u8, u8, u8, u8)) {
-        self.set_color(x, y, (rgba.0, rgba.1, rgba.2));
-        self.set_alpha(x, y, rgba.3);
+        if rgba.3 >= self.get_alpha(x, y) {
+            self.set_color(x, y, (rgba.0, rgba.1, rgba.2));
+            self.set_alpha(x, y, rgba.3);
+        }
     }
 }

@@ -119,11 +119,11 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
         let mut low_byte = tile[y + 8];
         for x in (0..8).rev() {
             let value = (1 & high_byte) << 1 | (1 & low_byte);
-            let rgb = match value {
-                0 => (0, 0, 0),
-                1 => (170, 170, 170),
-                2 => (255, 255, 255),
-                3 => (85, 85, 85),
+            let rgba = match value {
+                0 => (0, 0, 0, 0),
+                1 => (170, 170, 170, 170),
+                2 => (255, 255, 255, 255),
+                3 => (85, 85, 85, 85),
                 _ => panic!("chr_rom value out of range: {}", value),
             };
             const TILE_SIZE: usize = 8;
@@ -135,7 +135,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
             let bank_offset: usize = (TILES_PER_COL_BANK + 1) * BOX_SIZE * (bank % 2);
             let tile_x = x + BOX_SIZE * (tile_n % TILES_PER_ROW) + PADDING + MARGIN;
             let tile_y = y + BOX_SIZE * (tile_n / TILES_PER_ROW) + PADDING + MARGIN + bank_offset;
-            frame.set_color(tile_x, tile_y, rgb);
+            frame.set_pixel(tile_x, tile_y, rgba);
             high_byte = high_byte >> 1;
             low_byte = low_byte >> 1;
         }
@@ -232,7 +232,7 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/ice_climber.nes");
+    // run_game("rom/mapper0/pacman.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
     // run_game("rom/mapper2/contra.nes");
     run_game("rom/mapper3/arkistas_ring.nes");

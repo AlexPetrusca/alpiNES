@@ -100,7 +100,7 @@ impl PPU {
 
     #[inline]
     pub fn render_tileline(&mut self) {
-        if self.scanline == 261 { self.frame.clear(); } // todo: remove
+        if self.scanline == 261 { self.frame.clear(); }
         if self.scanline > 240 ||  self.scanline % 8 != 0 { return }
 
         let tile_y = self.scanline as usize / 8;
@@ -114,18 +114,12 @@ impl PPU {
 
         let bank = self.ctrl.get_sprite_chrtable_address();
         for i in (0..self.oam.memory.len()).step_by(4).rev() {
-            let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
-            // if priority == foreground { continue }
-
             let sprite_x = self.oam.memory[i + 3] as usize;
             let sprite_y = self.oam.memory[i] as usize;
-            let sprite_y_end = sprite_y + 8;
 
             if !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
 
-            // if !foreground && !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
-            // if foreground && !(sprite_y_end >= tile_y * 8 && sprite_y_end < (tile_y + 1) * 8) { continue }
-
+            let priority = self.oam.memory[i + 2] >> 5 & 1;
             let tile_value = self.oam.memory[i + 1] as u16;
 
             let flip_vertical = self.oam.memory[i + 2] >> 7 & 1 == 1;
@@ -148,11 +142,13 @@ impl PPU {
                         3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
                         _ => panic!("can't be"),
                     };
+                    let alpha = if priority == 0 { Frame::FOREGROUND_SPRITE } else { Frame::BACKGROUND_SPRITE };
+                    let rgba = (rgb.0, rgb.1, rgb.2, alpha);
                     match (flip_horizontal, flip_vertical) {
-                        (false, false) => self.frame.set_color(sprite_x + x, sprite_y + y + 1, rgb),
-                        (true, false) => self.frame.set_color(sprite_x + 7 - x, sprite_y + y + 1, rgb),
-                        (false, true) => self.frame.set_color(sprite_x + x, sprite_y + 8 - y, rgb),
-                        (true, true) => self.frame.set_color(sprite_x + 7 - x, sprite_y + 8 - y, rgb),
+                        (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgba),
+                        (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgba),
+                        (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgba),
+                        (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgba),
                     }
                 }
             }
@@ -217,14 +213,14 @@ impl PPU {
                         3 => NES::SYSTEM_PALLETE[palette[3] as usize],
                         _ => panic!("can't be"),
                     };
+                    let alpha = if value == 0 { Frame::BACKGROUND } else { Frame::FOREGROUND };
+                    let rgba = (rgb.0, rgb.1, rgb.2, alpha);
                     let pixel_x = 8 * tile_x + x as usize;
                     let pixel_y = 8 * tile_y + y as usize;
                     if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
                         let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
                         let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
-                        if !(value == 0 && self.frame.is_color_set(scroll_pixel_x, scroll_pixel_y)) {
-                            self.frame.set_color(scroll_pixel_x, scroll_pixel_y, rgb);
-                        }
+                        self.frame.set_pixel(scroll_pixel_x, scroll_pixel_y, rgba);
                     }
                 }
             }
