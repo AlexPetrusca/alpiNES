@@ -67,8 +67,8 @@ impl PPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles > 340 {
-            // self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
             self.render_scanline();
+            // self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
             // self.render_tileline();
 
             if self.scanline < 240 {
@@ -279,7 +279,7 @@ impl PPU {
 
     #[inline]
     fn render_background_tileline(&mut self, tile_y: usize) {
-        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
+        if self.mask.is_clear(ShowBackground) { return }
 
         let scroll_x = self.scroll.get_scroll_x() as usize;
         let scroll_y = self.scroll.get_scroll_y() as usize;
@@ -399,15 +399,6 @@ impl PPU {
             self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 1),
             self.memory.read_byte(PPUMemory::SPRITE_PALLETES_START + pallete_idx + 2),
         ]
-    }
-
-    pub fn is_sprite_0_hit(&self, cycles: usize) -> bool {
-        let y = self.oam.read_byte(0) as u16;
-        let x = self.oam.read_byte(3) as usize;
-        let rendering_enabled = self.mask.is_set(ShowSprites) && self.mask.is_set(ShowBackground);
-        let is_opaque = false;
-
-        return y == self.scanline && x <= cycles && is_opaque && rendering_enabled;
     }
 
     pub fn write_scroll_register(&mut self, value: u8) {
