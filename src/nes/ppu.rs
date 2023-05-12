@@ -66,15 +66,12 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        if self.cycles >= 341 {
+        if self.cycles > 340 {
             // todo: condition x <= cycles is always true in is_sprite_0_hit()
             self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
+            self.render_tileline();
 
-            self.cycles = self.cycles - 341;
-            self.scanline += 1;
-
-            if self.scanline < 241 {
-                self.render_tileline();
+            if self.scanline < 240 {
                 self.oam_addr = 0; // todo: is this enough? https://www.nesdev.org/wiki/PPU_registers
             }
 
@@ -87,71 +84,30 @@ impl PPU {
                 }
             }
 
-            if self.scanline > 261 {
+            if self.scanline == 261 {
                 self.scanline = 0;
                 self.clear_nmi();
                 self.status.clear(VerticalBlank);
                 self.status.clear(SpriteZeroHit);
                 return Ok(true);
             }
+
+            self.cycles = self.cycles - 341;
+            self.scanline += 1;
         }
         Ok(false)
     }
 
     #[inline]
     pub fn render_tileline(&mut self) {
-        if self.scanline == 261 { self.frame.clear(); } // todo: remove
-        if self.scanline > 240 || self.scanline % 8 != 0 { return }
+        if self.scanline == 261 {
+            self.frame.clear(); } // todo: remove
+        if self.scanline > 240 ||  self.scanline % 8 != 0 { return }
 
-        let tile_y = self.scanline / 8;
-        self.render_sprites_tileline(tile_y as usize, false);
-        self.render_background_tileline(tile_y as usize);
-        self.render_sprites_tileline(tile_y as usize, true);
-    }
-
-    #[inline]
-    fn render_background_tileline(&mut self, tile_y: usize) {
-        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
-
-        let scroll_x = self.scroll.get_scroll_x() as usize;
-        let scroll_y = self.scroll.get_scroll_y() as usize;
-
-        let (nametable1, nametable2) = match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
-            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
-            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
-                (0x2000, 0x2400)
-            },
-            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
-            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                (0x2400, 0x2000)
-            },
-            (_, _) => {
-                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
-            }
-        };
-
-        self.render_name_table_tileline(nametable1,
-            Viewport::new(scroll_x, scroll_y, 256, 240),
-            -(scroll_x as isize), -(scroll_y as isize), tile_y
-        );
-        if scroll_x > 0 {
-            self.render_name_table_tileline(nametable2,
-                Viewport::new(0, 0, scroll_x, 240),
-                (256 - scroll_x) as isize, 0, tile_y
-            );
-        } else if scroll_y > 0 {
-            if scroll_y >= 240 {
-                self.render_name_table_tileline(nametable1,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (256 - scroll_y) as isize, tile_y
-                );
-            } else {
-                self.render_name_table_tileline(nametable2,
-                    Viewport::new(0, 0, 256, scroll_y),
-                    0, (240 - scroll_y) as isize, tile_y
-                );
-            }
-        }
+        let tile_y = self.scanline as usize / 8;
+        self.render_sprites_tileline(tile_y, false);
+        self.render_background_tileline(tile_y);
+        self.render_sprites_tileline(tile_y, true);
     }
 
     #[inline]
@@ -204,6 +160,42 @@ impl PPU {
     }
 
     #[inline]
+    fn render_background_tileline(&mut self, tile_y: usize) {
+        if self.mask.is_clear(MaskFlag::ShowBackground) { return }
+
+        let scroll_x = self.scroll.get_scroll_x() as usize;
+        let scroll_y = self.scroll.get_scroll_y() as usize;
+
+        let (nametable1, nametable2) = self.get_nametables();
+        // let (nametable1, nametable2) = (0x2000, 0x2800);
+
+        // if tile_y == 0 { println!("0x{:x} 0x{:x}",nametable1, nametable2) }
+
+        self.render_name_table_tileline(nametable1,
+            Viewport::new(scroll_x, scroll_y, 256, 240),
+            -(scroll_x as isize), -(scroll_y as isize), tile_y
+        );
+        if scroll_x > 0 {
+            self.render_name_table_tileline(nametable2,
+                Viewport::new(0, 0, scroll_x, 240),
+                (256 - scroll_x) as isize, 0, tile_y
+            );
+        } else if scroll_y > 0 {
+            if scroll_y >= 240 {
+                self.render_name_table_tileline(nametable1,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, (256 - scroll_y) as isize, tile_y
+                );
+            } else {
+                self.render_name_table_tileline(nametable2,
+                    Viewport::new(0, 0, 256, scroll_y),
+                    0, 240 - scroll_y as isize, tile_y
+                );
+            }
+        }
+    }
+
+    #[inline]
     fn render_name_table_tileline(&mut self, nametable_addr: u16, viewport: Viewport, shift_x: isize, shift_y: isize, tile_y: usize) {
         let bank = self.ctrl.get_background_chrtable_address();
 
@@ -242,15 +234,20 @@ impl PPU {
         }
     }
 
+    #[inline]
     fn get_nametables(&mut self) -> (u16, u16) {
         match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
-            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) |
-            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) => {
                 (0x2000, 0x2400)
             },
-            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) |
-            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) => {
                 (0x2400, 0x2000)
+            },
+            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
+                (0x2000, 0x2800)
+            },
+            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
+                (0x2800, 0x2000)
             },
             (_, _) => {
                 panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
@@ -258,6 +255,7 @@ impl PPU {
         }
     }
 
+    #[inline]
     fn bg_palette(&self, nametable_addr: u16, tile_x: usize, tile_y: usize) -> [u8; 4] {
         let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
         let attr_byte = self.memory.read_byte(nametable_addr + PPUMemory::NAMETABLE_SIZE as u16 + attr_table_idx as u16);
@@ -277,6 +275,7 @@ impl PPU {
         ]
     }
 
+    #[inline]
     fn sprite_palette(&self, pallete: u8) -> [u8; 4] {
         let pallete_idx = 4 * pallete as u16;
         [
