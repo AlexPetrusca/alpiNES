@@ -69,7 +69,8 @@ impl PPU {
         if self.cycles > 340 {
             // todo: condition x <= cycles is always true in is_sprite_0_hit()
             self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
-            self.render_tileline();
+            self.render_scanline();
+            // self.render_tileline();
 
             if self.scanline < 240 {
                 self.oam_addr = 0; // todo: is this enough? https://www.nesdev.org/wiki/PPU_registers
@@ -96,6 +97,50 @@ impl PPU {
             self.scanline += 1;
         }
         Ok(false)
+    }
+
+
+    #[inline]
+    pub fn render_scanline(&mut self) {
+        // if self.scanline == 240 { self.render_sprites(true); } // todo: remove
+        if self.scanline == 260 { self.frame.clear(); }
+        // if self.scanline == 261 { self.render_sprites(false); } // todo: remove
+        if self.scanline > 240 { return }
+
+        let background_bank = self.ctrl.get_background_chrtable_address();
+        let (nametable1, nametable2) = self.get_nametables();
+
+        let scroll_x = self.scroll.get_scroll_x() as usize;
+        // let scroll_y = self.scroll.get_scroll_y() as usize;
+
+        let screen_y = self.scanline as usize;
+        for screen_x in 0..Frame::WIDTH {
+
+            let tile_x = screen_x / 8;
+            let tile_y = screen_y / 8;
+            let palette = self.bg_palette(nametable, tile_x, tile_y);
+
+            let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
+            let tile_value = self.memory.read_byte(tile_idx) as u16;
+            let tile_address = background_bank + 16 * tile_value;
+
+            let chr_x = 7 - (screen_x % 8) as u16;
+            let chr_y = (screen_y % 8) as u16;
+            let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
+            let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
+
+            let palette_value = (1 & upper_chr) << 1 | (1 & lower_chr);
+            let rgb = match palette_value {
+                0 => NES::SYSTEM_PALLETE[palette[0] as usize],
+                1 => NES::SYSTEM_PALLETE[palette[1] as usize],
+                2 => NES::SYSTEM_PALLETE[palette[2] as usize],
+                3 => NES::SYSTEM_PALLETE[palette[3] as usize],
+                _ => panic!("can't be"),
+            };
+            let alpha = if palette_value == 0 { Frame::BACKGROUND } else { Frame::FOREGROUND };
+            let rgba = (rgb.0, rgb.1, rgb.2, alpha);
+            self.frame.set_pixel(screen_x, screen_y, rgba)
+        }
     }
 
     #[inline]
