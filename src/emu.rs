@@ -93,8 +93,8 @@ impl Emulator {
                 self.handle_input(&mut event_pump);
                 // self.nes.cpu.memory.ppu.render();
 
-                // todo: self.nes.cpu.memory.ppu.frame.data is ridiculous...
-                texture.update(None, &self.nes.cpu.memory.ppu.frame.data, Frame::WIDTH * 3).unwrap();
+                // todo: self.nes.cpu.memory.ppu.frame.rgb is ridiculous...
+                texture.update(None, &self.nes.cpu.memory.ppu.frame.rgb, Frame::WIDTH * 3).unwrap();
                 canvas.copy(&texture, None, None).unwrap();
                 canvas.present();
 

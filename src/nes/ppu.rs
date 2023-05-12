@@ -100,31 +100,31 @@ impl PPU {
 
     #[inline]
     pub fn render_tileline(&mut self) {
-        if self.scanline == 261 {
-            self.frame.clear(); } // todo: remove
+        if self.scanline == 261 { self.frame.clear(); } // todo: remove
         if self.scanline > 240 ||  self.scanline % 8 != 0 { return }
 
         let tile_y = self.scanline as usize / 8;
-        self.render_sprites_tileline(tile_y, false);
         self.render_background_tileline(tile_y);
-        self.render_sprites_tileline(tile_y, true);
+        self.render_sprites_tileline(tile_y);
     }
 
     #[inline]
-    fn render_sprites_tileline(&mut self, tile_y: usize, foreground: bool) {
+    fn render_sprites_tileline(&mut self, tile_y: usize) {
         if self.mask.is_clear(ShowSprites) { return }
 
         let bank = self.ctrl.get_sprite_chrtable_address();
         for i in (0..self.oam.memory.len()).step_by(4).rev() {
             let priority = self.oam.memory[i + 2] >> 5 & 1 == 1;
-            if priority == foreground { continue }
+            // if priority == foreground { continue }
 
             let sprite_x = self.oam.memory[i + 3] as usize;
             let sprite_y = self.oam.memory[i] as usize;
             let sprite_y_end = sprite_y + 8;
 
-            if !foreground && !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
-            if foreground && !(sprite_y_end >= tile_y * 8 && sprite_y_end < (tile_y + 1) * 8) { continue }
+            if !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
+
+            // if !foreground && !(sprite_y >= tile_y * 8 && sprite_y < (tile_y + 1) * 8) { continue }
+            // if foreground && !(sprite_y_end >= tile_y * 8 && sprite_y_end < (tile_y + 1) * 8) { continue }
 
             let tile_value = self.oam.memory[i + 1] as u16;
 
@@ -149,10 +149,10 @@ impl PPU {
                         _ => panic!("can't be"),
                     };
                     match (flip_horizontal, flip_vertical) {
-                        (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgb),
-                        (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgb),
-                        (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgb),
-                        (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgb),
+                        (false, false) => self.frame.set_color(sprite_x + x, sprite_y + y + 1, rgb),
+                        (true, false) => self.frame.set_color(sprite_x + 7 - x, sprite_y + y + 1, rgb),
+                        (false, true) => self.frame.set_color(sprite_x + x, sprite_y + 8 - y, rgb),
+                        (true, true) => self.frame.set_color(sprite_x + 7 - x, sprite_y + 8 - y, rgb),
                     }
                 }
             }
@@ -167,9 +167,6 @@ impl PPU {
         let scroll_y = self.scroll.get_scroll_y() as usize;
 
         let (nametable1, nametable2) = self.get_nametables();
-        // let (nametable1, nametable2) = (0x2000, 0x2800);
-
-        // if tile_y == 0 { println!("0x{:x} 0x{:x}",nametable1, nametable2) }
 
         self.render_name_table_tileline(nametable1,
             Viewport::new(scroll_x, scroll_y, 256, 240),
@@ -225,8 +222,8 @@ impl PPU {
                     if pixel_x >= viewport.x1 && pixel_x < viewport.x2 && pixel_y >= viewport.y1 && pixel_y < viewport.y2 {
                         let scroll_pixel_x = (shift_x + pixel_x as isize) as usize;
                         let scroll_pixel_y = (shift_y + pixel_y as isize) as usize;
-                        if !(value == 0 && self.frame.is_pixel_set(scroll_pixel_x, scroll_pixel_y)) {
-                            self.frame.set_pixel(scroll_pixel_x, scroll_pixel_y, rgb);
+                        if !(value == 0 && self.frame.is_color_set(scroll_pixel_x, scroll_pixel_y)) {
+                            self.frame.set_color(scroll_pixel_x, scroll_pixel_y, rgb);
                         }
                     }
                 }
