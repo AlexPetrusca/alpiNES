@@ -14,7 +14,7 @@ use crate::nes::ppu::registers::scroll::ScrollRegister;
 use crate::nes::ppu::registers::ctrl::ControlRegister;
 use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
 use crate::nes::ppu::registers::mask::{MaskFlag, MaskRegister};
-use crate::nes::ppu::registers::mask::MaskFlag::ShowSprites;
+use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
 use crate::nes::ppu::registers::status::StatusRegister;
 use crate::nes::ppu::registers::status::StatusFlag::{SpriteZeroHit, VerticalBlank};
 
@@ -67,8 +67,7 @@ impl PPU {
 
     pub fn step(&mut self) -> Result<bool, bool> {
         if self.cycles > 340 {
-            // todo: condition x <= cycles is always true in is_sprite_0_hit()
-            self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
+            // self.status.update(SpriteZeroHit, self.is_sprite_0_hit(self.cycles));
             self.render_scanline();
             // self.render_tileline();
 
@@ -102,30 +101,51 @@ impl PPU {
 
     #[inline]
     pub fn render_scanline(&mut self) {
-        // if self.scanline == 240 { self.render_sprites(true); } // todo: remove
         if self.scanline == 260 { self.frame.clear(); }
-        // if self.scanline == 261 { self.render_sprites(false); } // todo: remove
-        if self.scanline > 240 { return }
+        if self.scanline >= 240 { return }
+
+        self.render_background_scanline();
+        self.render_sprites_scanline();
+    }
+
+    #[inline]
+    pub fn render_background_scanline(&mut self) {
+        if self.mask.is_clear(ShowBackground) { return }
 
         let background_bank = self.ctrl.get_background_chrtable_address();
         let (nametable1, nametable2) = self.get_nametables();
 
-        let scroll_x = self.scroll.get_scroll_x() as usize;
-        // let scroll_y = self.scroll.get_scroll_y() as usize;
+        let scroll_x = self.scroll.get_scroll_x() as isize;
+        let mut scroll_y = self.scroll.get_scroll_y() as isize;
+        if scroll_y >= 240 { scroll_y = scroll_y - 256; }
 
         let screen_y = self.scanline as usize;
         for screen_x in 0..Frame::WIDTH {
+            let mut pixel_x = screen_x as isize + scroll_x;
+            let mut pixel_y = screen_y as isize + scroll_y;
 
-            let tile_x = screen_x / 8;
-            let tile_y = screen_y / 8;
+            let mut nametable = nametable1;
+            if pixel_x >= 256 {
+                pixel_x -= 256;
+                nametable = nametable2;
+            }
+            if pixel_y >= 240 {
+                pixel_y -= 240;
+                nametable = nametable2;
+            } else if pixel_y < 0 {
+                pixel_y += 240;
+            }
+
+            let tile_x = pixel_x as usize / 8;
+            let tile_y = pixel_y as usize / 8;
             let palette = self.bg_palette(nametable, tile_x, tile_y);
 
             let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
             let tile_value = self.memory.read_byte(tile_idx) as u16;
             let tile_address = background_bank + 16 * tile_value;
 
-            let chr_x = 7 - (screen_x % 8) as u16;
-            let chr_y = (screen_y % 8) as u16;
+            let chr_x = 7 - (pixel_x % 8) as u16;
+            let chr_y = (pixel_y % 8) as u16;
             let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
             let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
 
@@ -140,6 +160,63 @@ impl PPU {
             let alpha = if palette_value == 0 { Frame::BACKGROUND } else { Frame::FOREGROUND };
             let rgba = (rgb.0, rgb.1, rgb.2, alpha);
             self.frame.set_pixel(screen_x, screen_y, rgba)
+        }
+    }
+
+    #[inline]
+    pub fn render_sprites_scanline(&mut self) {
+        if self.mask.is_clear(ShowSprites) { return }
+
+        let sprites_bank = self.ctrl.get_sprite_chrtable_address();
+        let mut sprite_zero_hit = false;
+
+        let screen_y = self.scanline as usize;
+        for sprite_idx in (0..self.oam.memory.len()).step_by(4).rev() {
+            let sprite_x = self.oam.memory[sprite_idx + 3] as usize;
+            let sprite_y = self.oam.memory[sprite_idx] as usize;
+
+            if screen_y < sprite_y || screen_y >= sprite_y + 8 { continue } // todo: sprite height could be 16
+
+            let priority = self.oam.memory[sprite_idx + 2] >> 5 & 1;
+            let tile_value = self.oam.memory[sprite_idx + 1] as u16;
+
+            let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;
+            let flip_horizontal = self.oam.memory[sprite_idx + 2] >> 6 & 1 == 1;
+            let palette_idx = self.oam.memory[sprite_idx + 2] & 0b0000_0011;
+            let sprite_palette = self.sprite_palette(palette_idx);
+
+            let y = screen_y - sprite_y;
+            let tile_addr = sprites_bank + 16 * tile_value + y as u16;
+            let mut lower = self.memory.read_byte(tile_addr);
+            let mut upper = self.memory.read_byte(tile_addr + 8);
+            'sprite_render: for x in (0..8).rev() {
+                let value = (1 & upper) << 1 | (1 & lower);
+                lower = lower >> 1;
+                upper = upper >> 1;
+                let rgb = match value {
+                    0 => continue 'sprite_render, // skip coloring the pixel
+                    1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
+                    2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
+                    3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
+                    _ => panic!("can't be"),
+                };
+                let alpha = if priority == 0 { Frame::FOREGROUND_SPRITE } else { Frame::BACKGROUND_SPRITE };
+                let rgba = (rgb.0, rgb.1, rgb.2, alpha);
+                match (flip_horizontal, flip_vertical) {
+                    (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgba),
+                    (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgba),
+                    (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgba),
+                    (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgba),
+                }
+
+                if sprite_idx == 0 {
+                    sprite_zero_hit = true;
+                }
+            }
+
+            if sprite_idx == 0 {
+                self.status.update(SpriteZeroHit, sprite_zero_hit);
+            }
         }
     }
 
@@ -327,7 +404,10 @@ impl PPU {
     pub fn is_sprite_0_hit(&self, cycles: usize) -> bool {
         let y = self.oam.read_byte(0) as u16;
         let x = self.oam.read_byte(3) as usize;
-        return y == self.scanline && x <= cycles && self.mask.is_set(ShowSprites);
+        let rendering_enabled = self.mask.is_set(ShowSprites) && self.mask.is_set(ShowBackground);
+        let is_opaque = false;
+
+        return y == self.scanline && x <= cycles && is_opaque && rendering_enabled;
     }
 
     pub fn write_scroll_register(&mut self, value: u8) {
