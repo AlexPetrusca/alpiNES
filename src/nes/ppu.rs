@@ -66,6 +66,27 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
+        // let sprite_x = self.oam.memory[3] as usize;
+        // let sprite_y = self.oam.memory[0] as usize;
+        // let mut scanline = if self.scanline == 0 { 0 } else { self.scanline - 1 };
+        // if self.cycles > sprite_x && scanline as usize >= sprite_y {
+        //     let mut sprite_zero_hit = false;
+        //     let sprites_bank = self.ctrl.get_sprite_chrtable_address();
+        //     let sprite_tile = self.oam.memory[1] as u16;
+        //     let mut tile_addr = sprites_bank + 16 * sprite_tile + scanline - sprite_y as u16;
+        //     let mut lower = self.memory.read_byte(tile_addr);
+        //     let mut upper = self.memory.read_byte(tile_addr + 8);
+        //     for _ in (0..8).rev() {
+        //         let value = (1 & upper) << 1 | (1 & lower);
+        //         if value != 0 {
+        //             sprite_zero_hit = true;
+        //         }
+        //         lower = lower >> 1;
+        //         upper = upper >> 1;
+        //     }
+        //     self.status.update(SpriteZeroHit, sprite_zero_hit);
+        // }
+
         if self.cycles > 340 {
             self.render_scanline();
 
@@ -93,6 +114,7 @@ impl PPU {
             self.cycles = self.cycles - 341;
             self.scanline += 1;
         }
+
         Ok(false)
     }
 
