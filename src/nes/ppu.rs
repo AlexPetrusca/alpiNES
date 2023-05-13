@@ -139,47 +139,51 @@ impl PPU {
         let mut scroll_y = self.scroll.get_scroll_y() as isize;
         if scroll_y >= 240 { scroll_y = scroll_y - 256; }
 
+        let mut nametable = nametable1;
+        let mut palette = [0, 0, 0, 0];
+        let mut tile_address = 0;
+        let mut tile_upper_chr = 0;
+        let mut tile_lower_chr = 0;
+
         let screen_y = self.scanline as usize;
+        let mut pixel_y = screen_y as isize + scroll_y;
+        if pixel_y >= 240 {
+            pixel_y -= 240;
+            nametable = nametable2
+        } else if pixel_y < 0 {
+            pixel_y += 240;
+        }
+
+        let mut tile_y = pixel_y as usize / 8;
+        let mut tile_x = 255;
         for screen_x in 0..Frame::WIDTH {
             let mut pixel_x = screen_x as isize + scroll_x;
-            let mut pixel_y = screen_y as isize + scroll_y;
-
-            let mut nametable = nametable1;
             if pixel_x >= 256 {
                 pixel_x -= 256;
                 nametable = nametable2;
             }
-            if pixel_y >= 240 {
-                pixel_y -= 240;
-                nametable = nametable2;
-            } else if pixel_y < 0 {
-                pixel_y += 240;
+
+            let tile_x_new = pixel_x as usize / 8;
+            if tile_x != tile_x_new {
+                tile_x = tile_x_new;
+                palette = self.bg_palette(nametable, tile_x, tile_y);
+                let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
+                let tile_value = self.memory.read_byte(tile_idx) as u16;
+                tile_address = background_bank + 16 * tile_value;
+
+                let chr_y = (pixel_y % 8) as u16;
+                tile_lower_chr = self.memory.read_byte(tile_address + chr_y);
+                tile_upper_chr = self.memory.read_byte(tile_address + chr_y + 8);
             }
 
-            let tile_x = pixel_x as usize / 8;
-            let tile_y = pixel_y as usize / 8;
-            let palette = self.bg_palette(nametable, tile_x, tile_y);
-
-            let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
-            let tile_value = self.memory.read_byte(tile_idx) as u16;
-            let tile_address = background_bank + 16 * tile_value;
-
             let chr_x = 7 - (pixel_x % 8) as u16;
-            let chr_y = (pixel_y % 8) as u16;
-            let mut lower_chr = self.memory.read_byte(tile_address + chr_y) >> chr_x;
-            let mut upper_chr = self.memory.read_byte(tile_address + chr_y + 8) >> chr_x;
-
-            let palette_value = (1 & upper_chr) << 1 | (1 & lower_chr);
-            let rgb = match palette_value {
-                0 => NES::SYSTEM_PALLETE[palette[0] as usize],
-                1 => NES::SYSTEM_PALLETE[palette[1] as usize],
-                2 => NES::SYSTEM_PALLETE[palette[2] as usize],
-                3 => NES::SYSTEM_PALLETE[palette[3] as usize],
-                _ => panic!("can't be"),
-            };
+            let mut lower = tile_lower_chr >> chr_x;
+            let mut upper = tile_upper_chr >> chr_x;
+            let palette_value = (1 & upper) << 1 | (1 & lower);
+            let palette_idx = palette[palette_value as usize];
+            let rgb = NES::SYSTEM_PALLETE[palette_idx as usize];
             let alpha = if palette_value == 0 { Frame::BACKGROUND } else { Frame::FOREGROUND };
-            let rgba = (rgb.0, rgb.1, rgb.2, alpha);
-            self.frame.set_pixel(screen_x, screen_y, rgba)
+            self.frame.set_pixel(screen_x, screen_y, rgb.0, rgb.1, rgb.2, alpha)
         }
     }
 
@@ -220,12 +224,11 @@ impl PPU {
                     _ => panic!("can't be"),
                 };
                 let alpha = if priority == 0 { Frame::FOREGROUND_SPRITE } else { Frame::BACKGROUND_SPRITE };
-                let rgba = (rgb.0, rgb.1, rgb.2, alpha);
                 match (flip_horizontal, flip_vertical) {
-                    (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgba),
-                    (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgba),
-                    (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgba),
-                    (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgba),
+                    (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgb.0, rgb.1, rgb.2, alpha),
+                    (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgb.0, rgb.1, rgb.2, alpha),
+                    (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgb.0, rgb.1, rgb.2, alpha),
+                    (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgb.0, rgb.1, rgb.2, alpha),
                 }
 
                 if sprite_idx == 0 {

@@ -93,10 +93,14 @@ impl Frame {
     }
 
     #[inline]
-    pub fn set_pixel(&mut self, x: usize, y: usize, rgba: (u8, u8, u8, u8)) {
-        if rgba.3 >= self.get_alpha(x, y) {
-            self.set_color(x, y, (rgba.0, rgba.1, rgba.2));
-            self.set_alpha(x, y, rgba.3);
+    pub fn set_pixel(&mut self, x: usize, y: usize, r: u8, g: u8, b: u8, a: u8) {
+        if x < Frame::WIDTH && y < Frame::HEIGHT && a >= self.get_alpha(x, y) {
+            let base_a = Frame::WIDTH * y + x;
+            let base_rgb = 3 * base_a;
+            self.rgb[base_rgb] = r;
+            self.rgb[base_rgb + 1] = g;
+            self.rgb[base_rgb + 2] = b;
+            self.alpha[base_a] = a;
         }
     }
 }

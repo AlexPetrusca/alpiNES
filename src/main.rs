@@ -135,7 +135,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
             let bank_offset: usize = (TILES_PER_COL_BANK + 1) * BOX_SIZE * (bank % 2);
             let tile_x = x + BOX_SIZE * (tile_n % TILES_PER_ROW) + PADDING + MARGIN;
             let tile_y = y + BOX_SIZE * (tile_n / TILES_PER_ROW) + PADDING + MARGIN + bank_offset;
-            frame.set_pixel(tile_x, tile_y, rgba);
+            frame.set_pixel(tile_x, tile_y, rgba.0, rgba.1, rgba.2, rgba.3);
             high_byte = high_byte >> 1;
             low_byte = low_byte >> 1;
         }
@@ -230,11 +230,11 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/pacman.nes");
+    // run_game("rom/mapper0/ice_climber.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
     // run_game("rom/mapper2/top_gun.nes");
-    // run_game("rom/mapper3/arkistas_ring.nes");
+    // run_game("rom/mapper3/bump_n_jump.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
-    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 }
