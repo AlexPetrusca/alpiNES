@@ -132,7 +132,7 @@ impl PPU {
         if self.scanline >= 240 { return }
 
         // if (self.scanline >= 31 && self.scanline <= 50) || (self.scanline > 100 && self.scanline <= 140) {
-        self.render_background_scanline();
+        // self.render_background_scanline();
         self.render_sprites_scanline();
         // }
     }
@@ -223,24 +223,18 @@ impl PPU {
             let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
             let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
 
-            'sprite_render: for x in 0..8 {
+            for x in 0..8 {
                 let screen_x = sprite_x + x;
                 let chr_x = if flip_horizontal { x } else { 7 - x };
                 let lower = lower_chr >> chr_x;
                 let upper = upper_chr >> chr_x;
                 let value = (1 & upper) << 1 | (1 & lower);
-                let rgb = match value {
-                    0 => continue 'sprite_render, // skip coloring the pixel
-                    1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
-                    2 => NES::SYSTEM_PALLETE[sprite_palette[2] as usize],
-                    3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
-                    _ => panic!("can't be"),
-                };
-                // todo: "screen_y + 1" might be wrong here
-                self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority);
-
-                if sprite_idx == 0 {
-                    self.status.set(SpriteZeroHit);
+                if value != 0 {
+                    let rgb = NES::SYSTEM_PALLETE[sprite_palette[value as usize] as usize];
+                    self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority); // todo: "screen_y + 1" might be wrong here
+                    if sprite_idx == 0 {
+                        self.status.set(SpriteZeroHit);
+                    }
                 }
             }
         }

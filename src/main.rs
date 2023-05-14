@@ -227,7 +227,7 @@ fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/test/cpu/nestest.nes");
-    // run_game("rom/test/ppu/240pee.nes");
+    run_game("rom/test/ppu/spritecans.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/ice_climber.nes");
