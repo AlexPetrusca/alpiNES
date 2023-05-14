@@ -226,6 +226,7 @@ impl PPU {
                 tile_addr = sprites_bank + 16 * tile_value;
                 chr_y = chr_y % 8;
             }
+
             let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
             let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
             for x in 0..8 {
