@@ -12,7 +12,7 @@ use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
 use crate::nes::ppu::registers::scroll::ScrollRegister;
 use crate::nes::ppu::registers::ctrl::ControlRegister;
-use crate::nes::ppu::registers::ctrl::ControlFlag::GenerateNmi;
+use crate::nes::ppu::registers::ctrl::ControlFlag::{GenerateNmi, SpriteSize};
 use crate::nes::ppu::registers::mask::{MaskFlag, MaskRegister};
 use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
 use crate::nes::ppu::registers::status::StatusRegister;
@@ -200,17 +200,17 @@ impl PPU {
         if self.mask.is_clear(ShowSprites) { return }
 
         let sprites_bank = self.ctrl.get_sprite_chrtable_address();
+        let sprite_size = if self.ctrl.is_set(SpriteSize) { 16 } else { 8 };
 
         let screen_y = if self.scanline == 0 { 0 } else { self.scanline - 1 } as usize;
         for sprite_idx in (0..self.oam.memory.len()).step_by(4).rev() {
             let sprite_x = self.oam.memory[sprite_idx + 3] as usize;
             let sprite_y = self.oam.memory[sprite_idx] as usize;
 
-            if screen_y < sprite_y || screen_y >= sprite_y + 8 { continue } // todo: sprite height could be 16
+            if screen_y < sprite_y || screen_y >= sprite_y + sprite_size { continue }
 
             let priority = (self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0) as u8;
             let tile_value = self.oam.memory[sprite_idx + 1] as u16;
-            let tile_addr = sprites_bank + 16 * tile_value;
 
             let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;
             let flip_horizontal = self.oam.memory[sprite_idx + 2] >> 6 & 1 == 1;
@@ -218,7 +218,14 @@ impl PPU {
             let sprite_palette = self.sprite_palette(palette_idx);
 
             let y = screen_y - sprite_y;
-            let chr_y = if flip_vertical { 7 - y } else { y } as u16;
+            let mut chr_y = if flip_vertical { sprite_size - 1 - y } else { y } as u16;
+            let mut tile_addr = sprites_bank + 16 * tile_value;
+            if sprite_size == 16 {
+                let sprites_bank = if tile_value & 1 == 1 { 0x1000 } else { 0x0000 };
+                let tile_value = if y >= 8 { tile_value + 1 } else { tile_value };
+                tile_addr = sprites_bank + 16 * tile_value;
+                chr_y = chr_y % 8;
+            }
             let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
             let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
             for x in 0..8 {
