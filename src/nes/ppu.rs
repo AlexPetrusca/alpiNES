@@ -211,18 +211,17 @@ impl PPU {
 
             let priority = (self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0) as u8;
             let tile_value = self.oam.memory[sprite_idx + 1] as u16;
+            let tile_addr = sprites_bank + 16 * tile_value;
 
             let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;
             let flip_horizontal = self.oam.memory[sprite_idx + 2] >> 6 & 1 == 1;
             let palette_idx = self.oam.memory[sprite_idx + 2] & 0b0000_0011;
             let sprite_palette = self.sprite_palette(palette_idx);
 
-            let tile_addr = sprites_bank + 16 * tile_value;
             let y = screen_y - sprite_y;
             let chr_y = if flip_vertical { 7 - y } else { y } as u16;
             let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
             let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
-
             for x in 0..8 {
                 let screen_x = sprite_x + x;
                 let chr_x = if flip_horizontal { x } else { 7 - x };
