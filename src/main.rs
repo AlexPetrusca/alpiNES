@@ -215,9 +215,8 @@ fn run_game(filepath: &str) {
 //  - donkey kong: footsteps and jumps dont sound right
 
 // todo: continue mapper2 debugging
-//  - contra: only left half of the background shows up; only top half of sprites show up
-//  - castlevania: some sprites don't show up properly
-//  - top gun: background doesnt render
+//  - contra: only left half of the background renders
+//  - castlevania: some sprites don't render properly
 
 // todo: continue mapper3 debugging
 //  - friday the 13th: completely visually broken
@@ -232,7 +231,7 @@ fn main() {
 
     // run_game("rom/mapper0/ice_climber.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
-    run_game("rom/mapper2/contra.nes");
+    // run_game("rom/mapper2/ghosts_n_goblins.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
