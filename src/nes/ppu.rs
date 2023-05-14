@@ -132,7 +132,7 @@ impl PPU {
         if self.scanline >= 240 { return }
 
         // if (self.scanline >= 31 && self.scanline <= 50) || (self.scanline > 100 && self.scanline <= 140) {
-        // self.render_background_scanline();
+        self.render_background_scanline();
         self.render_sprites_scanline();
         // }
     }

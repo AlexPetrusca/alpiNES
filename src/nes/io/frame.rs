@@ -19,12 +19,8 @@ impl Frame {
 
     #[inline]
     pub fn clear(&mut self) {
-        for i in 0..self.rgb.len() {
-            self.rgb[i] = 0;
-        }
-        for i in 0..self.priority.len() {
-            self.priority[i] = 0;
-        }
+        self.rgb = vec![0; 3 * Frame::WIDTH * Frame::HEIGHT];
+        self.priority = vec![0; Frame::WIDTH * Frame::HEIGHT];
     }
 
     #[inline]
