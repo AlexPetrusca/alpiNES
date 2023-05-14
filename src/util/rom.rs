@@ -19,8 +19,8 @@ pub struct ROM {
     pub is_prg_rom_mirror: bool,
     pub is_chr_ram: bool,
 
-    pub prg_bank_select: u8, // todo: move? mapper2
-    pub chr_bank_select: u8, // todo: move? mapper3
+    pub prg_bank_select: u8, // mapper2, mapper66
+    pub chr_bank_select: u8, // mapper3, mapper66
 }
 
 impl ROM {
@@ -106,7 +106,7 @@ impl ROM {
     pub fn read_prg_byte(&mut self, address: u16) -> u8 {
         let mirror_address = self.mirror_prg_address(address);
         match self.mapper {
-            0 => {
+            0 | 3 => {
                 self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             2 => {
@@ -123,9 +123,6 @@ impl ROM {
                         panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
                     }
                 }
-            },
-            3 => {
-                self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             66 => {
                 let bank_start = 2 * ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
@@ -162,13 +159,7 @@ impl ROM {
             0 | 2 => {
                 self.chr_rom[address as usize]
             },
-            3 => {
-                let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
-                // todo: is below even correct?
-                self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
-            },
-            66 => {
-                // todo: merge logic with mapper 3?
+            3 | 66 => {
                 let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
                 self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
             },

@@ -216,17 +216,21 @@ fn run_game(filepath: &str) {
 
 // todo: continue mapper2 debugging
 //  - contra: only left half of the background renders
-//  - castlevania: some sprites don't render properly
 
 // todo: continue mapper3 debugging
 //  - friday the 13th: completely visually broken
 //  - solomons key: doesn't play whatsoever
 
+// todo: continue 8x16 sprite debugging:
+//  - castlevania: some sprites don't render properly in the HUD and intro
+//  - thunder_and_lightning: paddle character sprites don't render properly
+//  - 240pee: some sprites don't render properly
+
 fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/test/cpu/nestest.nes");
-    // run_game("rom/test/ppu/spritecans.nes");
+    // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/ice_climber.nes");
@@ -235,7 +239,7 @@ fn main() {
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
-    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 
     /* TODO | regression test plan - run each game after changes | TODO */
     // run_game("rom/mapper0/ice_climber.nes");
