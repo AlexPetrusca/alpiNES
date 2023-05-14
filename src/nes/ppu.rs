@@ -150,7 +150,6 @@ impl PPU {
 
         let mut nametable = nametable1;
         let mut palette = [0, 0, 0, 0];
-        let mut tile_address = 0;
         let mut tile_upper_chr = 0;
         let mut tile_lower_chr = 0;
 
@@ -178,7 +177,7 @@ impl PPU {
                 palette = self.bg_palette(nametable, tile_x, tile_y);
                 let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
                 let tile_value = self.memory.read_byte(tile_idx) as u16;
-                tile_address = background_bank + 16 * tile_value;
+                let tile_address = background_bank + 16 * tile_value;
 
                 let chr_y = (pixel_y % 8) as u16;
                 tile_lower_chr = self.memory.read_byte(tile_address + chr_y);
@@ -186,8 +185,8 @@ impl PPU {
             }
 
             let chr_x = 7 - (pixel_x % 8) as u16;
-            let mut lower = tile_lower_chr >> chr_x;
-            let mut upper = tile_upper_chr >> chr_x;
+            let lower = tile_lower_chr >> chr_x;
+            let upper = tile_upper_chr >> chr_x;
             let palette_value = (1 & upper) << 1 | (1 & lower);
             let palette_idx = palette[palette_value as usize];
             let rgb = NES::SYSTEM_PALLETE[palette_idx as usize];
