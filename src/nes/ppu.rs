@@ -28,6 +28,13 @@ pub struct PPU {
     pub oam_addr: u8, // todo: Use OAMAddrRegister instead?
     pub oam_data: u8, // todo: Use OAMDataRegister instead?
 
+    // todo:
+    //   Sprite data is delayed by one scanline; you must subtract 1 from the sprite's Y
+    //   coordinate before writing it here. Hide a sprite by moving it down offscreen, by
+    //   writing any values between #$EF-#$FF here. Sprites are never displayed on the first
+    //   line of the picture, and it is impossible to place a sprite partially off the top of
+    //   the screen.
+
     pub memory: PPUMemory,
     pub frame: Frame,
     pub oam: OAM, // todo: should be private
@@ -124,8 +131,10 @@ impl PPU {
         if self.scanline == 260 { self.frame.clear(); }
         if self.scanline >= 240 { return }
 
+        // if (self.scanline >= 31 && self.scanline <= 50) || (self.scanline > 100 && self.scanline <= 140) {
         self.render_background_scanline();
         self.render_sprites_scanline();
+        // }
     }
 
     #[inline]
@@ -182,8 +191,8 @@ impl PPU {
             let palette_value = (1 & upper) << 1 | (1 & lower);
             let palette_idx = palette[palette_value as usize];
             let rgb = NES::SYSTEM_PALLETE[palette_idx as usize];
-            let alpha = if palette_value == 0 { Frame::BACKGROUND } else { Frame::FOREGROUND };
-            self.frame.set_pixel(screen_x, screen_y, rgb.0, rgb.1, rgb.2, alpha)
+            let priority = if palette_value == 0 { Frame::BG_PRIORITY } else { Frame::FG_PRIORITY };
+            self.frame.set_background_pixel(screen_x, screen_y, rgb, priority);
         }
     }
 
@@ -193,14 +202,14 @@ impl PPU {
 
         let sprites_bank = self.ctrl.get_sprite_chrtable_address();
 
-        let screen_y = self.scanline as usize;
+        let screen_y = if self.scanline == 0 { 0 } else { self.scanline - 1 } as usize;
         for sprite_idx in (0..self.oam.memory.len()).step_by(4).rev() {
             let sprite_x = self.oam.memory[sprite_idx + 3] as usize;
             let sprite_y = self.oam.memory[sprite_idx] as usize;
 
             if screen_y < sprite_y || screen_y >= sprite_y + 8 { continue } // todo: sprite height could be 16
 
-            let priority = self.oam.memory[sprite_idx + 2] >> 5 & 1;
+            let priority = (self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0) as u8;
             let tile_value = self.oam.memory[sprite_idx + 1] as u16;
 
             let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;
@@ -208,14 +217,18 @@ impl PPU {
             let palette_idx = self.oam.memory[sprite_idx + 2] & 0b0000_0011;
             let sprite_palette = self.sprite_palette(palette_idx);
 
+            let tile_addr = sprites_bank + 16 * tile_value;
             let y = screen_y - sprite_y;
-            let tile_addr = sprites_bank + 16 * tile_value + y as u16;
-            let mut lower = self.memory.read_byte(tile_addr);
-            let mut upper = self.memory.read_byte(tile_addr + 8);
-            'sprite_render: for x in (0..8).rev() {
+            let chr_y = if flip_vertical { 7 - y } else { y } as u16;
+            let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
+            let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
+
+            'sprite_render: for x in 0..8 {
+                let screen_x = sprite_x + x;
+                let chr_x = if flip_horizontal { x } else { 7 - x };
+                let lower = lower_chr >> chr_x;
+                let upper = upper_chr >> chr_x;
                 let value = (1 & upper) << 1 | (1 & lower);
-                lower = lower >> 1;
-                upper = upper >> 1;
                 let rgb = match value {
                     0 => continue 'sprite_render, // skip coloring the pixel
                     1 => NES::SYSTEM_PALLETE[sprite_palette[1] as usize],
@@ -223,13 +236,8 @@ impl PPU {
                     3 => NES::SYSTEM_PALLETE[sprite_palette[3] as usize],
                     _ => panic!("can't be"),
                 };
-                let alpha = if priority == 0 { Frame::FOREGROUND_SPRITE } else { Frame::BACKGROUND_SPRITE };
-                match (flip_horizontal, flip_vertical) {
-                    (false, false) => self.frame.set_pixel(sprite_x + x, sprite_y + y + 1, rgb.0, rgb.1, rgb.2, alpha),
-                    (true, false) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + y + 1, rgb.0, rgb.1, rgb.2, alpha),
-                    (false, true) => self.frame.set_pixel(sprite_x + x, sprite_y + 8 - y, rgb.0, rgb.1, rgb.2, alpha),
-                    (true, true) => self.frame.set_pixel(sprite_x + 7 - x, sprite_y + 8 - y, rgb.0, rgb.1, rgb.2, alpha),
-                }
+                // todo: "screen_y + 1" might be wrong here
+                self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority);
 
                 if sprite_idx == 0 {
                     self.status.set(SpriteZeroHit);
