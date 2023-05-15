@@ -14,10 +14,10 @@ use alpines::nes::NES;
 use alpines::nes::cpu::CPU;
 use alpines::nes::io::frame::Frame;
 use alpines::nes::ppu::PPU;
-use alpines::util::rom::ROM;
 use alpines::util::logger::Logger;
 use alpines::util::bitvec::BitVector;
 use alpines::logln;
+use alpines::nes::rom::ROM;
 
 // snake - 6502 CPU game
 
@@ -214,6 +214,13 @@ fn run_game(filepath: &str) {
 //  - balloon fight: shouldn't have any audio during title screen and credits
 //  - donkey kong: footsteps and jumps dont sound right
 
+// todo: continue mapper1 debugging
+//  - chessmaster: freezes on the menu screen (same as winter games - related?)
+//  - simpsons - bart vs the space mutants: unplayable
+//  - smb_dh_wctm: super mario bros can't be selected, duck hunt unplayable
+//  - teenage mutant ninja turtles: same issue as contra
+//  - yoshi: unplayable
+
 // todo: continue mapper2 debugging
 //  - contra: only left half of the background renders
 
@@ -221,9 +228,18 @@ fn run_game(filepath: &str) {
 //  - friday the 13th: completely visually broken
 //  - solomons key: doesn't play whatsoever
 
+// todo: continue scroll debugging
+//  - 240pee: both vertical and horizontal scroll tests are broken
+//  - legend of zelda: moving screens up and down looks glitchy
+//  - smb_dh_wctm: selecting game does a glitchy diagonal scroll
+//  - final fantasy: scrolling up and down breaks graphics
+//  - final fantasy 2: same as final fantasy
+
 // todo: continue 8x16 sprite debugging:
 //  - castlevania: some sprites don't render properly in the HUD and intro
-//  - thunder_and_lightning: paddle character sprites don't render properly
+//  - thunder and lightning: paddle character sprites don't render properly
+//  - legend of zelda: heart sprite and some enemy orientations don't render correctly
+//  - zelda_2_the_adventure_of_link: some sprites don't render properly
 //  - 240pee: some sprites don't render properly
 
 fn main() {
@@ -234,15 +250,16 @@ fn main() {
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/ice_climber.nes");
-    // run_game("rom/mapper1/legend_of_zelda.nes"); // todo: impl
+    run_game("rom/mapper1/monopoly.nes");
     // run_game("rom/mapper2/ghosts_n_goblins.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes"); // todo: impl
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
-    run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 
     /* TODO | regression test plan - run each game after changes | TODO */
     // run_game("rom/mapper0/ice_climber.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    // run_game("rom/mapper1/super_mario_bros_duck_hunt_world_world_class_track_meet.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
 }

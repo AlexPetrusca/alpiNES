@@ -2,11 +2,12 @@ pub mod cpu;
 pub mod ppu;
 pub mod apu;
 pub mod io;
+pub mod rom;
 
-use crate::util::rom::ROM;
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::ppu::PPU;
+use crate::nes::rom::ROM;
 
 pub struct NES {
     pub cpu: CPU,

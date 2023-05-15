@@ -6,7 +6,6 @@ use crate::nes::io::frame::Frame;
 use crate::nes::io::viewport::Viewport;
 use crate::nes::NES;
 use crate::util::bitvec::BitVector;
-use crate::util::rom::Mirroring;
 use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::ppu::oam::OAM;
 use crate::nes::ppu::registers::addr::AddressRegister;
@@ -17,6 +16,7 @@ use crate::nes::ppu::registers::mask::{MaskFlag, MaskRegister};
 use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
 use crate::nes::ppu::registers::status::StatusRegister;
 use crate::nes::ppu::registers::status::StatusFlag::{SpriteZeroHit, VerticalBlank};
+use crate::nes::rom::Mirroring;
 
 pub struct PPU {
     pub addr: AddressRegister,
@@ -221,6 +221,7 @@ impl PPU {
             let mut chr_y = if flip_vertical { sprite_size - 1 - y } else { y } as u16;
             let mut tile_addr = sprites_bank + 16 * tile_value;
             if sprite_size == 16 {
+                // println!("[INFO] 8x16 Sprite");
                 let sprites_bank = if tile_value & 1 == 1 { 0x1000 } else { 0x0000 };
                 let tile_value = if y >= 8 { tile_value + 1 } else { tile_value };
                 tile_addr = sprites_bank + 16 * tile_value;
@@ -248,6 +249,10 @@ impl PPU {
 
     #[inline]
     fn get_nametables(&mut self) -> (u16, u16) {
+        // todo: fix this
+        if self.memory.rom.screen_mirroring == Mirroring::OneScreenUpper || self.memory.rom.screen_mirroring == Mirroring::OneScreenLower {
+            return (0x2000, 0x2000);
+        }
         match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
             (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) => {
                 (0x2000, 0x2400)

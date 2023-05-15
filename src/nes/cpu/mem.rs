@@ -2,16 +2,16 @@ use crate::nes::apu::APU;
 use crate::nes::cpu::CPU;
 use crate::nes::io::joycon::Joycon;
 use crate::nes::io::joycon::joycon_status::JoyconButton::Select;
-use crate::util::rom::ROM;
 use crate::nes::ppu::PPU;
+use crate::nes::rom::ROM;
 
 // CPU memory map
-macro_rules! ram_range {() => {0x0000..=0x1FFF}}
-macro_rules! ppu_registers_range {() => {0x2000..=0x3FFF}}
-macro_rules! apu_io_registers_range {() => {0x4000..=0x401F}}
-macro_rules! custom_ram_range {() => {0x4020..=0x6000}}
-macro_rules! prg_ram_range {() => {0x6000..=0x7FFF}}
-macro_rules! prg_rom_range {() => {0x8000..=0xFFFF}}
+macro_rules! ram_range { () => {0x0000..=0x1FFF} }
+macro_rules! ppu_registers_range { () => {0x2000..=0x3FFF} }
+macro_rules! apu_io_registers_range { () => {0x4000..=0x401F} }
+macro_rules! custom_ram_range { () => {0x4020..=0x6000} }
+macro_rules! prg_ram_range { () => {0x6000..=0x7FFF} }
+macro_rules! prg_rom_range { () => {0x8000..=0xFFFF} }
 
 pub struct Memory {
     pub memory: [u8; Memory::MEM_SIZE],

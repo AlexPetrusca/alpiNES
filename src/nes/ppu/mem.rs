@@ -1,9 +1,9 @@
-use crate::util::rom::{Mirroring, ROM};
+use crate::nes::rom::{Mirroring, ROM};
 
 // PPU memory map
-macro_rules! chr_rom_range {() => {0x0000..=0x1FFF}}
-macro_rules! vram_range {() => {0x2000..=0x3EFF}}
-macro_rules! palletes_range {() => {0x3F00..=0x3FFF}}
+macro_rules! chr_rom_range { () => {0x0000..=0x1FFF} }
+macro_rules! vram_range { () => {0x2000..=0x3EFF} }
+macro_rules! palletes_range { () => {0x3F00..=0x3FFF} }
 
 pub struct PPUMemory {
     pub memory: [u8; PPUMemory::MEM_SIZE],
@@ -77,6 +77,7 @@ impl PPUMemory {
 
     #[inline]
     fn mirror_vram_addr(&self, addr: u16) -> u16 {
+        // todo: does this need to be changed with the introduction of SingleScreen?
         let mirrored_addr = addr & 0b0010_1111_1111_1111; // mirror down 0x3000-0x3eff to 0x2000-0x2eff
         let name_table = (mirrored_addr - PPUMemory::VRAM_START) / 0x400; // to the name table index
         match (&self.rom.screen_mirroring, name_table) {
