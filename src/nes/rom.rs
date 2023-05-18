@@ -9,13 +9,42 @@ use crate::nes::rom::registers::shift::ShiftRegister;
 macro_rules! prg_bank0_range { () => {0x8000..=0xBFFF} }
 macro_rules! prg_bank1_range { () => {0xC000..=0xFFFF} }
 
+macro_rules! prg_subbank0_range { () => {0x8000..=0x9FFF} }
+macro_rules! prg_subbank1_range { () => {0xA000..=0xBFFF} }
+macro_rules! prg_subbank2_range { () => {0xC000..=0xDFFF} }
+macro_rules! prg_subbank3_range { () => {0xE000..=0xFFFF} }
+
+macro_rules! prg_subbank0_range { () => {0x8000..=0x9FFF} }
+macro_rules! prg_subbank1_range { () => {0xA000..=0xBFFF} }
+macro_rules! prg_subbank2_range { () => {0xC000..=0xDFFF} }
+macro_rules! prg_subbank3_range { () => {0xE000..=0xFFFF} }
+
 macro_rules! chr_bank0_range { () => {0x0000..=0x0FFF} }
 macro_rules! chr_bank1_range { () => {0x1000..=0x1FFF} }
+
+macro_rules! chr_subbank0_1kb_range { () => {0x0000..=0x03FF} }
+macro_rules! chr_subbank1_1kb_range { () => {0x0400..=0x07FF} }
+macro_rules! chr_subbank2_1kb_range { () => {0x0800..=0x0BFF} }
+macro_rules! chr_subbank3_1kb_range { () => {0x0C00..=0x0FFF} }
+macro_rules! chr_subbank4_1kb_range { () => {0x1000..=0x13FF} }
+macro_rules! chr_subbank5_1kb_range { () => {0x1400..=0x17FF} }
+macro_rules! chr_subbank6_1kb_range { () => {0x1800..=0x1BFF} }
+macro_rules! chr_subbank7_1kb_range { () => {0x1C00..=0x1FFF} }
+
+macro_rules! chr_subbank0_2kb_range { () => {0x0000..=0x07FF} }
+macro_rules! chr_subbank1_2kb_range { () => {0x0800..=0x0FFF} }
+macro_rules! chr_subbank2_2kb_range { () => {0x1000..=0x17FF} }
+macro_rules! chr_subbank3_2kb_range { () => {0x1800..=0x1FFF} }
 
 macro_rules! mapper1_control_range { () => {0x8000..=0x9FFF} }
 macro_rules! mapper1_chr0_range { () => {0xA000..=0xBFFF} }
 macro_rules! mapper1_chr1_range { () => {0xC000..=0xDFFF} }
 macro_rules! mapper1_prg_range { () => {0xE000..=0xFFFF} }
+
+macro_rules! mapper4_bank_select_data_range { () => {0x8000..=0x9FFF} }
+macro_rules! mapper4_bank_mirror_protect_range { () => {0xA000..=0xBFFF} }
+macro_rules! mapper4_irq_latch_reload_range { () => {0xC000..=0xDFFF} }
+macro_rules! mapper4_irq_disable_enable_range { () => {0xE000..=0xFFFF} }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Mirroring {
@@ -39,10 +68,20 @@ pub struct ROM {
     pub chr_bank_select: u8, // mapper3, mapper66
 
     pub shift_register: ShiftRegister, // mapper1
-    pub prg_bank_select_mode: u8, // mapper1
-    pub chr_bank_select_mode: u8, // mapper1
-    pub chr_bank0_select: u8, // mapper1
-    pub chr_bank1_select: u8, // mapper1
+    pub prg_bank_select_mode: u8, // mapper1, mapper4
+    pub chr_bank_select_mode: u8, // mapper1, mapper4
+    pub chr_bank0_select: u8, // mapper1, mapper4
+    pub chr_bank1_select: u8, // mapper1, mapper4
+
+    pub bank_select: u8, // mapper4
+    pub chr_bank0_2kb_select: u8, // mapper4
+    pub chr_bank1_2kb_select: u8, // mapper4
+    pub chr_bank0_1kb_select: u8, // mapper4
+    pub chr_bank1_1kb_select: u8, // mapper4
+    pub chr_bank2_1kb_select: u8, // mapper4
+    pub chr_bank3_1kb_select: u8, // mapper4
+    pub prg_bank0_select:u8, // mapper4
+    pub prg_bank1_select:u8, // mapper4
 }
 
 impl ROM {
@@ -63,10 +102,20 @@ impl ROM {
             prg_bank_select: 0,
 
             shift_register: ShiftRegister::new(),
-            prg_bank_select_mode: 3,
+            prg_bank_select_mode: 0,
             chr_bank_select_mode: 0,
             chr_bank0_select: 0,
             chr_bank1_select: 0,
+
+            bank_select: 0,
+            chr_bank0_2kb_select: 0,
+            chr_bank1_2kb_select: 0,
+            chr_bank0_1kb_select: 0,
+            chr_bank1_1kb_select: 0,
+            chr_bank2_1kb_select: 0,
+            chr_bank3_1kb_select: 0,
+            prg_bank0_select: 0,
+            prg_bank1_select: 0,
         }
     }
 
@@ -88,51 +137,37 @@ impl ROM {
             return Err("NES2.0 format is not supported".to_string());
         }
 
-        let mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
-
         let four_screen = raw[6] & 0b1000 != 0;
         let vertical_mirroring = raw[6] & 0b1 != 0;
-        let screen_mirroring = match (four_screen, vertical_mirroring) {
-            (true, _) => Mirroring::FourScreen,
-            (false, true) => Mirroring::Vertical,
-            (false, false) => Mirroring::Horizontal,
-        };
 
         let prg_rom_size = raw[4] as usize * ROM::PRG_ROM_PAGE_SIZE;
         let chr_rom_size = raw[5] as usize * ROM::CHR_ROM_PAGE_SIZE;
-
-        let is_prg_rom_mirror = prg_rom_size == ROM::PRG_ROM_PAGE_SIZE;
-        let is_chr_ram = chr_rom_size == 0;
 
         let has_trainer = raw[6] & 0b100 != 0;
         let prg_rom_start = 16 + if has_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
-        let prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
-        let chr_rom = if is_chr_ram {
+        let mut rom = ROM::new();
+        rom.mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
+        rom.is_prg_rom_mirror = prg_rom_size == ROM::PRG_ROM_PAGE_SIZE;
+        rom.is_chr_ram = chr_rom_size == 0;
+        rom.prg_bank_select_mode = if rom.mapper == 1 { 3 } else { 0 };
+        rom.prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
+        rom.chr_rom = if rom.is_chr_ram {
             vec![0; ROM::CHR_ROM_PAGE_SIZE]
         } else {
             raw[chr_rom_start..(chr_rom_start + chr_rom_size)].to_vec()
         };
+        rom.screen_mirroring = match (four_screen, vertical_mirroring) {
+            (true, _) => Mirroring::FourScreen,
+            (false, true) => Mirroring::Vertical,
+            (false, false) => Mirroring::Horizontal,
+        };
 
         println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
-            mapper, has_trainer, &screen_mirroring, is_prg_rom_mirror, is_chr_ram, prg_rom_size, chr_rom_size);
+            rom.mapper, has_trainer, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
 
-        Ok(ROM {
-            prg_rom,
-            chr_rom,
-            mapper,
-            screen_mirroring,
-            is_prg_rom_mirror,
-            is_chr_ram,
-            prg_bank_select: 0,
-            chr_bank_select: 0,
-            shift_register: ShiftRegister::new(),
-            prg_bank_select_mode: 3,
-            chr_bank_select_mode: 0,
-            chr_bank0_select: 0,
-            chr_bank1_select: 0,
-        })
+        return Ok(rom);
     }
 
     #[inline]
@@ -197,6 +232,45 @@ impl ROM {
                     _ => {
                         panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
                     }
+                }
+            },
+            4 => {
+                match mirror_address {
+                    prg_subbank0_range!() => {
+                        if self.prg_bank_select_mode == 0 {
+                            // $8000-$9FFF swappable
+                            // 110: R6: Select 8 KB PRG ROM bank at $8000-$9FFF (or $C000-$DFFF)
+                            let bank_start = (ROM::PRG_ROM_PAGE_SIZE / 2) * self.prg_bank0_select as usize;
+                            self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
+                        } else {
+                            // $8000-$9FFF fixed to second-last bank
+                            let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
+                            self.prg_rom[last_bank_start + (mirror_address - 0x8000) as usize]
+                        }
+                    },
+                    prg_subbank1_range!() => {
+                        // 111: R7: Select 8 KB PRG ROM bank at $A000-$BFFF
+                        let bank_start = (ROM::PRG_ROM_PAGE_SIZE / 2) * self.prg_bank1_select as usize;
+                        self.prg_rom[(bank_start + (mirror_address - 0xA000) as usize) % self.prg_rom.len()]
+                    },
+                    prg_subbank2_range!() => {
+                        if self.prg_bank_select_mode == 0 {
+                            // $C000-$DFFF fixed to second-last bank;
+                            let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
+                            self.prg_rom[last_bank_start + (mirror_address - 0xC000) as usize]
+                        } else {
+                            // $C000-$DFFF swappable
+                            // 110: R6: Select 8 KB PRG ROM bank at $8000-$9FFF (or $C000-$DFFF)
+                            let bank_start = (ROM::PRG_ROM_PAGE_SIZE / 2) * self.prg_bank0_select as usize;
+                            self.prg_rom[(bank_start + (mirror_address - 0xC000) as usize) % self.prg_rom.len()]
+                        }
+                    },
+                    prg_subbank3_range!() => {
+                        // $E000-$FFFF: 8 KB PRG ROM bank, fixed to the last bank
+                        let last_bank_start = self.prg_rom.len() - (ROM::PRG_ROM_PAGE_SIZE / 2);
+                        self.prg_rom[last_bank_start + (mirror_address - 0xE000) as usize]
+                    },
+                    _ => panic!("can't be")
                 }
             },
             66 => {
@@ -289,6 +363,64 @@ impl ROM {
             3 => {
                 self.chr_bank_select = data;
             },
+            4 => {
+                match address {
+                    mapper4_bank_select_data_range!() => {
+                        if address % 2 == 0 {
+                            // bank select
+                            println!("mapper4: bank select => 0b{:0>8b}", data);
+                            self.bank_select = data & 0b0000_0111;
+                            self.prg_bank_select_mode = (data & 0b0100_0000) >> 6;
+                            self.chr_bank_select_mode = (data & 0b1000_0000) >> 7;
+                        } else {
+                            // bank data
+                            println!("mapper4: bank data => 0x{:0>4x}", data);
+                            match self.bank_select {
+                                0 => self.chr_bank0_2kb_select = data,
+                                1 => self.chr_bank1_2kb_select = data,
+                                2 => self.chr_bank0_1kb_select = data,
+                                3 => self.chr_bank1_1kb_select = data,
+                                4 => self.chr_bank2_1kb_select = data,
+                                5 => self.chr_bank3_1kb_select = data,
+                                6 => self.prg_bank0_select = data,
+                                7 => self.prg_bank1_select = data,
+                                _ => panic!("can't be")
+                            }
+                        }
+                    },
+                    mapper4_bank_mirror_protect_range!() => {
+                        if address % 2 == 0 {
+                            // mirroring
+                            let mirroring = if data & 1 == 0 { Mirroring::Vertical } else { Mirroring::Horizontal };
+                            println!("mapper4: mirroring => {:?}", mirroring);
+                        } else {
+                            // prg ram protect
+                            println!("mapper4: prg ram protect => 0b{:0>8b}", data);
+                        }
+                    },
+                    mapper4_irq_latch_reload_range!() => {
+                        if address % 2 == 0 {
+                            // irq latch
+                            println!("mapper4: irq latch => {}", data);
+                        } else {
+                            // irq reload
+                            println!("mapper4: irq reload");
+                        }
+                    },
+                    mapper4_irq_disable_enable_range!() => {
+                        if address % 2 == 0 {
+                            // irq disable
+                            println!("mapper4: irq disable");
+                        } else {
+                            // irq enable
+                            println!("mapper4: irq enable");
+                        }
+                    },
+                    _ => {
+                        panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                    }
+                }
+            },
             66 => {
                 self.chr_bank_select = data & 0b0000_0011;
                 self.prg_bank_select = (data >> 4) & 0b0000_0011;
@@ -330,6 +462,69 @@ impl ROM {
             3 | 66 => {
                 let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
                 self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
+            },
+            4 => {
+                if self.chr_bank_select_mode == 0 {
+                    match address {
+                        chr_subbank0_2kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 4) * (self.chr_bank0_2kb_select / 2) as usize;
+                            self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
+                        },
+                        chr_subbank1_2kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 4) * (self.chr_bank1_2kb_select / 2) as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x0800) % self.chr_rom.len()]
+                        },
+                        chr_subbank4_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank0_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1000) % self.chr_rom.len()]
+                        },
+                        chr_subbank5_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank1_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1400) % self.chr_rom.len()]
+                        },
+                        chr_subbank6_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank2_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1800) % self.chr_rom.len()]
+                        },
+                        chr_subbank7_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank3_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1C00) % self.chr_rom.len()]
+                        },
+                        _ => {
+                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                        }
+                    }
+                } else {
+                    match address {
+                        chr_subbank0_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank0_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
+                        },
+                        chr_subbank1_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank1_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x0400) % self.chr_rom.len()]
+                        },
+                        chr_subbank2_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank2_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x0800) % self.chr_rom.len()]
+                        },
+                        chr_subbank3_1kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 8) * self.chr_bank3_1kb_select as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x0C00) % self.chr_rom.len()]
+                        },
+                        chr_subbank2_2kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 4) * (self.chr_bank0_2kb_select / 2) as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1000) % self.chr_rom.len()]
+                        },
+                        chr_subbank3_2kb_range!() => {
+                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 4) * (self.chr_bank1_2kb_select / 2) as usize;
+                            self.chr_rom[(bank_start + address as usize - 0x1800) % self.chr_rom.len()]
+                        },
+                        _ => {
+                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                        }
+                    }
+                }
             },
             _ => {
                 panic!("Unsupported mapper: {}", self.mapper);
