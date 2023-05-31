@@ -235,13 +235,6 @@ fn run_game(filepath: &str) {
 //  - final fantasy: scrolling up and down breaks graphics
 //  - final fantasy 2: same as final fantasy
 
-// todo: continue 8x16 sprite debugging:
-//  - castlevania: some sprites don't render properly in the HUD and intro
-//  - thunder and lightning: paddle character sprites don't render properly
-//  - legend of zelda: heart sprite and some enemy orientations don't render correctly
-//  - zelda_2_the_adventure_of_link: some sprites don't render properly
-//  - 240pee: some sprites don't render properly
-
 fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
@@ -249,11 +242,11 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/ice_climber.nes");
-    // run_game("rom/mapper1/monopoly.nes");
-    // run_game("rom/mapper2/ghosts_n_goblins.nes");
+    // run_game("rom/mapper0/pacman.nes");
+    run_game("rom/mapper1/legend_of_zelda.nes");
+    // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
-    run_game("rom/mapper4/silver_surfer.nes");
+    // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 

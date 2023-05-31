@@ -210,7 +210,7 @@ impl PPU {
             if screen_y < sprite_y || screen_y >= sprite_y + sprite_size { continue }
 
             let priority = (self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0) as u8;
-            let tile_value = self.oam.memory[sprite_idx + 1] as u16;
+            let mut tile_value = self.oam.memory[sprite_idx + 1] as u16;
 
             let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;
             let flip_horizontal = self.oam.memory[sprite_idx + 2] >> 6 & 1 == 1;
@@ -221,9 +221,9 @@ impl PPU {
             let mut chr_y = if flip_vertical { sprite_size - 1 - y } else { y } as u16;
             let mut tile_addr = sprites_bank + 16 * tile_value;
             if sprite_size == 16 {
-                // println!("[INFO] 8x16 Sprite");
                 let sprites_bank = if tile_value & 1 == 1 { 0x1000 } else { 0x0000 };
-                let tile_value = if y >= 8 { tile_value + 1 } else { tile_value };
+                tile_value = if tile_value % 2 == 1 { tile_value - 1 } else { tile_value };
+                tile_value = if chr_y >= 8 { tile_value + 1 } else { tile_value };
                 tile_addr = sprites_bank + 16 * tile_value;
                 chr_y = chr_y % 8;
             }
