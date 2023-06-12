@@ -1,3 +1,7 @@
+use std::fs;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::path::Path;
 use crate::nes::apu::APU;
 use crate::nes::cpu::CPU;
 use crate::nes::io::joycon::Joycon;
@@ -18,6 +22,7 @@ pub struct Memory {
     pub ppu: PPU,
     pub apu: APU,
     pub rom: ROM, // todo: should this be Option<ROM>?
+    pub save_ram: Option<File>,
     pub joycon1: Joycon,
     pub joycon2: Joycon,
 }
@@ -71,6 +76,7 @@ impl Memory {
             ppu: PPU::new(),
             apu: APU::new(),
             rom: ROM::new(),
+            save_ram: None,
             joycon1: Joycon::new(),
             joycon2: Joycon::new(),
         }
@@ -79,6 +85,27 @@ impl Memory {
     pub fn load_rom(&mut self, rom: &ROM) {
         self.rom = rom.clone();
         self.ppu.memory.load_rom(rom);
+        if rom.has_save_ram {
+            self.init_save_ram();
+        }
+    }
+
+    fn init_save_ram(&mut self) {
+        fs::create_dir_all("Saves/Battery Saves").unwrap();
+        let save_path = "Saves/Battery Saves/save.sav";
+        if Path::new(save_path).exists() {
+            let mut save_file = fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(save_path)
+                .unwrap();
+            save_file.read(&mut self.memory[prg_ram_range!()]).expect("unable to load save file");
+            self.save_ram = Some(save_file);
+        } else {
+            let mut save_file = File::create(save_path).expect("unable to create save file");
+            save_file.write(vec![0; 0x2000].as_slice()).expect("unable to init save file");
+            self.save_ram = Some(save_file);
+        }
     }
 
     pub fn load_at_addr(&mut self, address: u16, program: &Vec<u8>) {
@@ -260,6 +287,12 @@ impl Memory {
             },
             prg_ram_range!() => {
                 self.memory[address as usize] = data;
+                if self.rom.has_save_ram {
+                    let pos = (address - 0x6000) as u64;
+                    let mut save_file = self.save_ram.as_mut().unwrap();
+                    save_file.seek(SeekFrom::Start(pos)).expect("unable to seek in save file");
+                    save_file.write(&[data]).expect("unable to write to save file");
+                }
             },
             prg_rom_range!() => {
                 self.rom.write_prg_byte(address, data);

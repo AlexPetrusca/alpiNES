@@ -2,7 +2,8 @@ pub mod registers;
 
 use std::fs;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::path::Path;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::rom::registers::shift::ShiftRegister;
 
@@ -57,12 +58,14 @@ pub enum Mirroring {
 
 #[derive(Clone)]
 pub struct ROM {
+    pub rom_title: String,
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub mapper: u8,
     pub screen_mirroring: Mirroring,
     pub is_prg_rom_mirror: bool,
     pub is_chr_ram: bool,
+    pub has_save_ram: bool,
 
     pub prg_bank_select: u8, // mapper2, mapper66
     pub chr_bank_select: u8, // mapper3, mapper66
@@ -91,12 +94,14 @@ impl ROM {
 
     pub fn new() -> Self {
         ROM {
+            rom_title: String::new(),
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             mapper: 0,
             screen_mirroring: Mirroring::Horizontal,
             is_prg_rom_mirror: false,
             is_chr_ram: false,
+            has_save_ram: false,
 
             chr_bank_select: 0,
             prg_bank_select: 0,
@@ -132,18 +137,19 @@ impl ROM {
             return Err("File is not in iNES file format".to_string());
         }
 
-        let ines_ver = (raw[7] >> 2) & 0b11;
+        let ines_ver = (raw[7] >> 2) & 0b0011;
         if ines_ver != 0 {
             return Err("NES2.0 format is not supported".to_string());
         }
 
         let four_screen = raw[6] & 0b1000 != 0;
-        let vertical_mirroring = raw[6] & 0b1 != 0;
+        let vertical_mirroring = raw[6] & 0b0001 != 0;
 
         let prg_rom_size = raw[4] as usize * ROM::PRG_ROM_PAGE_SIZE;
         let chr_rom_size = raw[5] as usize * ROM::CHR_ROM_PAGE_SIZE;
 
-        let has_trainer = raw[6] & 0b100 != 0;
+        let has_trainer = raw[6] & 0b0100 != 0;
+        let has_save_ram = raw[6] & 0b0010 != 0;
         let prg_rom_start = 16 + if has_trainer { 512 } else { 0 };
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
@@ -151,6 +157,7 @@ impl ROM {
         rom.mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
         rom.is_prg_rom_mirror = prg_rom_size == ROM::PRG_ROM_PAGE_SIZE;
         rom.is_chr_ram = chr_rom_size == 0;
+        rom.has_save_ram = has_save_ram;
         rom.prg_bank_select_mode = if rom.mapper == 1 { 3 } else { 0 };
         rom.prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
         rom.chr_rom = if rom.is_chr_ram {
@@ -164,8 +171,8 @@ impl ROM {
             (false, false) => Mirroring::Horizontal,
         };
 
-        println!("ROM: mapper: {}, trainer: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
-            rom.mapper, has_trainer, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
+        println!("ROM: mapper: {}, trainer: {}, save_ram: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
+            rom.mapper, has_trainer, rom.has_save_ram, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
 
         return Ok(rom);
     }
