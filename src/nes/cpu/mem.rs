@@ -91,9 +91,10 @@ impl Memory {
     }
 
     fn init_save_ram(&mut self) {
-        fs::create_dir_all("Saves/Battery Saves").unwrap();
-        let save_path = "Saves/Battery Saves/save.sav";
-        if Path::new(save_path).exists() {
+        let save_path = format!("Saves/{}", self.rom.game_title);
+        fs::create_dir_all(&save_path).unwrap();
+        let save_path = format!("{}/battery.sav", save_path);
+        if Path::new(save_path.as_str()).exists() {
             let mut save_file = fs::OpenOptions::new()
                 .read(true)
                 .write(true)

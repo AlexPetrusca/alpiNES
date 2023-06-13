@@ -58,7 +58,7 @@ pub enum Mirroring {
 
 #[derive(Clone)]
 pub struct ROM {
-    pub rom_title: String,
+    pub game_title: String,
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub mapper: u8,
@@ -94,7 +94,7 @@ impl ROM {
 
     pub fn new() -> Self {
         ROM {
-            rom_title: String::new(),
+            game_title: String::new(),
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             mapper: 0,
@@ -129,7 +129,14 @@ impl ROM {
         let metadata = fs::metadata(filepath).expect("unable to read metadata");
         let mut buffer = vec![0; metadata.len() as usize];
         file.read(&mut buffer).expect("buffer overflow");
-        ROM::from_buffer(&buffer)
+        let mut rom_result = ROM::from_buffer(&buffer);
+
+        let dir_idx = filepath.rfind("/").unwrap_or(0);
+        let ext_idx = filepath.rfind(".").unwrap_or(filepath.len());
+        let game_title = &filepath[dir_idx..ext_idx];
+        rom_result.as_mut().unwrap().game_title = game_title.to_string();
+
+        rom_result
     }
 
     pub fn from_buffer(raw: &Vec<u8>) -> Result<ROM, String> {
