@@ -251,6 +251,8 @@ impl Emulator {
             let ppu_state = &save_state.ppu_state;
             Self::load_ppu_state(&mut self.nes.cpu.memory.ppu, ppu_state);
 
+            // todo: [FEATURE] add apu restore for savestates
+
             let rom_state = &save_state.rom_state;
             Self::load_rom_state(&mut self.nes.cpu.memory.rom, rom_state);
             Self::load_rom_state(&mut self.nes.cpu.memory.ppu.memory.rom, rom_state);
