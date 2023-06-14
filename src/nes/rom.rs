@@ -1,10 +1,13 @@
 pub mod registers;
+pub mod mappers;
 
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use crate::nes::cpu::mem::Memory;
+use crate::nes::rom::mappers::mapper2::Mapper2;
+use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::registers::shift::ShiftRegister;
 
 macro_rules! prg_bank0_range { () => {0x8000..=0xBFFF} }
@@ -61,11 +64,13 @@ pub struct ROM {
     pub game_title: String,
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
-    pub mapper: u8,
+    pub mapper_id: u8,
     pub screen_mirroring: Mirroring,
     pub is_prg_rom_mirror: bool,
     pub is_chr_ram: bool,
     pub has_save_ram: bool,
+
+    pub mapper2: Mapper2,
 
     pub prg_bank_select: u8, // mapper2, mapper66
     pub chr_bank_select: u8, // mapper3, mapper66
@@ -97,11 +102,13 @@ impl ROM {
             game_title: String::new(),
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
-            mapper: 0,
+            mapper_id: 0,
             screen_mirroring: Mirroring::Horizontal,
             is_prg_rom_mirror: false,
             is_chr_ram: false,
             has_save_ram: false,
+
+            mapper2: Mapper2::new(),
 
             chr_bank_select: 0,
             prg_bank_select: 0,
@@ -159,11 +166,11 @@ impl ROM {
         let chr_rom_start = prg_rom_start + prg_rom_size;
 
         let mut rom = ROM::new();
-        rom.mapper = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
+        rom.mapper_id = (raw[7] & 0b1111_0000) | (raw[6] >> 4);
         rom.is_prg_rom_mirror = prg_rom_size == ROM::PRG_ROM_PAGE_SIZE;
         rom.is_chr_ram = chr_rom_size == 0;
         rom.has_save_ram = has_save_ram;
-        rom.prg_bank_select_mode = if rom.mapper == 1 { 3 } else { 0 };
+        rom.prg_bank_select_mode = if rom.mapper_id == 1 { 3 } else { 0 };
         rom.prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
         rom.chr_rom = if rom.is_chr_ram {
             vec![0; ROM::CHR_ROM_PAGE_SIZE]
@@ -177,7 +184,7 @@ impl ROM {
         };
 
         println!("ROM: mapper: {}, trainer: {}, save_ram: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
-            rom.mapper, has_trainer, rom.has_save_ram, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
+            rom.mapper_id, has_trainer, rom.has_save_ram, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
 
         return Ok(rom);
     }
@@ -185,8 +192,8 @@ impl ROM {
     #[inline]
     pub fn read_prg_byte(&mut self, address: u16) -> u8 {
         let mirror_address = self.mirror_prg_address(address);
-        match self.mapper {
-            0 | 3 => {
+        match self.mapper_id {
+            0 => {
                 self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             1 => {
@@ -208,7 +215,7 @@ impl ROM {
                                 self.prg_rom[(bank_start + (mirror_address - 0xC000) as usize) % self.prg_rom.len()]
                             },
                             _ => {
-                                panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
+                                panic!("Address out of range on mapper {}: {}", self.mapper_id, mirror_address);
                             }
                         }
                     },
@@ -224,27 +231,16 @@ impl ROM {
                                 self.prg_rom[last_bank_start + (mirror_address - 0xC000) as usize]
                             },
                             _ => {
-                                panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
+                                panic!("Address out of range on mapper {}: {}", self.mapper_id, mirror_address);
                             }
                         }
                     },
                     _ => panic!("can't be")
                 }
             }
-            2 => {
-                match mirror_address {
-                    prg_bank0_range!() => {
-                        let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
-                        self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
-                    },
-                    prg_bank1_range!() => {
-                        let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
-                        self.prg_rom[last_bank_start + (mirror_address - 0xC000) as usize]
-                    },
-                    _ => {
-                        panic!("Address out of range on mapper {}: {}", self.mapper, mirror_address);
-                    }
-                }
+            2 => self.mapper2.read_prg_byte(mirror_address, &self.prg_rom),
+            3 => {
+                self.prg_rom[(mirror_address - 0x8000) as usize]
             },
             4 => {
                 match mirror_address {
@@ -290,14 +286,14 @@ impl ROM {
                 self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
             },
             _ => {
-                panic!("Unsupported mapper: {}", self.mapper);
+                panic!("Unsupported mapper: {}", self.mapper_id);
             }
         }
     }
 
     #[inline]
     pub fn write_prg_byte(&mut self, address: u16, data: u8) {
-        match self.mapper {
+        match self.mapper_id {
             1 => {
                 self.shift_register.write(data);
                 if self.shift_register.is_fifth_write() {
@@ -364,14 +360,12 @@ impl ROM {
                             // println!("prg => prg_bank_select: {}", self.prg_bank_select);
                         },
                         _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
                         }
                     }
                 }
             },
-            2 => {
-                self.prg_bank_select = data & 0b0000_1111;
-            },
+            2 => self.mapper2.write_mapper(address, data),
             3 => {
                 self.chr_bank_select = data;
             },
@@ -429,7 +423,7 @@ impl ROM {
                         }
                     },
                     _ => {
-                        panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                        panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
                     }
                 }
             },
@@ -445,8 +439,8 @@ impl ROM {
 
     #[inline]
     pub fn read_chr_byte(&self, address: u16) -> u8 {
-        match self.mapper {
-            0 | 2 => {
+        match self.mapper_id {
+            0 => {
                 self.chr_rom[address as usize]
             },
             1 => {
@@ -466,12 +460,13 @@ impl ROM {
                             self.chr_rom[(bank_start + address as usize - 0x1000) % self.chr_rom.len()]
                         },
                         _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
                         }
                     }
                 }
             },
-            3 | 66 => {
+            2 => self.mapper2.read_chr_byte(address, &self.chr_rom),
+            3 => {
                 let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
                 self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
             },
@@ -503,7 +498,7 @@ impl ROM {
                             self.chr_rom[(bank_start + address as usize - 0x1C00) % self.chr_rom.len()]
                         },
                         _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
                         }
                     }
                 } else {
@@ -533,14 +528,18 @@ impl ROM {
                             self.chr_rom[(bank_start + address as usize - 0x1800) % self.chr_rom.len()]
                         },
                         _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper, address);
+                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
                         }
                     }
                 }
             },
+            66 => {
+                let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
+                self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
+            },
             _ => {
-                panic!("Unsupported mapper: {}", self.mapper);
-            }
+                panic!("Unsupported mapper: {}", self.mapper_id);
+            },
         }
     }
 

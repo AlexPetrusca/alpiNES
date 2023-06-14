@@ -1,4 +1,5 @@
-rom
-target
+/rom
+/Saves
+/target
 .idea
 .DS_Store
