@@ -9,6 +9,9 @@ use crate::nes::cpu::mem::Memory;
 use crate::nes::rom::mappers::mapper0::Mapper0;
 use crate::nes::rom::mappers::mapper1::Mapper1;
 use crate::nes::rom::mappers::mapper2::Mapper2;
+use crate::nes::rom::mappers::mapper3::Mapper3;
+use crate::nes::rom::mappers::mapper4::Mapper4;
+use crate::nes::rom::mappers::mapper66::Mapper66;
 use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::registers::shift::ShiftRegister;
 
@@ -75,6 +78,9 @@ pub struct ROM {
     pub mapper0: Mapper0,
     pub mapper1: Mapper1,
     pub mapper2: Mapper2,
+    pub mapper3: Mapper3,
+    pub mapper4: Mapper4,
+    pub mapper66: Mapper66,
 
     pub prg_bank_select: u8, // mapper2, mapper66
     pub chr_bank_select: u8, // mapper3, mapper66
@@ -115,6 +121,9 @@ impl ROM {
             mapper0: Mapper0::new(),
             mapper1: Mapper1::new(),
             mapper2: Mapper2::new(),
+            mapper3: Mapper3::new(),
+            mapper4: Mapper4::new(),
+            mapper66: Mapper66::new(),
 
             chr_bank_select: 0,
             prg_bank_select: 0,
@@ -203,9 +212,7 @@ impl ROM {
             0 => self.mapper0.read_prg_byte(mirror_address, &self.prg_rom),
             1 => self.mapper1.read_prg_byte(mirror_address, &self.prg_rom),
             2 => self.mapper2.read_prg_byte(mirror_address, &self.prg_rom),
-            3 => {
-                self.prg_rom[(mirror_address - 0x8000) as usize]
-            },
+            3 => self.mapper3.read_prg_byte(mirror_address, &self.prg_rom),
             4 => {
                 match mirror_address {
                     prg_subbank0_range!() => {
@@ -264,9 +271,7 @@ impl ROM {
                 self.screen_mirroring = self.mapper1.screen_mirroring.clone();
             },
             2 => self.mapper2.write_mapper(address, data),
-            3 => {
-                self.chr_bank_select = data;
-            },
+            3 => self.mapper3.write_mapper(address, data),
             4 => {
                 match address {
                     mapper4_bank_select_data_range!() => {
@@ -341,10 +346,7 @@ impl ROM {
             0 => self.mapper0.read_chr_byte(address, &self.chr_rom),
             1 => self.mapper1.read_chr_byte(address, &self.chr_rom),
             2 => self.mapper2.read_chr_byte(address, &self.chr_rom),
-            3 => {
-                let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
-                self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
-            },
+            3 => self.mapper3.read_chr_byte(address, &self.chr_rom),
             4 => {
                 if self.chr_bank_select_mode == 0 {
                     match address {
