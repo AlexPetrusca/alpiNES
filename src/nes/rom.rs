@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use crate::nes::cpu::mem::Memory;
+use crate::nes::rom::mappers::mapper0::Mapper0;
 use crate::nes::rom::mappers::mapper2::Mapper2;
 use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::registers::shift::ShiftRegister;
@@ -70,6 +71,7 @@ pub struct ROM {
     pub is_chr_ram: bool,
     pub has_save_ram: bool,
 
+    pub mapper0: Mapper0,
     pub mapper2: Mapper2,
 
     pub prg_bank_select: u8, // mapper2, mapper66
@@ -108,6 +110,7 @@ impl ROM {
             is_chr_ram: false,
             has_save_ram: false,
 
+            mapper0: Mapper0::new(),
             mapper2: Mapper2::new(),
 
             chr_bank_select: 0,
@@ -193,9 +196,7 @@ impl ROM {
     pub fn read_prg_byte(&mut self, address: u16) -> u8 {
         let mirror_address = self.mirror_prg_address(address);
         match self.mapper_id {
-            0 => {
-                self.prg_rom[(mirror_address - 0x8000) as usize]
-            },
+            0 => self.mapper0.read_prg_byte(mirror_address, &self.prg_rom),
             1 => {
                 match self.prg_bank_select_mode {
                     0 | 1 => {
@@ -294,6 +295,7 @@ impl ROM {
     #[inline]
     pub fn write_prg_byte(&mut self, address: u16, data: u8) {
         match self.mapper_id {
+            0 => self.mapper0.write_mapper(address, data),
             1 => {
                 self.shift_register.write(data);
                 if self.shift_register.is_fifth_write() {
@@ -440,9 +442,7 @@ impl ROM {
     #[inline]
     pub fn read_chr_byte(&self, address: u16) -> u8 {
         match self.mapper_id {
-            0 => {
-                self.chr_rom[address as usize]
-            },
+            0 => self.mapper0.read_chr_byte(address, &self.chr_rom),
             1 => {
                 if self.chr_bank_select_mode == 0 {
                     // switch 8 KB at a time

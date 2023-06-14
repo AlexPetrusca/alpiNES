@@ -242,9 +242,9 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/pacman.nes");
+    run_game("rom/mapper0/pacman.nes");
     // run_game("rom/mapper1/metroid.nes");
-    run_game("rom/mapper2/castlevania.nes");
+    // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl

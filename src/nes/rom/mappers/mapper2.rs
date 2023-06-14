@@ -35,11 +35,11 @@ impl Mapper for Mapper2 {
         }
     }
 
-    fn write_mapper(&mut self, _address: u16, data: u8) {
-        self.prg_bank_select = data & 0b0000_1111;
-    }
-
     fn read_chr_byte(&self, address: u16, chr_rom: &Vec<u8>) -> u8 {
         chr_rom[address as usize]
+    }
+
+    fn write_mapper(&mut self, _address: u16, data: u8) {
+        self.prg_bank_select = data & 0b0000_1111;
     }
 }
