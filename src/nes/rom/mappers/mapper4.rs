@@ -51,11 +51,13 @@ impl Mapper4 {
             chr_bank_select_mode: 0,
             prg_bank0_select: 0,
             prg_bank1_select: 0,
+
             chr_bank0_select: 0,
             chr_bank1_select: 0,
             chr_bank0_1kb_select: 0,
             chr_bank1_1kb_select: 0,
             chr_bank2_1kb_select: 0,
+
             chr_bank3_1kb_select: 0,
             chr_bank0_2kb_select: 0,
             chr_bank1_2kb_select: 0,

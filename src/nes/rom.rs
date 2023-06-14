@@ -5,6 +5,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
+use serde::{Serialize, Deserialize};
 use crate::nes::cpu::mem::Memory;
 use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::mappers::mapper0::Mapper0;
@@ -15,7 +16,7 @@ use crate::nes::rom::mappers::mapper4::Mapper4;
 use crate::nes::rom::mappers::mapper66::Mapper66;
 use crate::nes::rom::registers::shift::ShiftRegister;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize,Debug, PartialEq, Clone)]
 pub enum Mirroring {
     Vertical,
     Horizontal,
@@ -30,10 +31,10 @@ pub struct ROM {
     pub prg_rom: Vec<u8>,
     pub chr_rom: Vec<u8>,
     pub mapper_id: u8,
-    pub screen_mirroring: Mirroring,
     pub is_prg_rom_mirror: bool,
     pub is_chr_ram: bool,
     pub has_save_ram: bool,
+    pub screen_mirroring: Mirroring,
 
     pub mapper0: Mapper0,
     pub mapper1: Mapper1,
@@ -54,10 +55,10 @@ impl ROM {
             prg_rom: Vec::new(),
             chr_rom: Vec::new(),
             mapper_id: 0,
-            screen_mirroring: Mirroring::Horizontal,
             is_prg_rom_mirror: false,
             is_chr_ram: false,
             has_save_ram: false,
+            screen_mirroring: Mirroring::Horizontal,
 
             mapper0: Mapper0::new(),
             mapper1: Mapper1::new(),
