@@ -7,6 +7,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use crate::nes::cpu::mem::Memory;
 use crate::nes::rom::mappers::mapper0::Mapper0;
+use crate::nes::rom::mappers::mapper1::Mapper1;
 use crate::nes::rom::mappers::mapper2::Mapper2;
 use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::registers::shift::ShiftRegister;
@@ -72,6 +73,7 @@ pub struct ROM {
     pub has_save_ram: bool,
 
     pub mapper0: Mapper0,
+    pub mapper1: Mapper1,
     pub mapper2: Mapper2,
 
     pub prg_bank_select: u8, // mapper2, mapper66
@@ -111,6 +113,7 @@ impl ROM {
             has_save_ram: false,
 
             mapper0: Mapper0::new(),
+            mapper1: Mapper1::new(),
             mapper2: Mapper2::new(),
 
             chr_bank_select: 0,
@@ -173,7 +176,6 @@ impl ROM {
         rom.is_prg_rom_mirror = prg_rom_size == ROM::PRG_ROM_PAGE_SIZE;
         rom.is_chr_ram = chr_rom_size == 0;
         rom.has_save_ram = has_save_ram;
-        rom.prg_bank_select_mode = if rom.mapper_id == 1 { 3 } else { 0 };
         rom.prg_rom = raw[prg_rom_start..(prg_rom_start + prg_rom_size)].to_vec();
         rom.chr_rom = if rom.is_chr_ram {
             vec![0; ROM::CHR_ROM_PAGE_SIZE]
@@ -186,8 +188,10 @@ impl ROM {
             (false, false) => Mirroring::Horizontal,
         };
 
-        println!("ROM: mapper: {}, trainer: {}, save_ram: {}, screen_mirroring: {:?}, is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
-            rom.mapper_id, has_trainer, rom.has_save_ram, rom.screen_mirroring, rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
+        println!("ROM: mapper: {}, trainer: {}, save_ram: {}, screen_mirroring: {:?}, \
+            is_prg_rom_mirroring: {}, is_chr_ram: {}, prg_rom_size: 0x{:x}, chr_rom_size: 0x{:x}",
+            rom.mapper_id, has_trainer, rom.has_save_ram, rom.screen_mirroring,
+            rom.is_prg_rom_mirror, rom.is_chr_ram, prg_rom_size, chr_rom_size);
 
         return Ok(rom);
     }
@@ -197,48 +201,7 @@ impl ROM {
         let mirror_address = self.mirror_prg_address(address);
         match self.mapper_id {
             0 => self.mapper0.read_prg_byte(mirror_address, &self.prg_rom),
-            1 => {
-                match self.prg_bank_select_mode {
-                    0 | 1 => {
-                        // switch 32 KB at $8000, ignoring low bit of bank number
-                        let prg_bank_select = self.prg_bank_select & 0b1111_1110;
-                        let bank_start = 2 * ROM::PRG_ROM_PAGE_SIZE * prg_bank_select as usize;
-                        self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
-                    },
-                    2 => {
-                        // fix first bank at $8000 and switch 16 KB bank at $C000
-                        match mirror_address {
-                            prg_bank0_range!() => {
-                                self.prg_rom[(mirror_address as usize - 0x8000) % self.prg_rom.len()]
-                            },
-                            prg_bank1_range!() => {
-                                let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
-                                self.prg_rom[(bank_start + (mirror_address - 0xC000) as usize) % self.prg_rom.len()]
-                            },
-                            _ => {
-                                panic!("Address out of range on mapper {}: {}", self.mapper_id, mirror_address);
-                            }
-                        }
-                    },
-                    3 => {
-                        // fix last bank at $C000 and switch 16 KB bank at $8000
-                        match mirror_address {
-                            prg_bank0_range!() => {
-                                let bank_start = ROM::PRG_ROM_PAGE_SIZE * self.prg_bank_select as usize;
-                                self.prg_rom[(bank_start + (mirror_address - 0x8000) as usize) % self.prg_rom.len()]
-                            },
-                            prg_bank1_range!() => {
-                                let last_bank_start = self.prg_rom.len() - ROM::PRG_ROM_PAGE_SIZE;
-                                self.prg_rom[last_bank_start + (mirror_address - 0xC000) as usize]
-                            },
-                            _ => {
-                                panic!("Address out of range on mapper {}: {}", self.mapper_id, mirror_address);
-                            }
-                        }
-                    },
-                    _ => panic!("can't be")
-                }
-            }
+            1 => self.mapper1.read_prg_byte(mirror_address, &self.prg_rom),
             2 => self.mapper2.read_prg_byte(mirror_address, &self.prg_rom),
             3 => {
                 self.prg_rom[(mirror_address - 0x8000) as usize]
@@ -297,75 +260,8 @@ impl ROM {
         match self.mapper_id {
             0 => self.mapper0.write_mapper(address, data),
             1 => {
-                self.shift_register.write(data);
-                if self.shift_register.is_fifth_write() {
-                    // print!("mapper1: [0x{:x} => 0b{:0>8b}] ", address, self.shift_register.value);
-                    let value = self.shift_register.value;
-                    match address {
-                        mapper1_control_range!() => {
-                            // 4bit0
-                            // -----
-                            // CPPMM
-                            // |||||
-                            // |||++- Mirroring (0: one-screen, lower bank; 1: one-screen, upper bank;
-                            // |||               2: vertical; 3: horizontal)
-                            // |++--- PRG ROM bank mode (0, 1: switch 32 KB at $8000, ignoring low bit of bank number;
-                            // |                         2: fix first bank at $8000 and switch 16 KB bank at $C000;
-                            // |                         3: fix last bank at $C000 and switch 16 KB bank at $8000)
-                            // +----- CHR ROM bank mode (0: switch 8 KB at a time; 1: switch two separate 4 KB banks)
-                            self.screen_mirroring = match value & 0b0000_0011 {
-                                0 => Mirroring::OneScreenLower,
-                                1 => Mirroring::OneScreenUpper,
-                                2 => Mirroring::Vertical,
-                                3 => Mirroring::Horizontal,
-                                _ => panic!("can't be")
-                            };
-                            self.prg_bank_select_mode = (value & 0b0000_1100) >> 2;
-                            self.chr_bank_select_mode = (value & 0b0001_0000) >> 4;
-                            // println!("control => screen_mirroring: {:?}, chr_bank_select_mode: {}, prg_bank_select_mode: {}",
-                            //     self.screen_mirroring, self.chr_bank_select_mode, self.prg_bank_select_mode);
-                        },
-                        mapper1_chr0_range!() => {
-                            // 4bit0
-                            // -----
-                            // CCCCC
-                            // |||||
-                            // +++++- Select 4 KB or 8 KB CHR bank at PPU $0000 (low bit ignored in 8 KB mode)
-                            if self.chr_bank_select_mode == 1 { // todo: use enum
-                                self.chr_bank0_select = value;
-                                // println!("chr0 => chr_bank0_select: {}", self.chr_bank0_select);
-                            } else {
-                                self.chr_bank_select = value;
-                                // println!("chr0 => chr_bank_select: {}", self.chr_bank_select);
-                            }
-                        },
-                        mapper1_chr1_range!() => {
-                            // 4bit0
-                            // -----
-                            // CCCCC
-                            // |||||
-                            // +++++- Select 4 KB CHR bank at PPU $1000 (ignored in 8 KB mode)
-                            if self.chr_bank_select_mode == 1 { // todo: use enum
-                                self.chr_bank1_select = value;
-                                // println!("chr1 => chr_bank1_select: {}", self.chr_bank1_select);
-                            }
-                        },
-                        mapper1_prg_range!() => {
-                            // 4bit0
-                            // -----
-                            // RPPPP
-                            // |||||
-                            // |++++- Select 16 KB PRG ROM bank (low bit ignored in 32 KB mode)
-                            // +----- MMC1B and later: PRG RAM chip enable (0: enabled; 1: disabled; ignored on MMC1A)
-                            //        MMC1A: Bit 3 bypasses fixed bank logic in 16K mode (0: affected; 1: bypassed)
-                            self.prg_bank_select = value & 0b0000_1111;
-                            // println!("prg => prg_bank_select: {}", self.prg_bank_select);
-                        },
-                        _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
-                        }
-                    }
-                }
+                self.mapper1.write_mapper(address, data);
+                self.screen_mirroring = self.mapper1.screen_mirroring.clone();
             },
             2 => self.mapper2.write_mapper(address, data),
             3 => {
@@ -443,28 +339,7 @@ impl ROM {
     pub fn read_chr_byte(&self, address: u16) -> u8 {
         match self.mapper_id {
             0 => self.mapper0.read_chr_byte(address, &self.chr_rom),
-            1 => {
-                if self.chr_bank_select_mode == 0 {
-                    // switch 8 KB at a time
-                    let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 2) * self.chr_bank_select as usize;
-                    self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
-                } else {
-                    // switch two separate 4 KB banks
-                    match address {
-                        chr_bank0_range!() => {
-                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 2) * self.chr_bank0_select as usize;
-                            self.chr_rom[(bank_start + address as usize) % self.chr_rom.len()]
-                        },
-                        chr_bank1_range!() => {
-                            let bank_start = (ROM::CHR_ROM_PAGE_SIZE / 2) * self.chr_bank1_select as usize;
-                            self.chr_rom[(bank_start + address as usize - 0x1000) % self.chr_rom.len()]
-                        },
-                        _ => {
-                            panic!("Address out of range on mapper {}: {}", self.mapper_id, address);
-                        }
-                    }
-                }
-            },
+            1 => self.mapper1.read_chr_byte(address, &self.chr_rom),
             2 => self.mapper2.read_chr_byte(address, &self.chr_rom),
             3 => {
                 let bank_start = ROM::CHR_ROM_PAGE_SIZE * self.chr_bank_select as usize;
