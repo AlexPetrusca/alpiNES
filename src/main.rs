@@ -230,6 +230,7 @@ fn run_game(path: &str) {
 
 // todo: continue scroll debugging
 //  - 240pee: both vertical and horizontal scroll tests are broken
+//  - super mario bros: score ui flickers on 2nd nametable
 //  - legend of zelda: moving screens up and down looks glitchy
 //  - smb_dh_wctm: selecting game does a glitchy diagonal scroll
 //  - final fantasy: scrolling up and down breaks graphics
@@ -242,13 +243,13 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/pacman.nes");
+    // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/metroid.nes");
     // run_game("rom/mapper2/castlevania.nes");
-    run_game("rom/mapper3/arkistas_ring.nes");
+    // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
-    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
+    run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
 
     /* TODO | regression test plan - run each game after changes | TODO */
     // run_game("rom/mapper0/ice_climber.nes");
