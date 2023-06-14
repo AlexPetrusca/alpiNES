@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use rand::Rng;
@@ -88,9 +89,8 @@ fn run_snake() {
     let creator = canvas.texture_creator();
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
 
-    let cartridge_path = "rom/test/cpu/snake.nes";
     let mut emulator = Emulator::new();
-    emulator.load_rom(&ROM::from_filepath(cartridge_path).unwrap());
+    emulator.load_rom(&ROM::from_path(Path::new("rom/test/cpu/snake.nes")).unwrap());
 
     let mut screen_state = [0 as u8; 32 * 32 * 3];
     let mut rng = rand::thread_rng();
@@ -142,7 +142,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
     }
 }
 
-fn run_chrdump(filepath: &str) {
+fn run_chrdump(path: &str) {
     const SCALE: f32 = 3.0;
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -156,7 +156,7 @@ fn run_chrdump(filepath: &str) {
     let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, Frame::WIDTH as u32, Frame::HEIGHT as u32).unwrap();
 
     let mut emulator = Emulator::new();
-    let rom = ROM::from_filepath(filepath).unwrap();
+    let rom = ROM::from_path(Path::new(path)).unwrap();
     let mut tile_frame = Frame::new();
     emulator.load_rom(&rom);
 
@@ -200,9 +200,9 @@ fn run_chrdump(filepath: &str) {
 
 // run nes game
 
-fn run_game(filepath: &str) {
+fn run_game(path: &str) {
     let mut emu = Emulator::new();
-    let rom = ROM::from_filepath(filepath).unwrap();
+    let rom = ROM::from_path(Path::new(path)).unwrap();
     emu.run_rom(&rom);
 }
 
@@ -243,7 +243,7 @@ fn main() {
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/pacman.nes");
-    run_game("rom/mapper1/legend_of_zelda.nes");
+    run_game("rom/mapper1/metroid.nes");
     // run_game("rom/mapper2/contra.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");

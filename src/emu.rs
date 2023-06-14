@@ -1,16 +1,21 @@
 use std::collections::HashMap;
+use std::fs;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::ops::Deref;
+use std::path::Path;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use bitvec::ptr::BitPtrError::Null;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+use sdl2::keyboard::{Keycode, Mod};
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::{Canvas, Texture, WindowCanvas};
 use sdl2::{AudioSubsystem, EventPump, Sdl};
 use sdl2::libc::{DLT_NULL, nanosleep, time};
 use sdl2::sys::timespec;
 use sdl2::video::Window;
+use serde_json::Value;
 use crate::nes::apu::APU;
 use crate::nes::NES;
 use crate::nes::cpu::CPU;
@@ -23,8 +28,10 @@ use crate::nes::io::joycon::joycon_status::JoyconButton;
 use crate::nes::io::viewport::Viewport;
 use crate::nes::ppu::registers::mask::MaskFlag;
 use crate::nes::rom::ROM;
+use crate::{custom_ram_range, palletes_ram_range, prg_ram_range, ram_range, vram_range};
 use crate::util::audio::AudioPlayer;
 use crate::util::bitvec::BitVector;
+use crate::util::savestate::SaveState;
 use crate::util::sleep::PreciseSleeper;
 
 pub struct Emulator {
@@ -126,9 +133,6 @@ impl Emulator {
         keymap_two.insert(Keycode::A, JoyconButton::A);
         keymap_two.insert(Keycode::S, JoyconButton::B);
 
-        let joycon1 = &mut self.nes.cpu.memory.joycon1;
-        let joycon2 = &mut self.nes.cpu.memory.joycon2;
-        let ppu = &mut self.nes.cpu.memory.ppu;
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } |
@@ -136,11 +140,28 @@ impl Emulator {
                     std::process::exit(0)
                 },
                 // Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
+                //     let ppu = &mut self.nes.cpu.memory.ppu;
                 //     ppu.mask.update(MaskFlag::ShowBackground, !ppu.mask.is_set(MaskFlag::ShowBackground))
                 // },
                 // Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
+                //     let ppu = &mut self.nes.cpu.memory.ppu;
                 //     ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
                 // },
+                Event::KeyDown { keycode: Some(Keycode::Num1), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 1);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num2), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 2);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num3), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 3);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num4), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 4);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num5), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 5);
+                },
                 Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
                     self.mute_pulse_one = !self.mute_pulse_one;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_one = self.mute_pulse_one;
@@ -167,22 +188,34 @@ impl Emulator {
                 },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        let joycon1 = &mut self.nes.cpu.memory.joycon1;
                         joycon1.set_button((*key).clone());
                     }
                     if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        let joycon2 = &mut self.nes.cpu.memory.joycon2;
                         joycon2.set_button((*key).clone());
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        let joycon1 = &mut self.nes.cpu.memory.joycon1;
                         joycon1.clear_button((*key).clone());
                     }
                     if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        let joycon2 = &mut self.nes.cpu.memory.joycon2;
                         joycon2.clear_button((*key).clone());
                     }
                 }
                 _ => {}
             }
+        }
+    }
+
+    fn handle_savestate_input(&mut self, keymod: Mod, save_idx: u8) {
+        if keymod == Mod::LGUIMOD.union(Mod::LSHIFTMOD) {
+            self.load_state(save_idx);
+        } else if keymod == Mod::LGUIMOD {
+            self.save_state(save_idx);
         }
     }
 
@@ -203,6 +236,61 @@ impl Emulator {
             self.frames = 0;
             println!("fps: {:.2}", self.fps);
         }
+    }
+
+    pub fn load_state(&mut self, save_idx: u8) {
+        println!("loading state {}...", save_idx);
+
+        let mut cpu = &mut self.nes.cpu;
+        let mut ppu = &mut cpu.memory.ppu;
+        let rom = &cpu.memory.rom;
+
+        let save_path_str = format!("Saves/{}/{}.savestate", rom.game_title, save_idx);
+        let save_path = Path::new(save_path_str.as_str());
+
+        if let Some(save_state) = SaveState::deserialize(save_path) {
+            let cpu_state = &save_state.cpu_state;
+            cpu.register_a = cpu_state.register_a;
+            cpu.register_x = cpu_state.register_x;
+            cpu.register_y = cpu_state.register_y;
+            cpu.stack = cpu_state.stack;
+            cpu.status = cpu_state.status;
+            cpu.program_counter = cpu_state.program_counter;
+            cpu.memory.memory[ram_range!()].copy_from_slice(cpu_state.ram.as_slice());
+            cpu.memory.memory[custom_ram_range!()].copy_from_slice(cpu_state.custom_ram.as_slice());
+            cpu.memory.memory[prg_ram_range!()].copy_from_slice(cpu_state.prg_ram.as_slice());
+            cpu.cycles = cpu_state.cycles;
+
+            let ppu_state = &save_state.ppu_state;
+            ppu.addr.set(ppu_state.addr);
+            ppu.addr.latch = ppu_state.addr_latch;
+            ppu.data = ppu_state.data;
+            ppu.ctrl.set_value(ppu_state.ctrl);
+            ppu.status.set_value(ppu_state.status);
+            ppu.mask.set_value(ppu_state.mask);
+            ppu.scroll.set(ppu_state.scroll);
+            ppu.scroll.latch = ppu_state.scroll_latch;
+            ppu.oam_addr = ppu_state.oam_addr;
+            ppu.oam_data = ppu_state.oam_data;
+            ppu.memory.memory[vram_range!()].copy_from_slice(ppu_state.vram.as_slice());
+            ppu.memory.memory[palletes_ram_range!()].copy_from_slice(ppu_state.palletes_ram.as_slice());
+            ppu.oam.memory.copy_from_slice(ppu_state.oam.as_slice());
+            ppu.data_buffer = ppu_state.data_buffer;
+            ppu.scanline = ppu_state.scanline;
+            ppu.cycles = ppu_state.cycles;
+            ppu.nmi_flag = ppu_state.nmi_flag;
+        }
+    }
+
+    pub fn save_state(&mut self, save_idx: u8) {
+        println!("saving state {}...", save_idx);
+
+        let state = SaveState::new(&self.nes);
+
+        let game_title = &self.nes.cpu.memory.rom.game_title;
+        let save_path_str = format!("Saves/{}/{}.savestate", game_title, save_idx);
+        let save_path = Path::new(save_path_str.as_str());
+        SaveState::serialize(save_path, &state);
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {

@@ -13,9 +13,9 @@ pub struct Logger {
 }
 
 impl Logger {
-    pub fn new(filepath: &str) -> Self {
+    pub fn new(path: &str) -> Self {
         Self {
-            file: File::create(filepath).unwrap()
+            file: File::create(path).unwrap()
         }
     }
 

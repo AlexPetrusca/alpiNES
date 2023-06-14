@@ -34,7 +34,7 @@ pub enum StatusFlag {
 }
 
 pub struct StatusRegister {
-    value: u8,
+    pub value: u8,
 }
 
 impl BitVector for StatusRegister {

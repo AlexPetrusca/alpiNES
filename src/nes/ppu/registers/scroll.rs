@@ -1,6 +1,6 @@
 pub struct ScrollRegister {
-    value: (u8, u8),
-    latch: bool,
+    pub value: (u8, u8),
+    pub latch: bool,
 }
 
 impl ScrollRegister {
@@ -32,7 +32,7 @@ impl ScrollRegister {
         ((self.value.0 as u16) << 8) | (self.value.1 as u16)
     }
 
-    fn set(&mut self, data: u16) {
+    pub fn set(&mut self, data: u16) {
         self.value.0 = (data >> 8) as u8;
         self.value.1 = (data & 0xff) as u8;
     }

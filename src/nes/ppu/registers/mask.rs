@@ -27,7 +27,7 @@ pub enum MaskFlag {
 }
 
 pub struct MaskRegister {
-    value: u8,
+    pub value: u8,
 }
 
 impl BitVector for MaskRegister {

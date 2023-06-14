@@ -31,7 +31,7 @@ pub enum ControlFlag {
 }
 
 pub struct ControlRegister {
-    value: u8,
+    pub value: u8,
 }
 
 impl BitVector for ControlRegister {

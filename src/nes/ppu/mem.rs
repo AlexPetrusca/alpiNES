@@ -1,9 +1,9 @@
 use crate::nes::rom::{Mirroring, ROM};
 
 // PPU memory map
-macro_rules! chr_rom_range { () => {0x0000..=0x1FFF} }
-macro_rules! vram_range { () => {0x2000..=0x3EFF} }
-macro_rules! palletes_range { () => {0x3F00..=0x3FFF} }
+#[macro_export] macro_rules! chr_rom_range { () => {0x0000..=0x1FFF} }
+#[macro_export] macro_rules! vram_range { () => {0x2000..=0x3EFF} }
+#[macro_export] macro_rules! palletes_ram_range { () => {0x3F00..=0x3FFF} }
 
 pub struct PPUMemory {
     pub memory: [u8; PPUMemory::MEM_SIZE],
@@ -16,10 +16,10 @@ impl PPUMemory {
 
     pub const CHR_ROM_START: u16 = *chr_rom_range!().start();
     pub const VRAM_START: u16 = *vram_range!().start();
-    pub const PALLETES_START: u16 = *palletes_range!().start();
+    pub const PALLETES_START: u16 = *palletes_ram_range!().start();
 
-    pub const BACKGROUND_PALLETES_START: u16 = *palletes_range!().start() + 0x01;
-    pub const SPRITE_PALLETES_START: u16 = *palletes_range!().start() + 0x11;
+    pub const BACKGROUND_PALLETES_START: u16 = *palletes_ram_range!().start() + 0x01;
+    pub const SPRITE_PALLETES_START: u16 = *palletes_ram_range!().start() + 0x11;
 
     pub fn new() -> Self {
         PPUMemory {
@@ -43,7 +43,7 @@ impl PPUMemory {
                 let mirror_addr = self.mirror_vram_addr(ppu_addr);
                 self.memory[mirror_addr as usize]
             },
-            palletes_range!() => {
+            palletes_ram_range!() => {
                 let mirror_addr = PPUMemory::mirror_palette_addr(ppu_addr);
                 self.memory[mirror_addr as usize]
             },
@@ -65,7 +65,7 @@ impl PPUMemory {
                 let mirror_addr = self.mirror_vram_addr(ppu_addr);
                 self.memory[mirror_addr as usize] = data;
             },
-            palletes_range!() => {
+            palletes_ram_range!() => {
                 let mirror_addr = PPUMemory::mirror_palette_addr(ppu_addr);
                 self.memory[mirror_addr as usize] = data;
             },
