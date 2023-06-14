@@ -41,7 +41,6 @@ pub struct Mapper4 {
     pub chr_bank0_2kb_select: u8,
     pub chr_bank1_2kb_select: u8,
     pub screen_mirroring: Mirroring,
-
 }
 
 impl Mapper4 {
@@ -197,11 +196,13 @@ impl Mapper for Mapper4 {
                     self.screen_mirroring = if data & 1 == 0 { Mirroring::Vertical } else { Mirroring::Horizontal };
                     println!("mapper4: mirroring => {:?}", self.screen_mirroring);
                 } else {
+                    // todo: implement
                     // prg ram protect
                     println!("mapper4: prg ram protect => 0b{:0>8b}", data);
                 }
             },
             irq_latch_reload_range!() => {
+                // todo: implement
                 if address % 2 == 0 {
                     // irq latch
                     println!("mapper4: irq latch => {}", data);
@@ -211,6 +212,7 @@ impl Mapper for Mapper4 {
                 }
             },
             irq_disable_enable_range!() => {
+                // todo: implement
                 if address % 2 == 0 {
                     // irq disable
                     println!("mapper4: irq disable");
