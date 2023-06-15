@@ -4,8 +4,9 @@ use std::io::Write;
 use std::iter::ExactSizeIterator;
 use std::path::Path;
 use std::convert::TryFrom;
+use std::time::Instant;
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
+use serde_cbor::Value;
 use crate::nes::NES;
 use crate::nes::cpu::CPU;
 use crate::nes::ppu::PPU;
@@ -255,20 +256,18 @@ impl SaveState {
                 .write(true)
                 .open(path)
                 .unwrap();
-            let save_state = serde_json::from_reader(save_file).expect("unable to load savestate file");
+            let save_state = serde_cbor::from_reader(save_file).expect("unable to load savestate file");
             return Some(save_state);
         }
         return None;
     }
 
     pub fn serialize(path: &Path, save_state: &SaveState) {
-        let json_string = serde_json::to_string(&save_state).expect("Couldn't stringify json");
-
         let prefix_path = path.parent().unwrap();
         fs::create_dir_all(prefix_path).unwrap();
 
         let mut save_file = File::create(path).expect("unable to create savestate file");
-        save_file.write(json_string.as_bytes()).expect("unable to write to savestate file");
+        serde_cbor::to_writer(save_file, save_state).expect("unable to write to savestate file");
     }
 }
 

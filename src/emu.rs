@@ -15,7 +15,6 @@ use sdl2::{AudioSubsystem, EventPump, Sdl};
 use sdl2::libc::{DLT_NULL, nanosleep, time};
 use sdl2::sys::timespec;
 use sdl2::video::Window;
-use serde_json::Value;
 use crate::nes::apu::APU;
 use crate::nes::NES;
 use crate::nes::cpu::CPU;
