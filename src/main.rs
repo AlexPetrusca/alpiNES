@@ -236,6 +236,12 @@ fn run_game(path: &str) {
 //  - final fantasy: scrolling up and down breaks graphics
 //  - final fantasy 2: same as final fantasy
 
+// todo: priority list
+//  - super mario bros: fix ui flicker issue (nametable select on v/t)
+//  - 240pee: pass horizontal hill scroll test
+//  - legend of zelda: fix vertical scroll (https://www.gridbugs.org/zelda-screen-transitions-are-undefined-behaviour/)
+//  - 240pee: pass vertical scroll test
+
 fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");

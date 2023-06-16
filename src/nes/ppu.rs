@@ -73,6 +73,8 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
+        // todo: this sprite zero detection breaks legend of zelda
+
         // let sprite_x = self.oam.memory[3] as usize;
         // let sprite_y = self.oam.memory[0] as usize;
         // let mut scanline = if self.scanline == 0 { 0 } else { self.scanline - 1 };
