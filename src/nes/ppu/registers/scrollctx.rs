@@ -1,6 +1,6 @@
 // Ref: https://www.nesdev.org/wiki/PPU_scrolling
 
-// t & v registers:
+// v & t registers:
 // =====================================
 // yyy NN YYYYY XXXXX
 // ||| || ||||| +++++-- coarse X scroll
