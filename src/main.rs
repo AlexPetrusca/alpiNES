@@ -225,8 +225,6 @@ fn run_game(path: &str) {
 //  - friday the 13th: completely visually broken
 //  - solomons key: doesn't play whatsoever
 
-// todo: [priority] fix castlevania sprite zero hit detection
-//  - make sure it doesnt break legend of zelda or super mario bros
 // todo: [priority] optimize background rendering after v/t scrolling was introduced
 
 fn main() {
