@@ -286,6 +286,10 @@ impl Emulator {
         ppu.memory.memory[vram_range!()].copy_from_slice(ppu_state.vram.as_slice());
         ppu.memory.memory[palletes_ram_range!()].copy_from_slice(ppu_state.palletes_ram.as_slice());
         ppu.oam.memory.copy_from_slice(ppu_state.oam.as_slice());
+        ppu.scroll_ctx.v = ppu_state.scroll_ctx_v;
+        ppu.scroll_ctx.t = ppu_state.scroll_ctx_t;
+        ppu.scroll_ctx.x = ppu_state.scroll_ctx_x;
+        ppu.scroll_ctx.w = ppu_state.scroll_ctx_w;
         ppu.data_buffer = ppu_state.data_buffer;
         ppu.scanline = ppu_state.scanline;
         ppu.cycles = ppu_state.cycles;

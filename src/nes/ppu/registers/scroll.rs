@@ -7,17 +7,16 @@ impl ScrollRegister {
     pub fn new() -> Self {
         ScrollRegister {
             value: (0, 0),
-            latch: true,
+            latch: false,
         }
     }
 
     pub fn write(&mut self, data: u8) {
-        if self.latch {
+        if !self.latch {
             self.value.0 = data;
         } else {
             self.value.1 = data;
         }
-        self.latch = !self.latch;
     }
 
     pub fn get_scroll_x(&self) -> u8 {

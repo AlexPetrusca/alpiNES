@@ -68,6 +68,10 @@ pub struct PPUState {
     pub vram: Vec<u8>,
     pub palletes_ram: Vec<u8>,
     pub oam: Vec<u8>,
+    pub scroll_ctx_v: u16,
+    pub scroll_ctx_t: u16,
+    pub scroll_ctx_x: u8,
+    pub scroll_ctx_w: bool,
     pub data_buffer: u8,
 
     pub cycles: usize,
@@ -92,6 +96,10 @@ impl PPUState {
             vram: ppu.memory.memory[vram_range!()].to_vec(),
             palletes_ram: ppu.memory.memory[palletes_ram_range!()].to_vec(),
             oam: ppu.oam.memory.to_vec(),
+            scroll_ctx_v: ppu.scroll_ctx.v,
+            scroll_ctx_t: ppu.scroll_ctx.t,
+            scroll_ctx_x: ppu.scroll_ctx.x,
+            scroll_ctx_w: ppu.scroll_ctx.w,
             data_buffer: ppu.data_buffer,
 
             cycles: ppu.cycles,

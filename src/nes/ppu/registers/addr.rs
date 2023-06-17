@@ -9,12 +9,12 @@ impl AddressRegister {
     pub fn new() -> Self {
         AddressRegister {
             value: (0, 0), // high byte first, lo byte second
-            latch: true,
+            latch: false,
         }
     }
 
     pub fn write(&mut self, data: u8) {
-        if self.latch {
+        if !self.latch {
             self.value.0 = data;
         } else {
             self.value.1 = data;
@@ -24,7 +24,6 @@ impl AddressRegister {
             // mirror down addr above 0x3fff
             self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
-        self.latch = !self.latch;
     }
 
     pub fn increment(&mut self, inc: u8) {
@@ -37,10 +36,6 @@ impl AddressRegister {
             // mirror down addr above 0x3fff
             self.set(self.get() & AddressRegister::MIRROR_MASK);
         }
-    }
-
-    pub fn reset_latch(&mut self) {
-        self.latch = true;
     }
 
     pub fn get(&self) -> u16 {

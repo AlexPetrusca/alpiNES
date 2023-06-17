@@ -14,19 +14,20 @@ use crate::nes::ppu::registers::ctrl::ControlRegister;
 use crate::nes::ppu::registers::ctrl::ControlFlag::{GenerateNmi, SpriteSize};
 use crate::nes::ppu::registers::mask::{MaskFlag, MaskRegister};
 use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
+use crate::nes::ppu::registers::scrollctx::ScrollContext;
 use crate::nes::ppu::registers::status::StatusRegister;
 use crate::nes::ppu::registers::status::StatusFlag::{SpriteZeroHit, VerticalBlank};
 use crate::nes::rom::Mirroring;
 
 pub struct PPU {
     pub addr: AddressRegister,
-    pub data: u8, // todo: Use DataRegister instead?
+    pub data: u8,
     pub ctrl: ControlRegister,
     pub status: StatusRegister,
     pub mask: MaskRegister,
     pub scroll: ScrollRegister,
-    pub oam_addr: u8, // todo: Use OAMAddrRegister instead?
-    pub oam_data: u8, // todo: Use OAMDataRegister instead?
+    pub oam_addr: u8,
+    pub oam_data: u8,
 
     // todo:
     //   Sprite data is delayed by one scanline; you must subtract 1 from the sprite's Y
@@ -37,12 +38,13 @@ pub struct PPU {
 
     pub memory: PPUMemory,
     pub frame: Frame,
-    pub oam: OAM, // todo: should be private
-    pub data_buffer: u8, // todo: should be private
+    pub oam: OAM,
+    pub scroll_ctx: ScrollContext,
+    pub data_buffer: u8,
 
     pub cycles: usize,
     pub scanline: u16,
-    pub nmi_flag: bool, // todo: should be private
+    pub nmi_flag: bool,
 }
 
 impl PPU {
@@ -60,6 +62,7 @@ impl PPU {
             memory: PPUMemory::new(),
             frame: Frame::new(),
             oam: OAM::new(),
+            scroll_ctx: ScrollContext::new(),
             data_buffer: 0,
 
             scanline: 0,
@@ -133,68 +136,64 @@ impl PPU {
         if self.scanline == 260 { self.frame.clear(); }
         if self.scanline >= 240 { return }
 
-        // if (self.scanline >= 31 && self.scanline <= 50) || (self.scanline > 100 && self.scanline <= 140) {
         self.render_background_scanline();
         self.render_sprites_scanline();
-        // }
     }
 
     #[inline]
     pub fn render_background_scanline(&mut self) {
         if self.mask.is_clear(ShowBackground) { return }
 
+        self.scroll_ctx.handle_scanline_start(self.scanline);
+
         let background_bank = self.ctrl.get_background_chrtable_address();
-        let (nametable1, nametable2) = self.get_nametables();
-
-        let scroll_x = self.scroll.get_scroll_x() as isize;
-        let mut scroll_y = self.scroll.get_scroll_y() as isize;
-        if scroll_y >= 240 { scroll_y = scroll_y - 256; }
-
-        let mut nametable = nametable1;
-        let mut palette = [0, 0, 0, 0];
-        let mut tile_upper_chr = 0;
-        let mut tile_lower_chr = 0;
-
         let screen_y = self.scanline as usize;
-        let mut pixel_y = screen_y as isize + scroll_y;
-        if pixel_y >= 240 {
-            pixel_y -= 240;
-            nametable = nametable2
-        } else if pixel_y < 0 {
-            pixel_y += 240;
-        }
-
-        let mut tile_y = pixel_y as usize / 8;
-        let mut tile_x = 255;
+        let tile_y = self.scroll_ctx.get_coarse_scroll_y();
+        let pixel_y = 8 * tile_y + self.scroll_ctx.get_fine_scroll_y();
         for screen_x in 0..Frame::WIDTH {
-            let mut pixel_x = screen_x as isize + scroll_x;
-            if pixel_x >= 256 {
-                pixel_x -= 256;
-                nametable = nametable2;
+            let attribute_address = self.scroll_ctx.get_attribute_address();
+            let tile_address = self.scroll_ctx.get_tile_address();
+            let tile_x = self.scroll_ctx.get_coarse_scroll_x();
+            let pixel_x = screen_x + self.scroll_ctx.get_fine_scroll_x() as usize;
+
+            if pixel_x % 8 == 7 {
+                self.scroll_ctx.scroll_x_increment();
             }
 
-            let tile_x_new = pixel_x as usize / 8;
-            if tile_x != tile_x_new {
-                tile_x = tile_x_new;
-                palette = self.bg_palette(nametable, tile_x, tile_y);
-                let tile_idx = nametable + 32 * tile_y as u16 + tile_x as u16;
-                let tile_value = self.memory.read_byte(tile_idx) as u16;
-                let tile_address = background_bank + 16 * tile_value;
+            let attr_byte = self.memory.read_byte(attribute_address);
+            let pallete_val = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
+                (0, 0) => attr_byte & 0b0000_0011,
+                (1, 0) => (attr_byte >> 2) & 0b0000_0011,
+                (0, 1) => (attr_byte >> 4) & 0b0000_0011,
+                (1, 1) => (attr_byte >> 6) & 0b0000_0011,
+                (_, _) => panic!("can't be"),
+            };
+            let pallete_idx = 4 * pallete_val as u16;
+            let pallete = [
+                self.memory.read_byte(PPUMemory::PALLETES_START),
+                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
+                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
+                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
+            ];
 
-                let chr_y = (pixel_y % 8) as u16;
-                tile_lower_chr = self.memory.read_byte(tile_address + chr_y);
-                tile_upper_chr = self.memory.read_byte(tile_address + chr_y + 8);
-            }
+            let tile_value = self.memory.read_byte(tile_address) as u16;
+            let chr_address = background_bank + 16 * tile_value;
 
-            let chr_x = 7 - (pixel_x % 8) as u16;
+            let chr_y = (pixel_y % 8) as u16;
+            let tile_lower_chr = self.memory.read_byte(chr_address + chr_y);
+            let tile_upper_chr = self.memory.read_byte(chr_address + chr_y + 8);
+
+            let chr_x = 7 - (pixel_x % 8);
             let lower = tile_lower_chr >> chr_x;
             let upper = tile_upper_chr >> chr_x;
             let palette_value = (1 & upper) << 1 | (1 & lower);
-            let palette_idx = palette[palette_value as usize];
-            let rgb = NES::SYSTEM_PALLETE[palette_idx as usize];
+            let palette_index = pallete[palette_value as usize];
+            let rgb = NES::SYSTEM_PALLETE[palette_index as usize];
             let priority = if palette_value == 0 { Frame::BG_PRIORITY } else { Frame::FG_PRIORITY };
             self.frame.set_background_pixel(screen_x, screen_y, rgb, priority);
         }
+
+        self.scroll_ctx.scroll_y_increment();
     }
 
     #[inline]
@@ -240,36 +239,12 @@ impl PPU {
                 let value = (1 & upper) << 1 | (1 & lower);
                 if value != 0 {
                     let rgb = NES::SYSTEM_PALLETE[sprite_palette[value as usize] as usize];
-                    self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority); // todo: "screen_y + 1" might be wrong here
+                    // todo: "screen_y + 1" might be wrong here
+                    self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority);
                     if sprite_idx == 0 {
                         self.status.set(SpriteZeroHit);
                     }
                 }
-            }
-        }
-    }
-
-    #[inline]
-    fn get_nametables(&mut self) -> (u16, u16) {
-        // todo: fix this
-        if self.memory.rom.screen_mirroring == Mirroring::OneScreenUpper || self.memory.rom.screen_mirroring == Mirroring::OneScreenLower {
-            return (0x2000, 0x2000);
-        }
-        match (&self.memory.rom.screen_mirroring, self.ctrl.get_base_nametable_address()) {
-            (Mirroring::Vertical, 0x2000) | (Mirroring::Vertical, 0x2800) => {
-                (0x2000, 0x2400)
-            },
-            (Mirroring::Vertical, 0x2400) | (Mirroring::Vertical, 0x2C00) => {
-                (0x2400, 0x2000)
-            },
-            (Mirroring::Horizontal, 0x2000) | (Mirroring::Horizontal, 0x2400) => {
-                (0x2000, 0x2800)
-            },
-            (Mirroring::Horizontal, 0x2800) | (Mirroring::Horizontal, 0x2C00) => {
-                (0x2800, 0x2000)
-            },
-            (_, _) => {
-                panic!("Not supported mirroring type {:?}", self.memory.rom.screen_mirroring);
             }
         }
     }
@@ -307,10 +282,14 @@ impl PPU {
 
     pub fn write_scroll_register(&mut self, value: u8) {
         self.scroll.write(value);
+        self.scroll_ctx.handle_scroll_reg_write(value);
+        self.flip_address_latch();
     }
 
     pub fn write_addr_register(&mut self, value: u8) {
         self.addr.write(value);
+        self.scroll_ctx.handle_addr_reg_write(value);
+        self.flip_address_latch();
     }
 
     pub fn read_data_register(&mut self) -> u8 {
@@ -319,6 +298,7 @@ impl PPU {
 
         let result = self.data_buffer;
         self.data_buffer = self.memory.read_byte(addr);
+        self.scroll_ctx.handle_data_reg_read_write();
         result
     }
 
@@ -328,6 +308,7 @@ impl PPU {
 
         self.data = value;
         self.memory.write_byte(addr, value);
+        self.scroll_ctx.handle_data_reg_read_write();
     }
 
     pub fn write_oam_addr_register(&mut self, value: u8) {
@@ -357,6 +338,7 @@ impl PPU {
         //  2. "Generate NMI" bit in the control Register is updated from 0 to 1.
         let before_nmi_status = self.ctrl.is_set(GenerateNmi);
         self.ctrl.set_value(value);
+        self.scroll_ctx.handle_cntl_reg_write(value);
         if !before_nmi_status && self.ctrl.is_set(GenerateNmi) && self.status.is_set(VerticalBlank) {
             self.set_nmi();
         }
@@ -368,10 +350,37 @@ impl PPU {
 
     pub fn read_status_register(&mut self) -> u8 {
         let status = self.status.get_value();
-        // Reading the status register will clear bit 7 mentioned above
         self.status.clear(VerticalBlank);
-        // todo: and also the address latch used by PPUSCROLL and PPUADDR.
+        self.clear_address_latch();
         status
+    }
+
+    #[inline]
+    pub fn get_address_latch(&self) -> bool {
+        self.scroll_ctx.w
+    }
+
+    #[inline]
+    pub fn flip_address_latch(&mut self) {
+        if self.get_address_latch() {
+            self.clear_address_latch();
+        } else {
+            self.set_address_latch();
+        }
+    }
+
+    #[inline]
+    pub fn set_address_latch(&mut self) {
+        self.scroll_ctx.w = true;
+        self.scroll.latch = true;
+        self.addr.latch = true;
+    }
+
+    #[inline]
+    pub fn clear_address_latch(&mut self) {
+        self.scroll_ctx.w = false;
+        self.scroll.latch = false;
+        self.addr.latch = false;
     }
 
     pub fn poll_nmi(&self) -> bool {

@@ -221,26 +221,9 @@ fn run_game(path: &str) {
 //  - teenage mutant ninja turtles: same issue as contra
 //  - yoshi: unplayable
 
-// todo: continue mapper2 debugging
-//  - contra: only left half of the background renders
-
 // todo: continue mapper3 debugging
 //  - friday the 13th: completely visually broken
 //  - solomons key: doesn't play whatsoever
-
-// todo: continue scroll debugging
-//  - 240pee: both vertical and horizontal scroll tests are broken
-//  - super mario bros: score ui flickers on 2nd nametable
-//  - legend of zelda: moving screens up and down looks glitchy
-//  - smb_dh_wctm: selecting game does a glitchy diagonal scroll
-//  - final fantasy: scrolling up and down breaks graphics
-//  - final fantasy 2: same as final fantasy
-
-// todo: priority list
-//  - super mario bros: fix ui flicker issue (nametable select on v/t)
-//  - 240pee: pass horizontal hill scroll test
-//  - legend of zelda: fix vertical scroll (https://www.gridbugs.org/zelda-screen-transitions-are-undefined-behaviour/)
-//  - 240pee: pass vertical scroll test
 
 fn main() {
     // run_snake();
@@ -250,9 +233,9 @@ fn main() {
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/super_mario_bros.nes");
-    run_game("rom/mapper1/metroid.nes");
+    // run_game("rom/mapper1/metroid.nes");
     // run_game("rom/mapper2/castlevania.nes");
-    // run_game("rom/mapper3/arkistas_ring.nes");
+    run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
