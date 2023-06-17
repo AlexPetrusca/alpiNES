@@ -228,8 +228,6 @@ fn run_game(path: &str) {
 // todo: [priority] fix castlevania sprite zero hit detection
 //  - make sure it doesnt break legend of zelda or super mario bros
 // todo: [priority] optimize background rendering after v/t scrolling was introduced
-// todo: [priority] handle missing fields in savestates
-//  - old savestates are broken as you add new fields
 
 fn main() {
     // run_snake();
@@ -240,7 +238,7 @@ fn main() {
 
     // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/metroid.nes");
-    run_game("rom/mapper2/castlevania.nes");
+    // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/arkistas_ring.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
