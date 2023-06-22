@@ -122,21 +122,24 @@ impl PPU {
 
         self.scroll_ctx.handle_scanline_start(self.scanline);
 
+        let mut tile_lower_chr = 0;
+        let mut tile_upper_chr = 0;
+        let mut pallete = [0, 0, 0, 0];
+
         let background_bank = self.ctrl.get_background_chrtable_address();
         let screen_y = self.scanline as usize;
-        let tile_y = self.scroll_ctx.get_coarse_scroll_y(); // todo: can be refactored into bg_palette
-        let pixel_y = 8 * tile_y + self.scroll_ctx.get_fine_scroll_y();
+        let pixel_y = 8 * self.scroll_ctx.get_coarse_scroll_y() + self.scroll_ctx.get_fine_scroll_y();
         for screen_x in 0..Frame::WIDTH {
             let pixel_x = screen_x + self.scroll_ctx.get_fine_scroll_x() as usize;
-            let tile_x = self.scroll_ctx.get_coarse_scroll_x(); // todo: can be refactored into bg_palette
-            let pallete = self.bg_palette(tile_x, tile_y);
-            let tile_address = self.scroll_ctx.get_tile_address();
-            let tile_value = self.memory.read_byte(tile_address) as u16;
-            let chr_address = background_bank + 16 * tile_value;
-
-            let chr_y = (pixel_y % 8) as u16;
-            let tile_lower_chr = self.memory.read_byte(chr_address + chr_y);
-            let tile_upper_chr = self.memory.read_byte(chr_address + chr_y + 8);
+            if screen_x == 0 || pixel_x % 8 == 0 {
+                let tile_address = self.scroll_ctx.get_tile_address();
+                let tile_value = self.memory.read_byte(tile_address) as u16;
+                let chr_address = background_bank + 16 * tile_value;
+                let chr_y = (pixel_y % 8) as u16;
+                tile_lower_chr = self.memory.read_byte(chr_address + chr_y);
+                tile_upper_chr = self.memory.read_byte(chr_address + chr_y + 8);
+                pallete = self.bg_palette();
+            }
 
             let chr_x = 7 - (pixel_x % 8);
             let lower = tile_lower_chr >> chr_x;
@@ -209,9 +212,11 @@ impl PPU {
     }
 
     #[inline]
-    fn bg_palette(&mut self, tile_x: u8, tile_y: u8) -> [u8; 4] {
+    fn bg_palette(&mut self) -> [u8; 4] {
         let attribute_address = self.scroll_ctx.get_attribute_address();
         let attr_byte = self.memory.read_byte(attribute_address);
+        let tile_x = self.scroll_ctx.get_coarse_scroll_x();
+        let tile_y = self.scroll_ctx.get_coarse_scroll_y();
         let pallete_val = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
             (0, 0) => attr_byte & 0b0000_0011,
             (1, 0) => (attr_byte >> 2) & 0b0000_0011,

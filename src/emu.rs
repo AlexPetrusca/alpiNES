@@ -220,10 +220,10 @@ impl Emulator {
 
     fn sleep_frame(&mut self) {
         self.tick_fps();
-        let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f64();
-        if sleep_time > 0.0 {
-            PreciseSleeper::new().precise_sleep(sleep_time);
-        }
+        // let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f64();
+        // if sleep_time > 0.0 {
+        //     PreciseSleeper::new().precise_sleep(sleep_time);
+        // }
         self.frame_timestamp = Instant::now();
     }
 
