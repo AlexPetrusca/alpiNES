@@ -186,7 +186,7 @@ impl PPU {
 
             if screen_y < sprite_y || screen_y >= sprite_y + sprite_size { continue }
 
-            let priority = (self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0) as u8;
+            let priority = if self.oam.memory[sprite_idx + 2] >> 5 & 1 == 0 { Frame::FG_PRIORITY } else { Frame::BG_PRIORITY } ;
             let mut tile_value = self.oam.memory[sprite_idx + 1] as u16;
 
             let flip_vertical = self.oam.memory[sprite_idx + 2] >> 7 & 1 == 1;

@@ -135,7 +135,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
             let bank_offset: usize = (TILES_PER_COL_BANK + 1) * BOX_SIZE * (bank % 2);
             let tile_x = x + BOX_SIZE * (tile_n % TILES_PER_ROW) + PADDING + MARGIN;
             let tile_y = y + BOX_SIZE * (tile_n / TILES_PER_ROW) + PADDING + MARGIN + bank_offset;
-            frame.set_color(tile_x, tile_y, rgb);
+            frame.set_background_color(tile_x, tile_y, rgb);
             high_byte = high_byte >> 1;
             low_byte = low_byte >> 1;
         }
@@ -170,7 +170,7 @@ fn run_chrdump(path: &str) {
             render_tile(&rom.chr_rom, page * 2 + 1, i, &mut tile_frame);
         }
 
-        texture.update(None, &tile_frame.rgb, Frame::WIDTH * 3).unwrap();
+        texture.update(None, &tile_frame.background, Frame::WIDTH * 3).unwrap();
         canvas.copy(&texture, None, None).unwrap();
         canvas.present();
 

@@ -172,13 +172,13 @@ impl Mapper for Mapper4 {
             bank_select_data_range!() => {
                 if address % 2 == 0 {
                     // bank select
-                    println!("mapper4: bank select => 0b{:0>8b}", data);
+                    // println!("mapper4: bank select => 0b{:0>8b}", data);
                     self.bank_select = data & 0b0000_0111;
                     self.prg_bank_select_mode = (data & 0b0100_0000) >> 6;
                     self.chr_bank_select_mode = (data & 0b1000_0000) >> 7;
                 } else {
                     // bank data
-                    println!("mapper4: bank data => 0x{:0>4x}", data);
+                    // println!("mapper4: bank data => 0x{:0>4x}", data);
                     match self.bank_select {
                         0 => self.chr_bank0_2kb_select = data,
                         1 => self.chr_bank1_2kb_select = data,
@@ -196,31 +196,31 @@ impl Mapper for Mapper4 {
                 if address % 2 == 0 {
                     // mirroring
                     self.screen_mirroring = if data & 1 == 0 { Mirroring::Vertical } else { Mirroring::Horizontal };
-                    println!("mapper4: mirroring => {:?}", self.screen_mirroring);
+                    // println!("mapper4: mirroring => {:?}", self.screen_mirroring);
                 } else {
                     // todo: implement
                     // prg ram protect
-                    println!("mapper4: prg ram protect => 0b{:0>8b}", data);
+                    // println!("mapper4: prg ram protect => 0b{:0>8b}", data);
                 }
             },
             irq_latch_reload_range!() => {
                 // todo: implement
                 if address % 2 == 0 {
                     // irq latch
-                    println!("mapper4: irq latch => {}", data);
+                    // println!("mapper4: irq latch => {}", data);
                 } else {
                     // irq reload
-                    println!("mapper4: irq reload");
+                    // println!("mapper4: irq reload");
                 }
             },
             irq_disable_enable_range!() => {
                 // todo: implement
                 if address % 2 == 0 {
                     // irq disable
-                    println!("mapper4: irq disable");
+                    // println!("mapper4: irq disable");
                 } else {
                     // irq enable
-                    println!("mapper4: irq enable");
+                    // println!("mapper4: irq enable");
                 }
             },
             _ => panic!("Address out of range on mapper 4: {}", address)
