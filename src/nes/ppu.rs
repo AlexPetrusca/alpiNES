@@ -127,7 +127,6 @@ impl PPU {
         let tile_y = self.scroll_ctx.get_coarse_scroll_y();
         let pixel_y = 8 * tile_y + self.scroll_ctx.get_fine_scroll_y();
         for screen_x in 0..Frame::WIDTH {
-            let attribute_address = self.scroll_ctx.get_attribute_address();
             let tile_address = self.scroll_ctx.get_tile_address();
             let tile_x = self.scroll_ctx.get_coarse_scroll_x();
             let pixel_x = screen_x + self.scroll_ctx.get_fine_scroll_x() as usize;
@@ -136,22 +135,7 @@ impl PPU {
                 self.scroll_ctx.scroll_x_increment();
             }
 
-            let attr_byte = self.memory.read_byte(attribute_address);
-            let pallete_val = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
-                (0, 0) => attr_byte & 0b0000_0011,
-                (1, 0) => (attr_byte >> 2) & 0b0000_0011,
-                (0, 1) => (attr_byte >> 4) & 0b0000_0011,
-                (1, 1) => (attr_byte >> 6) & 0b0000_0011,
-                (_, _) => panic!("can't be"),
-            };
-            let pallete_idx = 4 * pallete_val as u16;
-            let pallete = [
-                self.memory.read_byte(PPUMemory::PALLETES_START),
-                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
-                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 1),
-                self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx + 2),
-            ];
-
+            let pallete = self.bg_pal(tile_x, tile_y);
             let tile_value = self.memory.read_byte(tile_address) as u16;
             let chr_address = background_bank + 16 * tile_value;
 
@@ -226,17 +210,17 @@ impl PPU {
     }
 
     #[inline]
-    fn bg_palette(&self, nametable_addr: u16, tile_x: usize, tile_y: usize) -> [u8; 4] {
-        let attr_table_idx = 8 * (tile_y / 4) + tile_x / 4;
-        let attr_byte = self.memory.read_byte(nametable_addr + PPUMemory::NAMETABLE_SIZE as u16 + attr_table_idx as u16);
-        let pallete = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
+    fn bg_palette(&mut self, tile_x: u8, tile_y: u8) -> [u8; 4] {
+        let attribute_address = self.scroll_ctx.get_attribute_address();
+        let attr_byte = self.memory.read_byte(attribute_address);
+        let pallete_val = match ((tile_x % 4) / 2, (tile_y % 4) / 2) {
             (0, 0) => attr_byte & 0b0000_0011,
             (1, 0) => (attr_byte >> 2) & 0b0000_0011,
             (0, 1) => (attr_byte >> 4) & 0b0000_0011,
             (1, 1) => (attr_byte >> 6) & 0b0000_0011,
             (_, _) => panic!("can't be"),
         };
-        let pallete_idx = 4 * pallete as u16;
+        let pallete_idx = 4 * pallete_val as u16;
         [
             self.memory.read_byte(PPUMemory::PALLETES_START),
             self.memory.read_byte(PPUMemory::BACKGROUND_PALLETES_START + pallete_idx),
