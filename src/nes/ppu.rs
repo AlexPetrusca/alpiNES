@@ -124,18 +124,13 @@ impl PPU {
 
         let background_bank = self.ctrl.get_background_chrtable_address();
         let screen_y = self.scanline as usize;
-        let tile_y = self.scroll_ctx.get_coarse_scroll_y();
+        let tile_y = self.scroll_ctx.get_coarse_scroll_y(); // todo: can be refactored into bg_palette
         let pixel_y = 8 * tile_y + self.scroll_ctx.get_fine_scroll_y();
         for screen_x in 0..Frame::WIDTH {
-            let tile_address = self.scroll_ctx.get_tile_address();
-            let tile_x = self.scroll_ctx.get_coarse_scroll_x();
             let pixel_x = screen_x + self.scroll_ctx.get_fine_scroll_x() as usize;
-
-            if pixel_x % 8 == 7 {
-                self.scroll_ctx.scroll_x_increment();
-            }
-
-            let pallete = self.bg_pal(tile_x, tile_y);
+            let tile_x = self.scroll_ctx.get_coarse_scroll_x(); // todo: can be refactored into bg_palette
+            let pallete = self.bg_palette(tile_x, tile_y);
+            let tile_address = self.scroll_ctx.get_tile_address();
             let tile_value = self.memory.read_byte(tile_address) as u16;
             let chr_address = background_bank + 16 * tile_value;
 
@@ -151,6 +146,10 @@ impl PPU {
             let rgb = NES::SYSTEM_PALLETE[palette_index as usize];
             let priority = if palette_value == 0 { Frame::BG_PRIORITY } else { Frame::FG_PRIORITY };
             self.frame.set_background_pixel(screen_x, screen_y, rgb, priority);
+
+            if pixel_x % 8 == 7 {
+                self.scroll_ctx.scroll_x_increment();
+            }
         }
 
         self.scroll_ctx.scroll_y_increment();
