@@ -221,9 +221,11 @@ fn run_game(path: &str) {
 //  - teenage mutant ninja turtles: same issue as contra
 //  - yoshi: unplayable
 
-// todo: continue mapper3 debugging
-//  - friday the 13th: completely visually broken
-//  - solomons key: doesn't play whatsoever
+// todo: continue sprite zero debugging
+//  - 240pee: horizontal hill test is broken
+//      - fix is to clear SpriteZeroHit on scanline 260 instead of 261
+//  - castlevania: SpriteZeroHit clear on start of vblank messes things up
+//  - friday the 13th: always broken split screen
 
 fn main() {
     // run_snake();
@@ -234,8 +236,8 @@ fn main() {
 
     // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes");
-    run_game("rom/mapper2/castlevania.nes");
-    // run_game("rom/mapper3/arkistas_ring.nes");
+    // run_game("rom/mapper2/castlevania.nes");
+    run_game("rom/mapper3/friday_the_13th.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
