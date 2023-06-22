@@ -225,8 +225,6 @@ fn run_game(path: &str) {
 //  - friday the 13th: completely visually broken
 //  - solomons key: doesn't play whatsoever
 
-// todo: [priority] optimize background rendering after v/t scrolling was introduced
-
 fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
