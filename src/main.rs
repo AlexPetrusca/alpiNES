@@ -214,18 +214,17 @@ fn run_game(path: &str) {
 //  - balloon fight: shouldn't have any audio during title screen and credits
 //  - donkey kong: footsteps and jumps dont sound right
 
-// todo: continue mapper1 debugging
+// todo: bugs
+//  - friday the 13th: split screen with sprite zero hit is broken
 //  - chessmaster: freezes on the menu screen (same as winter games - related?)
-//  - simpsons - bart vs the space mutants: unplayable
+//  - winter games: freezes on the menu screen (same as chessmaster - related?)
+//  - solomon's key: game doesn't start (related to chessmaster and winter games?)
 //  - smb_dh_wctm: super mario bros can't be selected, duck hunt unplayable
-//  - teenage mutant ninja turtles: same issue as contra
-//  - yoshi: unplayable
-
-// todo: continue sprite zero debugging
-//  - 240pee: horizontal hill test is broken
-//      - fix is to clear SpriteZeroHit on scanline 260 instead of 261
-//  - castlevania: SpriteZeroHit clear on start of vblank messes things up
-//  - friday the 13th: always broken split screen
+//  - teenage mutant ninja turtles: background is incorrect in sewer section
+//      - check https://www.nesdev.org/wiki/Tricky-to-emulate_games
+//  - silver surfer: broken
+//  - ninja_gaiden_2: broken
+//  - ninja_gaiden_3: broken
 
 fn main() {
     // run_snake();
