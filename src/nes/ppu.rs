@@ -88,6 +88,9 @@ impl PPU {
             self.cycles = self.cycles - PPU::SCANLINE_CYCLES;
 
             if self.scanline == PPU::PRE_RENDER_SCANLINE {
+                self.clear_nmi();
+                self.status.clear(VerticalBlank);
+                self.status.clear(SpriteZeroHit);
                 self.frame.clear();
             }
 
@@ -95,30 +98,15 @@ impl PPU {
                 self.render_scanline();
             }
 
-            // if self.scanline == PPU::POST_RENDER_SCANLINE {
-            //
-            // }
-
             if self.scanline == PPU::VBLANK_SCANLINE_START {
-                self.status.set(VerticalBlank); // todo: move
+                self.status.set(VerticalBlank);
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
                     self.set_nmi();
                 }
             }
 
-            // if self.scanline >= PPU::VBLANK_SCANLINE_START && self.scanline <= PPU::VBLANK_SCANLINE_END {
-            //     self.status.set(VerticalBlank);
-            // }
-
             if self.scanline == PPU::VBLANK_SCANLINE_END {
-                self.clear_nmi();
-                self.status.clear(VerticalBlank); // todo: move
-
-                self.clear_nmi();
-                self.status.clear(VerticalBlank);
-                self.status.clear(SpriteZeroHit);
-
                 self.scanline = -1;
             } else {
                 self.scanline += 1;
