@@ -54,7 +54,7 @@ impl PPU {
     const POST_RENDER_SCANLINE: isize = 240;
     const VBLANK_SCANLINE_START: isize = 241;
     const VBLANK_SCANLINE_END: isize = 260;
-    const NUM_CYCLES: usize = 341;
+    const SCANLINE_CYCLES: usize = 341;
 
     pub fn new() -> Self {
         Self {
@@ -84,8 +84,8 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        if self.cycles >= PPU::NUM_CYCLES {
-            self.cycles = self.cycles - PPU::NUM_CYCLES;
+        if self.cycles >= PPU::SCANLINE_CYCLES {
+            self.cycles = self.cycles - PPU::SCANLINE_CYCLES;
 
             if self.scanline == PPU::PRE_RENDER_SCANLINE {
                 self.frame.clear();
