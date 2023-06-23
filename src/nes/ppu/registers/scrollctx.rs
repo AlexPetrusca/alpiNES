@@ -64,7 +64,7 @@ impl ScrollContext {
         self.scroll_y_increment();
     }
 
-    pub fn handle_scanline_start(&mut self, scanline: u16) {
+    pub fn handle_scanline_start(&mut self, scanline: isize) {
         if scanline == 0 {
             self.v = self.t;
         } else {

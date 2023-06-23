@@ -75,7 +75,7 @@ pub struct PPUState {
     pub data_buffer: u8,
 
     pub cycles: usize,
-    pub scanline: u16,
+    pub scanline: isize,
     pub nmi_flag: bool,
 }
 

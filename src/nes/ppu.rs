@@ -43,11 +43,19 @@ pub struct PPU {
     pub data_buffer: u8,
 
     pub cycles: usize,
-    pub scanline: u16,
+    pub scanline: isize,
     pub nmi_flag: bool,
 }
 
 impl PPU {
+    const PRE_RENDER_SCANLINE: isize = -1;
+    const VISIBLE_SCANLINE_START: isize = 0;
+    const VISIBLE_SCANLINE_END: isize = 239;
+    const POST_RENDER_SCANLINE: isize = 240;
+    const VBLANK_SCANLINE_START: isize = 241;
+    const VBLANK_SCANLINE_END: isize = 260;
+    const NUM_CYCLES: usize = 341;
+
     pub fn new() -> Self {
         Self {
             addr: AddressRegister::new(),
@@ -65,7 +73,7 @@ impl PPU {
             scroll_ctx: ScrollContext::new(),
             data_buffer: 0,
 
-            scanline: 0,
+            scanline: -1,
             cycles: 0,
             nmi_flag: false,
         }
@@ -76,31 +84,45 @@ impl PPU {
     }
 
     pub fn step(&mut self) -> Result<bool, bool> {
-        if self.cycles > 340 {
-            self.render_scanline();
+        if self.cycles >= PPU::NUM_CYCLES {
+            self.cycles = self.cycles - PPU::NUM_CYCLES;
 
-            if self.scanline < 240 {
-                self.oam_addr = 0; // todo: is this enough? https://www.nesdev.org/wiki/PPU_registers
+            if self.scanline == PPU::PRE_RENDER_SCANLINE {
+                self.frame.clear();
             }
 
-            if self.scanline == 241 {
-                self.status.set(VerticalBlank);
+            if self.scanline >= PPU::VISIBLE_SCANLINE_START && self.scanline <= PPU::VISIBLE_SCANLINE_END {
+                self.render_scanline();
+            }
+
+            // if self.scanline == PPU::POST_RENDER_SCANLINE {
+            //
+            // }
+
+            if self.scanline == PPU::VBLANK_SCANLINE_START {
+                self.status.set(VerticalBlank); // todo: move
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
                     self.set_nmi();
                 }
             }
 
-            if self.scanline == 261 {
-                self.scanline = 0;
+            // if self.scanline >= PPU::VBLANK_SCANLINE_START && self.scanline <= PPU::VBLANK_SCANLINE_END {
+            //     self.status.set(VerticalBlank);
+            // }
+
+            if self.scanline == PPU::VBLANK_SCANLINE_END {
+                self.clear_nmi();
+                self.status.clear(VerticalBlank); // todo: move
+
                 self.clear_nmi();
                 self.status.clear(VerticalBlank);
                 self.status.clear(SpriteZeroHit);
-                return Ok(true);
-            }
 
-            self.cycles = self.cycles - 341;
-            self.scanline += 1;
+                self.scanline = -1;
+            } else {
+                self.scanline += 1;
+            }
         }
 
         Ok(false)
@@ -109,8 +131,8 @@ impl PPU {
 
     #[inline]
     pub fn render_scanline(&mut self) {
-        if self.scanline == 260 { self.frame.clear(); }
-        if self.scanline >= 240 { return }
+        // if self.scanline == 260 { self.frame.clear(); }
+        // if self.scanline >= 240 { return }
 
         self.render_background_scanline();
         self.render_sprites_scanline();
