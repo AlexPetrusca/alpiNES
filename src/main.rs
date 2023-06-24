@@ -222,8 +222,11 @@ fn run_game(path: &str) {
 //  - smb_dh_wctm: super mario bros can't be selected, duck hunt unplayable
 //  - teenage mutant ninja turtles: background is incorrect in sewer section
 //      - check https://www.nesdev.org/wiki/Tricky-to-emulate_games
-//  - silver surfer: breaks on pallete out of bounds bug
+//  - silver surfer: crashes on pallete out of bounds bug
 //  - NEStress + oam_read + oam_stress: attempt to add with overflow
+//  - 240pee: multiple problems
+//      - overscan: completely broken compared to nestopia
+//      - cpu_clock_speed: crashes on pallete out of bounds bug
 //  - scroll: broken
 //  - smwstomp: broken
 
@@ -237,14 +240,14 @@ fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/test/cpu/nestest.nes");
-    // run_game("rom/test/ppu/tutor.nes");
+    run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/chessmaster.nes");
     // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/friday_the_13th.nes");
-    run_game("rom/mapper4/ninja_gaiden_3.nes");
+    // run_game("rom/mapper4/ninja_gaiden_3.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/romhack/zelda_challenge_outlands.nes");
 }
