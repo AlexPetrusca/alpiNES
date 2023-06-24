@@ -336,6 +336,11 @@ impl Emulator {
                 rom.mapper4.chr_bank1_2kb_select = rom_state.mapper4.chr_bank1_2kb_select;
                 rom.mapper4.screen_mirroring = rom_state.mapper4.screen_mirroring.clone();
                 rom.screen_mirroring = rom_state.mapper4.screen_mirroring.clone();
+                rom.mapper4.irq_counter = rom_state.mapper4.irq_counter.unwrap_or(0);
+                rom.mapper4.irq_latch = rom_state.mapper4.irq_latch.unwrap_or(0);
+                rom.mapper4.irq_reload = rom_state.mapper4.irq_reload.unwrap_or(false);
+                rom.mapper4.irq_enable = rom_state.mapper4.irq_enable.unwrap_or(false);
+                rom.mapper4.irq_flag = rom_state.mapper4.irq_flag.unwrap_or(false);
             },
             66 => {
                 rom.mapper66.prg_bank_select = rom_state.mapper66.prg_bank_select;

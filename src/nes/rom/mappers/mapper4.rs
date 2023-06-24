@@ -42,6 +42,7 @@ pub struct Mapper4 {
     pub chr_bank1_2kb_select: u8,
 
     pub screen_mirroring: Mirroring,
+
     pub irq_counter: u8,
     pub irq_latch: u8,
     pub irq_reload: bool,
@@ -57,18 +58,17 @@ impl Mapper4 {
             chr_bank_select_mode: 0,
             prg_bank0_select: 0,
             prg_bank1_select: 0,
-
             chr_bank0_select: 0,
             chr_bank1_select: 0,
             chr_bank0_1kb_select: 0,
             chr_bank1_1kb_select: 0,
             chr_bank2_1kb_select: 0,
-
             chr_bank3_1kb_select: 0,
             chr_bank0_2kb_select: 0,
             chr_bank1_2kb_select: 0,
 
             screen_mirroring: Mirroring::Horizontal,
+
             irq_counter: 0,
             irq_latch: 0,
             irq_reload: false,

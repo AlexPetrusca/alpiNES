@@ -228,7 +228,7 @@ fn run_game(path: &str) {
 //      - overscan: completely broken compared to nestopia
 //      - cpu_clock_speed: crashes on pallete out of bounds bug
 //  - scroll: broken
-//  - smwstomp: broken
+//  - smwstomp: broken (stomp thingy from smbw doesnt show up)
 
 // todo: priority
 //  - [END_GOAL] Perfect emulation for super mario bros 3, then beat the game :)
@@ -240,14 +240,14 @@ fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/test/cpu/nestest.nes");
-    run_game("rom/test/ppu/240pee.nes");
+    // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/chessmaster.nes");
     // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/friday_the_13th.nes");
-    // run_game("rom/mapper4/ninja_gaiden_3.nes");
+    run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/romhack/zelda_challenge_outlands.nes");
 }

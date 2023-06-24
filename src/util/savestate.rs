@@ -203,6 +203,11 @@ pub struct Mapper4State {
     pub chr_bank0_2kb_select: u8,
     pub chr_bank1_2kb_select: u8,
     pub screen_mirroring: Mirroring,
+    pub irq_counter: Option<u8>,
+    pub irq_latch: Option<u8>,
+    pub irq_reload: Option<bool>,
+    pub irq_enable: Option<bool>,
+    pub irq_flag: Option<bool>,
 }
 
 impl Mapper4State {
@@ -222,6 +227,11 @@ impl Mapper4State {
             chr_bank0_2kb_select: mapper4.chr_bank0_2kb_select,
             chr_bank1_2kb_select: mapper4.chr_bank1_2kb_select,
             screen_mirroring: mapper4.screen_mirroring.clone(),
+            irq_counter: Some(mapper4.irq_counter),
+            irq_latch: Some(mapper4.irq_latch),
+            irq_reload: Some(mapper4.irq_reload),
+            irq_enable: Some(mapper4.irq_enable),
+            irq_flag: Some(mapper4.irq_flag),
         }
     }
 }
