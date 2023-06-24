@@ -222,7 +222,7 @@ fn run_game(path: &str) {
 //  - smb_dh_wctm: super mario bros can't be selected, duck hunt unplayable
 //  - teenage mutant ninja turtles: background is incorrect in sewer section
 //      - check https://www.nesdev.org/wiki/Tricky-to-emulate_games
-//  - silver surfer + ninja_gaiden_2 + ninja_gaiden_3: broken
+//  - silver surfer: breaks on pallete out of bounds bug
 //  - NEStress + oam_read + oam_stress: attempt to add with overflow
 //  - scroll: broken
 //  - smwstomp: broken
@@ -231,7 +231,6 @@ fn run_game(path: &str) {
 //  - [END_GOAL] Perfect emulation for super mario bros 3, then beat the game :)
 //  - [GOAL] Beat Legend of Zelda
 //  - [GOAL] Beat Metroid
-//  - [FEATURE] IRQ implementation for mapper4
 //  - [BUG] Fix Legend of Zelda audio to make it sound glorious
 
 fn main() {
@@ -245,14 +244,7 @@ fn main() {
     // run_game("rom/mapper1/chessmaster.nes");
     // run_game("rom/mapper2/castlevania.nes");
     // run_game("rom/mapper3/friday_the_13th.nes");
-    run_game("rom/mapper4/super_mario_bros_3.nes");
-    // run_game("rom/mapper5/castlevania_3.nes"); // todo: impl
+    run_game("rom/mapper4/ninja_gaiden_3.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/romhack/zelda_challenge_outlands.nes");
-
-    /* TODO | regression test plan - run each game after changes | TODO */
-    // run_game("rom/mapper0/ice_climber.nes");
-    // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
-    // run_game("rom/mapper1/super_mario_bros_duck_hunt_world_world_class_track_meet.nes");
-    // run_game("rom/mapper3/arkistas_ring.nes");
 }
