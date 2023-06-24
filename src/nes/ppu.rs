@@ -89,12 +89,14 @@ impl PPU {
 
             if self.scanline == PPU::PRE_RENDER_SCANLINE {
                 self.clear_nmi();
+                self.update_mapper4();
                 self.status.clear(VerticalBlank);
                 self.status.clear(SpriteZeroHit);
                 self.frame.clear();
             }
 
             if self.scanline >= PPU::VISIBLE_SCANLINE_START && self.scanline <= PPU::VISIBLE_SCANLINE_END {
+                self.update_mapper4();
                 self.render_scanline();
             }
 
@@ -113,15 +115,20 @@ impl PPU {
             }
         }
 
-        Ok(false)
+        Ok(true)
     }
 
+    #[inline]
+    fn update_mapper4(&mut self) {
+        if self.memory.rom.mapper_id != 4 { return }
+
+        if self.mask.is_set(ShowBackground) && self.mask.is_set(ShowSprites) {
+            self.memory.rom.mapper4.decrement_irq_counter();
+        }
+    }
 
     #[inline]
     pub fn render_scanline(&mut self) {
-        // if self.scanline == 260 { self.frame.clear(); }
-        // if self.scanline >= 240 { return }
-
         self.render_background_scanline();
         self.render_sprites_scanline();
     }
@@ -357,18 +364,22 @@ impl PPU {
         self.addr.latch = false;
     }
 
+    #[inline]
     pub fn poll_nmi(&self) -> bool {
         return self.nmi_flag;
     }
 
+    #[inline]
     pub fn set_nmi(&mut self) {
         self.nmi_flag = true;
     }
 
+    #[inline]
     pub fn clear_nmi(&mut self) {
         self.nmi_flag = false;
     }
 
+    #[inline]
     fn increment_vram_addr(&mut self) {
         self.addr.increment(self.ctrl.get_vram_addr_increment());
     }

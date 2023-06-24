@@ -97,7 +97,6 @@ impl Emulator {
                 self.nes.cpu.memory.ppu.clear_nmi();
 
                 self.handle_input(&mut event_pump);
-                // self.nes.cpu.memory.ppu.render();
 
                 // todo: self.nes.cpu.memory.ppu.frame.rgb is ridiculous...
                 texture.update(None, &self.nes.cpu.memory.ppu.frame.compose(), Frame::WIDTH * 3).unwrap();
@@ -105,6 +104,8 @@ impl Emulator {
                 canvas.present();
 
                 self.sleep_frame();
+            } else if rom.mapper_id == 4 && self.nes.cpu.memory.ppu.memory.rom.mapper4.poll_irq() {
+               self.nes.cpu.handle_irq();
             }
 
             let Ok(_) = self.nes.step() else { return };
