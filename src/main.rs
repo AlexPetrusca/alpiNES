@@ -243,11 +243,11 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    // run_game("rom/mapper0/super_mario_bros.nes");
+    run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/chessmaster.nes");
     // run_game("rom/mapper2/metal_gear.nes");
     // run_game("rom/mapper3/friday_the_13th.nes");
-    run_game("rom/mapper4/super_mario_bros_3.nes");
+    // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/romhack/zelda_challenge_outlands.nes");
 }

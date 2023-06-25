@@ -6,9 +6,6 @@ build = "build.rs"
 
 [dependencies]
 rand = "0.8.5"
-num = "0.4"
-num-derive = "0.3"
-num-traits = "0.2"
 serde_cbor = "0.11.2"
 
 [dependencies.serde]
