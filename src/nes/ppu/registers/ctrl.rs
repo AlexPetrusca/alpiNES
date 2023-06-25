@@ -1,5 +1,3 @@
-use bitvec::prelude::*;
-use bitvec::view::BitView;
 use crate::util::bitvec::BitVector;
 
 // 7  bit  0
@@ -39,17 +37,17 @@ impl BitVector for ControlRegister {
 
     #[inline]
     fn is_set(&self, flag: Self::Flag) -> bool {
-        self.value.view_bits::<Lsb0>()[flag as usize]
+        self.value & (1 << (flag as u8)) != 0
     }
 
     #[inline]
     fn set(&mut self, flag: Self::Flag) {
-        self.value.view_bits_mut::<Lsb0>().set(flag as usize, true);
+        self.value |= (1 << (flag as u8))
     }
 
     #[inline]
     fn clear(&mut self, flag: Self::Flag) {
-        self.value.view_bits_mut::<Lsb0>().set(flag as usize, false);
+        self.value &= !(1 << (flag as u8))
     }
 }
 

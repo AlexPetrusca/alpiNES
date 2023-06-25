@@ -1,7 +1,6 @@
 pub mod mem;
 mod registers;
 
-use bitvec::prelude::*;
 use rand::Rng;
 
 use crate::nes::cpu::mem::Memory;
@@ -3305,22 +3304,26 @@ impl CPU {
 
     #[inline]
     fn get_status_flag(&self, flag: u8) -> bool {
-        self.status.view_bits::<Lsb0>()[flag as usize]
+        self.status & (1 << flag) != 0
     }
 
     #[inline]
     fn set_status_flag(&mut self, flag: u8) {
-        self.update_status_flag(flag, true);
+        self.status |= (1 << flag)
     }
 
     #[inline]
     fn clear_status_flag(&mut self, flag: u8) {
-        self.update_status_flag(flag, false);
+        self.status &= !(1 << flag)
     }
 
     #[inline]
     fn update_status_flag(&mut self, flag: u8, value: bool) {
-        self.status.view_bits_mut::<Lsb0>().set(flag as usize, value);
+        if value {
+            self.set_status_flag(flag)
+        } else {
+            self.clear_status_flag(flag)
+        }
     }
 
     #[inline]

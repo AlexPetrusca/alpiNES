@@ -6,7 +6,6 @@ use std::ops::Deref;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-use bitvec::ptr::BitPtrError::Null;
 use sdl2::event::Event;
 use sdl2::keyboard::{Keycode, Mod};
 use sdl2::pixels::PixelFormatEnum;
