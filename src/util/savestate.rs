@@ -42,7 +42,7 @@ impl CPUState {
             register_x: cpu.register_x,
             register_y: cpu.register_y,
             stack: cpu.stack,
-            status: cpu.status,
+            status: cpu.status.value,
             program_counter: cpu.program_counter,
             ram: cpu.memory.memory[ram_range!()].to_vec(),
             custom_ram: cpu.memory.memory[custom_ram_range!()].to_vec(),
@@ -307,7 +307,7 @@ impl SaveState {
         cpu.register_x = cpu_state.register_x;
         cpu.register_y = cpu_state.register_y;
         cpu.stack = cpu_state.stack;
-        cpu.status = cpu_state.status;
+        cpu.status.value = cpu_state.status;
         cpu.program_counter = cpu_state.program_counter;
         cpu.memory.memory[ram_range!()].copy_from_slice(cpu_state.ram.as_slice());
         cpu.memory.memory[custom_ram_range!()].copy_from_slice(cpu_state.custom_ram.as_slice());

@@ -4,6 +4,8 @@ mod registers;
 use rand::Rng;
 
 use crate::nes::cpu::mem::Memory;
+use crate::nes::cpu::registers::status::{StatusFlag, StatusRegister};
+use crate::util::bitvec::BitVector;
 
 const ISB_PATTERN: u8 = 0b1110_0011;
 const DCP_PATTERN: u8 = 0b1100_0011;
@@ -37,19 +39,6 @@ const LDY_PATTERN: u8 = 0b1010_0000;
 const CPY_PATTERN: u8 = 0b1100_0000;
 const STY_PATTERN: u8 = 0b1000_0000;
 
-const CARRY_FLAG: u8 = 0;
-const ZERO_FLAG: u8 = 1;
-const INTERRUPT_DISABLE: u8 = 2;
-const DECIMAL_MODE_FLAG: u8 = 3;
-const BREAK_COMMAND: u8 = 4;
-const UNUSED_FLAG: u8 = 5;
-const OVERFLOW_FLAG: u8 = 6;
-const NEGATIVE_FLAG: u8 = 7;
-
-const B_FLAG_MASK: u8 = 0b0011_0000;
-const B_FLAG_SET_MASK: u8 = 0b0010_0000;
-const B_FLAG_CLEAR_MASK: u8 = 0b1110_1111;
-
 const OP_MASK: u8 = 0b1110_0011;
 
 pub struct CPU {
@@ -57,7 +46,7 @@ pub struct CPU {
     pub register_x: u8,
     pub register_y: u8,
     pub stack: u8,
-    pub status: u8, // todo: use StatusRegister struct instead
+    pub status: StatusRegister,
     pub program_counter: u16, // todo: use ProgramCounter struct instead
 
     pub memory: Memory,
@@ -360,7 +349,7 @@ impl CPU {
             register_x: 0,
             register_y: 0,
             stack: 0xff,
-            status: 0b0011_0000,
+            status: StatusRegister::new(),
             program_counter: 0,
 
             memory: Memory::new(),
@@ -374,7 +363,7 @@ impl CPU {
         self.register_x = 0;
         self.register_y = 0;
         self.stack = 0xfd;
-        self.status = 0b0010_0100;
+        self.status.set_value(0b0010_0100);
         self.program_counter = 0;
     }
 
@@ -595,20 +584,20 @@ impl CPU {
 
     pub fn handle_nmi(&mut self) {
         self.push_addr(self.program_counter);
-        self.push_byte((self.status | B_FLAG_SET_MASK) & B_FLAG_CLEAR_MASK);
+        self.push_byte(self.status.get_value_interrupt());
 
-        self.set_status_flag(INTERRUPT_DISABLE);
+        self.status.set(StatusFlag::InterruptDisable);
 
         self.tick(2);
         self.program_counter = self.memory.read_addr(Memory::NMI_INT_VECTOR);
     }
 
     pub fn handle_irq(&mut self) {
-        if !self.get_status_flag(INTERRUPT_DISABLE) {
+        if self.status.is_clear(StatusFlag::InterruptDisable) {
             self.push_addr(self.program_counter);
-            self.push_byte((self.status | B_FLAG_SET_MASK) & B_FLAG_CLEAR_MASK);
+            self.push_byte(self.status.get_value_interrupt());
 
-            self.set_status_flag(INTERRUPT_DISABLE);
+            self.status.set(StatusFlag::InterruptDisable);
 
             self.tick(2);
             self.program_counter = self.memory.read_addr(Memory::IRQ_INT_VECTOR);
@@ -698,49 +687,49 @@ impl CPU {
     
     #[inline]
     fn sec(&mut self) -> u8 {
-        self.set_status_flag(CARRY_FLAG);
+        self.status.set(StatusFlag::Carry);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn clc(&mut self) -> u8 {
-        self.clear_status_flag(CARRY_FLAG);
+        self.status.clear(StatusFlag::Carry);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn sed(&mut self) -> u8 {
-        self.set_status_flag(DECIMAL_MODE_FLAG);
+        self.status.set(StatusFlag::DecimalMode);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn cld(&mut self) -> u8 {
-        self.clear_status_flag(DECIMAL_MODE_FLAG);
+        self.status.clear(StatusFlag::DecimalMode);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn sei(&mut self) -> u8 {
-        self.set_status_flag(INTERRUPT_DISABLE);
+        self.status.set(StatusFlag::InterruptDisable);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn cli(&mut self) -> u8 {
-        self.clear_status_flag(INTERRUPT_DISABLE);
+        self.status.clear(StatusFlag::InterruptDisable);
         self.increment_program_counter();
         return 2;
     }
 
     #[inline]
     fn clv(&mut self) -> u8 {
-        self.clear_status_flag(OVERFLOW_FLAG);
+        self.status.clear(StatusFlag::Overflow);
         self.increment_program_counter();
         return 2;
     }
@@ -762,16 +751,15 @@ impl CPU {
 
     #[inline]
     fn php(&mut self) -> u8 {
-        self.push_byte(self.status | B_FLAG_MASK);
+        self.push_byte(self.status.get_value());
         self.increment_program_counter();
         return 3;
     }
 
     #[inline]
     fn plp(&mut self) -> u8 {
-        self.status = self.pop_byte();
-        self.status = self.status | B_FLAG_SET_MASK;
-        self.status = self.status & B_FLAG_CLEAR_MASK;
+        let value = self.pop_byte();
+        self.status.set_value_interrupt(value);
         self.increment_program_counter();
         return 4;
     }
@@ -830,7 +818,7 @@ impl CPU {
     fn beq(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if self.get_status_flag(ZERO_FLAG) {
+        if self.status.is_set(StatusFlag::Zero) {
             cycles += self.jmp_offset(offset);
         }
         return cycles;
@@ -840,7 +828,7 @@ impl CPU {
     fn bne(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if !self.get_status_flag(ZERO_FLAG) {
+        if self.status.is_clear(StatusFlag::Zero) {
             cycles += self.jmp_offset(offset);
         }
         return cycles;
@@ -850,7 +838,7 @@ impl CPU {
     fn bcs(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if self.get_status_flag(CARRY_FLAG) {
+        if self.status.is_set(StatusFlag::Carry) {
             cycles += self.jmp_offset(offset);
         }
         return cycles;
@@ -860,7 +848,7 @@ impl CPU {
     fn bcc(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if !self.get_status_flag(CARRY_FLAG) {
+        if self.status.is_clear(StatusFlag::Carry) {
             cycles += self.jmp_offset(offset);
         }
         return cycles;
@@ -870,7 +858,7 @@ impl CPU {
     fn bmi(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if self.get_status_flag(NEGATIVE_FLAG) {
+        if self.status.is_set(StatusFlag::Negative) {
             cycles += self.jmp_offset(offset);
         }
         cycles
@@ -880,7 +868,7 @@ impl CPU {
     fn bpl(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if !self.get_status_flag(NEGATIVE_FLAG) {
+        if self.status.is_clear(StatusFlag::Negative) {
             cycles += self.jmp_offset(offset);
         }
         cycles
@@ -890,7 +878,7 @@ impl CPU {
     fn bvs(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if self.get_status_flag(OVERFLOW_FLAG) {
+        if self.status.is_set(StatusFlag::Overflow) {
             cycles += self.jmp_offset(offset);
         }
         cycles
@@ -900,7 +888,7 @@ impl CPU {
     fn bvc(&mut self, offset: i8) -> u8 {
         let mut cycles = 2;
         self.increment_program_counter();
-        if !self.get_status_flag(OVERFLOW_FLAG) {
+        if self.status.is_clear(StatusFlag::Overflow) {
             cycles += self.jmp_offset(offset);
         }
         cycles
@@ -912,8 +900,8 @@ impl CPU {
         self.ror_a();
         let bit_6 = (self.register_a & 0x40 > 0) as u8;
         let bit_5 = (self.register_a & 0x20 > 0) as u8;
-        self.update_status_flag(CARRY_FLAG, bit_6 > 0);
-        self.update_status_flag(OVERFLOW_FLAG, bit_6 ^ bit_5 > 0);
+        self.status.update(StatusFlag::Carry, bit_6 > 0);
+        self.status.update(StatusFlag::Overflow, bit_6 ^ bit_5 > 0);
         self.increment_program_counter();
         return 2;
     }
@@ -939,7 +927,7 @@ impl CPU {
         self.register_x = self.register_x & self.register_a;
         let sum = (self.register_x as u16).wrapping_add(immediate.wrapping_neg() as u16);
         self.register_x = sum as u8;
-        self.update_status_flag(CARRY_FLAG, sum > 0xff);
+        self.status.update(StatusFlag::Carry, sum > 0xff);
         self.update_zero_and_negative_flag(self.register_x);
         self.increment_program_counter();
         return 2;
@@ -1013,7 +1001,7 @@ impl CPU {
     #[inline]
     fn anc(&mut self, immediate: u8) -> u8 {
         self.and_im(immediate);
-        self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 > 0);
+        self.status.update(StatusFlag::Carry, self.register_a & 0x80 > 0);
         self.increment_program_counter();
         return 2;
     }
@@ -1107,14 +1095,14 @@ impl CPU {
     fn adc_im(&mut self, immediate: u8) -> u8 {
         let mut sum = (self.register_a as u16).wrapping_add(immediate as u16);
         let mut overflow = (self.register_a ^ (sum as u8)) & (immediate ^ (sum as u8)) & 0x80 != 0;
-        if self.get_status_flag(CARRY_FLAG) {
+        if self.status.is_set(StatusFlag::Carry) {
             let carry_sum = sum.wrapping_add(1);
             overflow = overflow || ((sum as u8) ^ (carry_sum as u8)) & (carry_sum as u8) & 0x80 != 0;
             sum = carry_sum;
         }
         self.register_a = sum as u8;
-        self.update_status_flag(OVERFLOW_FLAG, overflow);
-        self.update_status_flag(CARRY_FLAG, sum > 0xff);
+        self.status.update(StatusFlag::Overflow, overflow);
+        self.status.update(StatusFlag::Carry, sum > 0xff);
         self.update_zero_and_negative_flag(self.register_a);
         return 2;
     }
@@ -1580,7 +1568,7 @@ impl CPU {
 
     #[inline]
     fn lsr_a(&mut self) -> u8 {
-        self.update_status_flag(CARRY_FLAG, self.register_a & 1 != 0);
+        self.status.update(StatusFlag::Carry, self.register_a & 1 != 0);
         self.register_a = self.register_a >> 1;
         self.update_zero_and_negative_flag(self.register_a);
         return 2;
@@ -1589,7 +1577,7 @@ impl CPU {
     #[inline]
     fn lsr_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1599,7 +1587,7 @@ impl CPU {
     #[inline]
     fn lsr_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -1609,7 +1597,7 @@ impl CPU {
     #[inline]
     fn lsr_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1619,7 +1607,7 @@ impl CPU {
     #[inline]
     fn lsr_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -1665,7 +1653,7 @@ impl CPU {
     #[inline]
     fn sre_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_write(address, value);
         self.eor_zp(address);
@@ -1675,7 +1663,7 @@ impl CPU {
     #[inline]
     fn sre_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.eor_zp_x(address);
@@ -1685,7 +1673,7 @@ impl CPU {
     #[inline]
     fn sre_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_write(address, value);
         self.eor_ab(address);
@@ -1695,7 +1683,7 @@ impl CPU {
     #[inline]
     fn sre_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.eor_ab_x(address);
@@ -1705,7 +1693,7 @@ impl CPU {
     #[inline]
     fn sre_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.ab_y_write(address, self.register_y, value);
         self.eor_ab_y(address);
@@ -1715,7 +1703,7 @@ impl CPU {
     #[inline]
     fn sre_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.in_x_write(address, self.register_x, value);
         self.eor_in_x(address);
@@ -1725,7 +1713,7 @@ impl CPU {
     #[inline]
     fn sre_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = value >> 1;
         self.memory.in_y_write(address, self.register_y, value);
         self.eor_in_y(address);
@@ -1761,7 +1749,7 @@ impl CPU {
 
     #[inline]
     fn asl_a(&mut self) -> u8 {
-        self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, self.register_a & 0x80 != 0);
         self.register_a = self.register_a << 1;
         self.update_zero_and_negative_flag(self.register_a);
         return 2;
@@ -1770,7 +1758,7 @@ impl CPU {
     #[inline]
     fn asl_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1780,7 +1768,7 @@ impl CPU {
     #[inline]
     fn asl_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -1790,7 +1778,7 @@ impl CPU {
     #[inline]
     fn asl_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1800,7 +1788,7 @@ impl CPU {
     #[inline]
     fn asl_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -1846,7 +1834,7 @@ impl CPU {
     #[inline]
     fn slo_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_write(address, value);
         self.ora_zp(address);
@@ -1856,7 +1844,7 @@ impl CPU {
     #[inline]
     fn slo_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.zp_x_write(address, self.register_x, value);
         self.ora_zp_x(address);
@@ -1866,7 +1854,7 @@ impl CPU {
     #[inline]
     fn slo_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_write(address, value);
         self.ora_ab(address);
@@ -1876,7 +1864,7 @@ impl CPU {
     #[inline]
     fn slo_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_x_write(address, self.register_x, value);
         self.ora_ab_x(address);
@@ -1886,7 +1874,7 @@ impl CPU {
     #[inline]
     fn slo_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.ab_y_write(address, self.register_y, value);
         self.ora_ab_y(address);
@@ -1896,7 +1884,7 @@ impl CPU {
     #[inline]
     fn slo_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.in_x_write(address, self.register_x, value);
         self.ora_in_x(address);
@@ -1906,7 +1894,7 @@ impl CPU {
     #[inline]
     fn slo_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = value << 1;
         self.memory.in_y_write(address, self.register_y, value);
         self.ora_in_y(address);
@@ -1942,8 +1930,8 @@ impl CPU {
 
     #[inline]
     fn ror_a(&mut self) -> u8 {
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, self.register_a & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, self.register_a & 1 != 0);
         self.register_a = (self.register_a >> 1) | (old_carry << 7);
         self.update_zero_and_negative_flag(self.register_a);
         return 2;
@@ -1952,8 +1940,8 @@ impl CPU {
     #[inline]
     fn ror_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1963,8 +1951,8 @@ impl CPU {
     #[inline]
     fn ror_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -1974,8 +1962,8 @@ impl CPU {
     #[inline]
     fn ror_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -1985,8 +1973,8 @@ impl CPU {
     #[inline]
     fn ror_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -2032,8 +2020,8 @@ impl CPU {
     #[inline]
     fn rra_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_write(address, value);
         self.adc_zp(address);
@@ -2043,8 +2031,8 @@ impl CPU {
     #[inline]
     fn rra_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.zp_x_write(address, self.register_x, value);
         self.adc_zp_x(address);
@@ -2054,8 +2042,8 @@ impl CPU {
     #[inline]
     fn rra_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_write(address, value);
         self.adc_ab(address);
@@ -2065,8 +2053,8 @@ impl CPU {
     #[inline]
     fn rra_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_x_write(address, self.register_x, value);
         self.adc_ab_x(address);
@@ -2076,8 +2064,8 @@ impl CPU {
     #[inline]
     fn rra_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.ab_y_write(address, self.register_y, value);
         self.adc_ab_y(address);
@@ -2087,8 +2075,8 @@ impl CPU {
     #[inline]
     fn rra_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.in_x_write(address, self.register_x, value);
         self.adc_in_x(address);
@@ -2098,8 +2086,8 @@ impl CPU {
     #[inline]
     fn rra_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 1 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 1 != 0);
         value = (value >> 1) | (old_carry << 7);
         self.memory.in_y_write(address, self.register_y, value);
         self.adc_in_y(address);
@@ -2135,8 +2123,8 @@ impl CPU {
 
     #[inline]
     fn rol_a(&mut self) -> u8 {
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, self.register_a & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, self.register_a & 0x80 != 0);
         self.register_a = (self.register_a << 1) | old_carry;
         self.update_zero_and_negative_flag(self.register_a);
         return 2;
@@ -2145,8 +2133,8 @@ impl CPU {
     #[inline]
     fn rol_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -2156,8 +2144,8 @@ impl CPU {
     #[inline]
     fn rol_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -2167,8 +2155,8 @@ impl CPU {
     #[inline]
     fn rol_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_write(address, value);
         self.update_zero_and_negative_flag(value);
@@ -2178,8 +2166,8 @@ impl CPU {
     #[inline]
     fn rol_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_x_write(address, self.register_x, value);
         self.update_zero_and_negative_flag(value);
@@ -2225,8 +2213,8 @@ impl CPU {
     #[inline]
     fn rla_zp(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_write(address, value);
         self.and_zp(address);
@@ -2236,8 +2224,8 @@ impl CPU {
     #[inline]
     fn rla_zp_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.zp_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.zp_x_write(address, self.register_x, value);
         self.and_zp_x(address);
@@ -2247,8 +2235,8 @@ impl CPU {
     #[inline]
     fn rla_ab(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_read(address);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_write(address, value);
         self.and_ab(address);
@@ -2258,8 +2246,8 @@ impl CPU {
     #[inline]
     fn rla_ab_x(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_x_write(address, self.register_x, value);
         self.and_ab_x(address);
@@ -2269,8 +2257,8 @@ impl CPU {
     #[inline]
     fn rla_ab_y(&mut self, address: u16) -> u8 {
         let mut value = self.memory.ab_y_read(address, self.register_y);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.ab_y_write(address, self.register_y, value);
         self.and_ab_y(address);
@@ -2280,8 +2268,8 @@ impl CPU {
     #[inline]
     fn rla_in_x(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_x_read(address, self.register_x);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.in_x_write(address, self.register_x, value);
         self.and_in_x(address);
@@ -2291,8 +2279,8 @@ impl CPU {
     #[inline]
     fn rla_in_y(&mut self, address: u8) -> u8 {
         let mut value = self.memory.in_y_read(address, self.register_y);
-        let old_carry = self.get_status_flag(CARRY_FLAG) as u8;
-        self.update_status_flag(CARRY_FLAG, value & 0x80 != 0);
+        let old_carry = self.status.is_set(StatusFlag::Carry) as u8;
+        self.status.update(StatusFlag::Carry, value & 0x80 != 0);
         value = (value << 1) | old_carry;
         self.memory.in_y_write(address, self.register_y, value);
         self.and_in_y(address);
@@ -3164,7 +3152,7 @@ impl CPU {
     #[inline]
     fn cmp_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_a.wrapping_sub(immediate);
-        self.update_status_flag(CARRY_FLAG, self.register_a >= immediate);
+        self.status.update(StatusFlag::Carry, self.register_a >= immediate);
         self.update_zero_and_negative_flag(cmp);
         return 2;
     }
@@ -3241,7 +3229,7 @@ impl CPU {
     #[inline]
     fn cpx_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_x.wrapping_sub(immediate);
-        self.update_status_flag(CARRY_FLAG, self.register_x >= immediate);
+        self.status.update(StatusFlag::Carry, self.register_x >= immediate);
         self.update_zero_and_negative_flag(cmp);
         return 2;
     }
@@ -3283,7 +3271,7 @@ impl CPU {
     #[inline]
     fn cpy_im(&mut self, immediate: u8) -> u8 {
         let cmp = self.register_y.wrapping_sub(immediate);
-        self.update_status_flag(CARRY_FLAG, self.register_y >= immediate);
+        self.status.update(StatusFlag::Carry, self.register_y >= immediate);
         self.update_zero_and_negative_flag(cmp);
         return 2;
     }
@@ -3303,41 +3291,17 @@ impl CPU {
     }
 
     #[inline]
-    fn get_status_flag(&self, flag: u8) -> bool {
-        self.status & (1 << flag) != 0
-    }
-
-    #[inline]
-    fn set_status_flag(&mut self, flag: u8) {
-        self.status |= (1 << flag)
-    }
-
-    #[inline]
-    fn clear_status_flag(&mut self, flag: u8) {
-        self.status &= !(1 << flag)
-    }
-
-    #[inline]
-    fn update_status_flag(&mut self, flag: u8, value: bool) {
-        if value {
-            self.set_status_flag(flag)
-        } else {
-            self.clear_status_flag(flag)
-        }
-    }
-
-    #[inline]
     fn update_zero_and_negative_flag(&mut self, value: u8) {
-        self.update_status_flag(ZERO_FLAG, value == 0);
-        self.update_status_flag(NEGATIVE_FLAG, value & 0x80 > 0);
+        self.status.update(StatusFlag::Zero, value == 0);
+        self.status.update(StatusFlag::Negative, value & 0x80 > 0);
     }
 
     #[inline]
     fn update_bit_flags(&mut self, value: u8) {
         let test = value & self.register_a;
-        self.update_status_flag(ZERO_FLAG, test == 0);
-        self.update_status_flag(NEGATIVE_FLAG, value & 0x80 > 0);
-        self.update_status_flag(OVERFLOW_FLAG, (value << 1) & 0x80 > 0);
+        self.status.update(StatusFlag::Zero, test == 0);
+        self.status.update(StatusFlag::Negative, value & 0x80 > 0);
+        self.status.update(StatusFlag::Overflow, (value << 1) & 0x80 > 0);
     }
 
     #[inline]
@@ -3426,8 +3390,8 @@ mod tests {
         assert_eq!(cpu.register_y, 0);
         assert_eq!(cpu.program_counter, 0);
         assert_eq!(cpu.stack, 0xff);
-        assert_eq!(cpu.get_status_flag(UNUSED_FLAG), true);
-        assert_eq!(cpu.get_status_flag(BREAK_COMMAND), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Unused), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::BreakCommand), true);
     }
 
     #[test]
@@ -3439,9 +3403,9 @@ mod tests {
         assert_eq!(cpu.register_y, 0);
         assert_eq!(cpu.program_counter, 0);
         assert_eq!(cpu.stack, 0xfd);
-        assert_eq!(cpu.get_status_flag(UNUSED_FLAG), true);
-        assert_eq!(cpu.get_status_flag(BREAK_COMMAND), false);
-        assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Unused), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::BreakCommand), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::InterruptDisable), true);
     }
 
     /* NOP */
@@ -3496,53 +3460,53 @@ mod tests {
     fn test_sec() {
         let mut cpu = CPU::new();
         cpu.sec();
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_clc() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1111_1111;
+        cpu.status.value = 0b1111_1111;
         cpu.clc();
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
     }
 
     #[test]
     fn test_sed() {
         let mut cpu = CPU::new();
         cpu.sed();
-        assert_eq!(cpu.get_status_flag(DECIMAL_MODE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::DecimalMode), true);
     }
 
     #[test]
     fn test_cld() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1111_1111;
+        cpu.status.value = 0b1111_1111;
         cpu.cld();
-        assert_eq!(cpu.get_status_flag(DECIMAL_MODE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::DecimalMode), false);
     }
 
     #[test]
     fn test_sei() {
         let mut cpu = CPU::new();
         cpu.sei();
-        assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::InterruptDisable), true);
     }
 
     #[test]
     fn test_cli() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1111_1111;
+        cpu.status.value = 0b1111_1111;
         cpu.cli();
-        assert_eq!(cpu.get_status_flag(INTERRUPT_DISABLE), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::InterruptDisable), false);
     }
 
     #[test]
     fn test_clv() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1111_1111;
+        cpu.status.value = 0b1111_1111;
         cpu.clv();
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     /* Stack */
@@ -3559,14 +3523,14 @@ mod tests {
     #[test]
     fn test_pla() {
         let mut cpu = CPU::new();
-        cpu.status = 0b0111_1010;
+        cpu.status.value = 0b0111_1010;
         cpu.php();
         cpu.pla();
         assert_eq!(cpu.stack, 0xff);
         assert_eq!(cpu.register_a, 0b0111_1010);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0b0111_1010);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
     }
 
     #[test]
@@ -3577,27 +3541,27 @@ mod tests {
         assert_eq!(cpu.stack, 0xff);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
     }
 
     #[test]
     fn test_pla_negative() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1011_1010;
+        cpu.status.value = 0b1011_1010;
         cpu.php();
         cpu.pla();
         assert_eq!(cpu.stack, 0xff);
         assert_eq!(cpu.register_a, 0b1011_1010);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0b1011_1010);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
     fn test_php() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1011_1010;
+        cpu.status.value = 0b1011_1010;
         cpu.php();
         assert_eq!(cpu.stack, 0xfe);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0b1011_1010);
@@ -3618,7 +3582,7 @@ mod tests {
         cpu.pha();
         cpu.plp();
         assert_eq!(cpu.stack, 0xff);
-        assert_eq!(cpu.status, 0b1010_1010);
+        assert_eq!(cpu.status.value, 0b1010_1010);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0b1010_1010);
     }
 
@@ -3629,7 +3593,7 @@ mod tests {
         cpu.pha();
         cpu.plp();
         assert_eq!(cpu.stack, 0xff);
-        assert_eq!(cpu.status, 0x24);
+        assert_eq!(cpu.status.value, 0x24);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0x04);
     }
 
@@ -3640,7 +3604,7 @@ mod tests {
         cpu.pha();
         cpu.plp();
         assert_eq!(cpu.stack, 0xff);
-        assert_eq!(cpu.status, 0xef);
+        assert_eq!(cpu.status.value, 0xef);
         assert_eq!(cpu.memory.read_byte(0x01ff), 0xff);
     }
 
@@ -3652,9 +3616,9 @@ mod tests {
         cpu.memory.write_byte(0x10, 0b0011_1111);
         cpu.register_a = 0b0110_0011;
         cpu.bit_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     #[test]
@@ -3663,9 +3627,9 @@ mod tests {
         cpu.memory.write_byte(0x1400, 0b0011_1111);
         cpu.register_a = 0b0110_0011;
         cpu.bit_ab(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     #[test]
@@ -3674,9 +3638,9 @@ mod tests {
         cpu.memory.write_byte(0x10, 0b0011_1100);
         cpu.register_a = 0b1100_0011;
         cpu.bit_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     #[test]
@@ -3685,9 +3649,9 @@ mod tests {
         cpu.memory.write_byte(0x10, 0b1000_0000);
         cpu.register_a = 0b1111_1111;
         cpu.bit_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     #[test]
@@ -3696,9 +3660,9 @@ mod tests {
         cpu.memory.write_byte(0x10, 0b0100_0000);
         cpu.register_a = 0b1111_1111;
         cpu.bit_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
     
     /* Add */
@@ -3787,7 +3751,7 @@ mod tests {
         cpu.register_a = 0xff;
         cpu.adc_im(0x01);
         assert_eq!(cpu.register_a, 0x00);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
     }
 
     #[test]
@@ -3796,7 +3760,7 @@ mod tests {
         cpu.register_a = 0xfe;
         cpu.adc_im(0x01);
         assert_eq!(cpu.register_a, 0xff);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
@@ -3805,7 +3769,7 @@ mod tests {
         cpu.register_a = 0xff;
         cpu.adc_im(0xff);
         assert_eq!(cpu.register_a, 0xfe);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -3814,17 +3778,17 @@ mod tests {
         cpu.register_a = 0x64;
         cpu.adc_im(0x64);
         assert_eq!(cpu.register_a, 0xc8);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_adc_add_positives_overflow_with_carry() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x64;
         cpu.adc_im(0x64);
         assert_eq!(cpu.register_a, 0xc9);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -3833,49 +3797,49 @@ mod tests {
         cpu.register_a = 0x9C;
         cpu.adc_im(0x9C);
         assert_eq!(cpu.register_a, 0x38);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_adc_add_negatives_overflow_with_carry() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x9C;
         cpu.adc_im(0x9C);
         assert_eq!(cpu.register_a, 0x39);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_adc_carry_overflow() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x0f;
         cpu.adc_im(0x70);
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_adc_add_zero_carry_overflow() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x7f;
         cpu.adc_im(0x00);
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
     
     #[test]
     fn test_adc_carry_wraparound() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x0f;
         cpu.adc_im(0xf0);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     /* Subtract */
@@ -3883,7 +3847,7 @@ mod tests {
     #[test]
     fn test_sbc_im() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.sbc_im(0x01);
         assert_eq!(cpu.register_a, BYTE_A);
@@ -3892,7 +3856,7 @@ mod tests {
     #[test]
     fn test_sbc_zp() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x10, 0x01);
         cpu.sbc_zp(0x10);
@@ -3902,7 +3866,7 @@ mod tests {
     #[test]
     fn test_sbc_zp_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x10, 0x01);
         cpu.register_x = 0x08;
@@ -3913,7 +3877,7 @@ mod tests {
     #[test]
     fn test_sbc_ab() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1400, 0x01);
         cpu.sbc_ab(0x1400);
@@ -3923,7 +3887,7 @@ mod tests {
     #[test]
     fn test_sbc_ab_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
         cpu.register_x = 0x10;
@@ -3934,7 +3898,7 @@ mod tests {
     #[test]
     fn test_sbc_ab_y() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
         cpu.register_y = 0x10;
@@ -3945,7 +3909,7 @@ mod tests {
     #[test]
     fn test_sbc_in_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1400, 0x01);
         cpu.memory.write_addr(0x10, 0x1400);
@@ -3957,7 +3921,7 @@ mod tests {
     #[test]
     fn test_sbc_in_y() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.memory.write_byte(0x1410, 0x01);
         cpu.memory.write_addr(0x10, 0x1400);
@@ -3969,41 +3933,41 @@ mod tests {
     #[test]
     fn test_sbc_zero() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x01;
         cpu.sbc_im(0x01);
         assert_eq!(cpu.register_a, 0x00);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
     }
 
     #[test]
     fn test_sbc_negative() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0xff;
         cpu.sbc_im(0x01);
         assert_eq!(cpu.register_a, 0xfe);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
     fn test_sbc_carry() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x10;
         cpu.sbc_im(0x01);
         assert_eq!(cpu.register_a, 0x0f);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_sbc_sub_negatives_carry() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0xff;
         cpu.sbc_im(0xff);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4012,17 +3976,17 @@ mod tests {
         cpu.register_a = 0xff;
         cpu.sbc_im(0xff);
         assert_eq!(cpu.register_a, 0xff);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
     }
 
     #[test]
     fn test_sbc_sub_positive_overflow() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x9C;
         cpu.sbc_im(0x64);
         assert_eq!(cpu.register_a, 0x38);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -4031,17 +3995,17 @@ mod tests {
         cpu.register_a = 0x9C;
         cpu.sbc_im(0x64);
         assert_eq!(cpu.register_a, 0x37);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_sbc_sub_negative_overflow() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0x64;
         cpu.sbc_im(0x9C);
         assert_eq!(cpu.register_a, 0xc8);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -4050,7 +4014,7 @@ mod tests {
         cpu.register_a = 0x64;
         cpu.sbc_im(0x9C);
         assert_eq!(cpu.register_a, 0xc7);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -4059,7 +4023,7 @@ mod tests {
         cpu.register_a = 0x80;
         cpu.sbc_im(0x0f);
         assert_eq!(cpu.register_a, 0x70);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -4068,7 +4032,7 @@ mod tests {
         cpu.register_a = 0x80;
         cpu.sbc_im(0x00);
         assert_eq!(cpu.register_a, 0x7f);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
@@ -4077,9 +4041,9 @@ mod tests {
         cpu.register_a = 0x00;
         cpu.sbc_im(0x00);
         assert_eq!(cpu.register_a, 0xff);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
     }
 
     /* Bitwise */
@@ -4168,7 +4132,7 @@ mod tests {
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b0101_1010);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
     }
 
     #[test]
@@ -4177,7 +4141,7 @@ mod tests {
         cpu.register_a = 0b0101_1010;
         cpu.eor_im(0b1101_1010);
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
@@ -4273,7 +4237,7 @@ mod tests {
         cpu.register_a = 0b0101_1010;
         cpu.and_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
     }
 
     #[test]
@@ -4282,7 +4246,7 @@ mod tests {
         cpu.register_a = 0b1101_1010;
         cpu.and_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
@@ -4291,59 +4255,59 @@ mod tests {
         cpu.register_a = 0x9b;
         cpu.anc(0xf1);
         assert_eq!(cpu.register_a, 0x91);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
     }
 
     #[test]
     fn test_arr() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b1110_0000;
         cpu.arr(0b1110_1010);
         assert_eq!(cpu.register_a, 0b1111_0000);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), false);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_arr_overflow() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b1011_0000;
         cpu.arr(0b1110_1010);
         assert_eq!(cpu.register_a, 0b1101_0000);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
-        assert_eq!(cpu.get_status_flag(OVERFLOW_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Overflow), true);
     }
 
     #[test]
     fn test_alr() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b1110_0001;
         cpu.alr(0b1110_1011);
         assert_eq!(cpu.register_a, 0b0111_0000);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_lxa() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b1110_0001;
         cpu.lxa(0b1110_1011);
         assert_eq!(cpu.register_a, 0b1110_0001);
         assert_eq!(cpu.register_x, 0b1110_0001);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
@@ -4356,8 +4320,8 @@ mod tests {
         assert_eq!(cpu.register_a, 0b1010_0010);
         assert_eq!(cpu.register_x, 0b1010_0010);
         assert_eq!(cpu.stack, 0b1010_0010);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     #[test]
@@ -4424,9 +4388,9 @@ mod tests {
         cpu.register_x = 0b1110_1101;
         cpu.sbx(0x04);
         assert_eq!(cpu.register_x, 0b1010_0001);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4436,8 +4400,8 @@ mod tests {
         cpu.register_x = BYTE_B;
         cpu.ane(0);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
     }
 
     #[test]
@@ -4447,8 +4411,8 @@ mod tests {
         cpu.register_x = BYTE_B;
         cpu.ane(BYTE_A);
         assert_eq!(cpu.register_a, BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
     }
 
     #[test]
@@ -4458,7 +4422,7 @@ mod tests {
         cpu.register_x = BYTE_B;
         cpu.ane(BYTE_A);
         assert_eq!(cpu.register_a == 0x11, false);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
     }
 
     #[test]
@@ -4544,7 +4508,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.ora_im(0);
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
     }
 
     #[test]
@@ -4553,7 +4517,7 @@ mod tests {
         cpu.register_a = 0b0101_1010;
         cpu.ora_im(0b1010_0101);
         assert_eq!(cpu.register_a, 0xff);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     /* Shift */
@@ -4564,49 +4528,49 @@ mod tests {
         cpu.register_a = 0b0000_1111;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0b0000_0111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
     
     #[test]
     fn test_lsr_zp() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.lsr_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b0000_0111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_lsr_zp_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.lsr_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b0000_0111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_lsr_ab() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.lsr_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b0000_0111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_lsr_ab_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.lsr_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b0000_0111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4615,8 +4579,8 @@ mod tests {
         cpu.register_a = 0x01;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4625,8 +4589,8 @@ mod tests {
         cpu.register_a = 0xff;
         cpu.lsr_a();
         assert_eq!(cpu.register_a, 0x7F);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), false);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4637,8 +4601,8 @@ mod tests {
             cpu.lsr_a();
         }
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4724,49 +4688,49 @@ mod tests {
         cpu.register_a = 0b1111_0000;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0b1110_0000);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
     
     #[test]
     fn test_asl_zp() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x10, 0b1111_0000);
         cpu.asl_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b1110_0000);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_asl_zp_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x20, 0b1111_0000);
         cpu.register_x = 0x10;
         cpu.asl_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), 0b1110_0000);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_asl_ab() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1400, 0b1111_0000);
         cpu.asl_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b1110_0000);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_asl_ab_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1410, 0b1111_0000);
         cpu.register_x = 0x10;
         cpu.asl_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), 0b1110_0000);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4775,8 +4739,8 @@ mod tests {
         cpu.register_a = 0x80;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4785,8 +4749,8 @@ mod tests {
         cpu.register_a = 0x40;
         cpu.asl_a();
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
     }
 
     #[test]
@@ -4797,8 +4761,8 @@ mod tests {
             cpu.asl_a();
         }
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -4883,7 +4847,7 @@ mod tests {
     #[test]
     fn test_ror_a() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b0000_1111;
         cpu.ror_a();
         assert_eq!(cpu.register_a, 0b1000_0111);
@@ -4892,7 +4856,7 @@ mod tests {
     #[test]
     fn test_ror_zp() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.ror_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b1000_0111);
@@ -4901,7 +4865,7 @@ mod tests {
     #[test]
     fn test_ror_zp_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.ror_zp_x(0x10);
@@ -4911,7 +4875,7 @@ mod tests {
     #[test]
     fn test_ror_ab() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.ror_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b1000_0111);
@@ -4920,7 +4884,7 @@ mod tests {
     #[test]
     fn test_ror_ab_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.ror_ab_x(0x1400);
@@ -4933,30 +4897,30 @@ mod tests {
         cpu.register_a = 1;
         cpu.ror_a();
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_ror_negative() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.ror_a();
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
     }
 
     #[test]
     fn test_ror_wraparound() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b0000_1111;
         for _i in 0..9 {
             cpu.ror_a();
         }
         assert_eq!(cpu.register_a, 0b0000_1111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5039,7 +5003,7 @@ mod tests {
     #[test]
     fn test_rol_a() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b0000_1111;
         cpu.rol_a();
         assert_eq!(cpu.register_a, 0b0001_1111);
@@ -5048,7 +5012,7 @@ mod tests {
     #[test]
     fn test_rol_zp() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x10, 0b0000_1111);
         cpu.rol_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), 0b0001_1111);
@@ -5057,7 +5021,7 @@ mod tests {
     #[test]
     fn test_rol_zp_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x20, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.rol_zp_x(0x10);
@@ -5067,7 +5031,7 @@ mod tests {
     #[test]
     fn test_rol_ab() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1400, 0b0000_1111);
         cpu.rol_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), 0b0001_1111);
@@ -5076,7 +5040,7 @@ mod tests {
     #[test]
     fn test_rol_ab_x() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.memory.write_byte(0x1410, 0b0000_1111);
         cpu.register_x = 0x10;
         cpu.rol_ab_x(0x1400);
@@ -5089,8 +5053,8 @@ mod tests {
         cpu.register_a = 0x80;
         cpu.rol_a();
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5099,20 +5063,20 @@ mod tests {
         cpu.register_a = 0x40;
         cpu.rol_a();
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), false);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), false);
     }
 
     #[test]
     fn test_rol_wraparound() {
         let mut cpu = CPU::new();
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = 0b0000_1111;
         for _i in 0..9 {
             cpu.rol_a();
         }
         assert_eq!(cpu.register_a, 0b0000_1111);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5410,14 +5374,14 @@ mod tests {
     fn test_load_zero() {
         let mut cpu = CPU::new();
         cpu.lda_im(0);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true)
     }
 
     #[test]
     fn test_load_negative() {
         let mut cpu = CPU::new();
         cpu.lda_im(0xff);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true)
     }
 
     /* Store */
@@ -5647,7 +5611,7 @@ mod tests {
     fn test_transfer_zero() {
         let mut cpu = CPU::new();
         cpu.tax();
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true)
     }
 
     #[test]
@@ -5655,7 +5619,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = 0xff;
         cpu.tax();
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true)
     }
 
     /* Increment */
@@ -5716,68 +5680,68 @@ mod tests {
     fn test_isb_zp() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x10, BYTE_A);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.isb_zp(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_isb_zp_x() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x20, BYTE_A);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
         cpu.isb_zp_x(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_isb_ab() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.isb_ab(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_isb_ab_x() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x10;
         cpu.isb_ab_x(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
     fn test_isb_ab_y() {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
         cpu.isb_ab_y(0x1400);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5785,14 +5749,14 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.register_x = 0x08;
         cpu.isb_in_x(0x08);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5800,14 +5764,14 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.memory.write_byte(0x1410, BYTE_A);
         cpu.memory.write_addr(0x10, 0x1400);
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.register_a = BYTE_B;
         cpu.register_y = 0x10;
         cpu.isb_in_y(0x10);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_B);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5815,7 +5779,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = 0xff;
         cpu.inx();
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true)
     }
 
     #[test]
@@ -5823,7 +5787,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = 0xfe;
         cpu.inx();
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true)
     }
 
     /* Decrement */
@@ -5889,8 +5853,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.dcp_zp(0x10);
         assert_eq!(cpu.memory.read_byte(0x10), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5901,8 +5865,8 @@ mod tests {
         cpu.register_x = 0x10;
         cpu.dcp_zp_x(0x10);
         assert_eq!(cpu.memory.read_byte(0x20), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5912,8 +5876,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.dcp_ab(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5924,8 +5888,8 @@ mod tests {
         cpu.register_x = 0x10;
         cpu.dcp_ab_x(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5936,8 +5900,8 @@ mod tests {
         cpu.register_y = 0x10;
         cpu.dcp_ab_y(0x1400);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5949,8 +5913,8 @@ mod tests {
         cpu.register_x = 0x08;
         cpu.dcp_in_x(0x08);
         assert_eq!(cpu.memory.read_byte(0x1400), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5962,8 +5926,8 @@ mod tests {
         cpu.register_y = 0x10;
         cpu.dcp_in_y(0x10);
         assert_eq!(cpu.memory.read_byte(0x1410), BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5971,7 +5935,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = 1;
         cpu.dex();
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true)
     }
 
     #[test]
@@ -5979,7 +5943,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = 0xff;
         cpu.dex();
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true)
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true)
     }
 
     /* Compare */
@@ -5989,8 +5953,8 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = BYTE_A;
         cpu.cmp_im(BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -5999,8 +5963,8 @@ mod tests {
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.cmp_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6010,8 +5974,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
         cpu.cmp_zp_x(0x08);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6020,8 +5984,8 @@ mod tests {
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_a = BYTE_A;
         cpu.cmp_ab(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6031,8 +5995,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x10;
         cpu.cmp_ab_x(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6042,8 +6006,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
         cpu.cmp_ab_y(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6054,8 +6018,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_x = 0x08;
         cpu.cmp_in_x(0x08);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6066,8 +6030,8 @@ mod tests {
         cpu.register_a = BYTE_A;
         cpu.register_y = 0x10;
         cpu.cmp_in_y(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6075,8 +6039,8 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_x = BYTE_A;
         cpu.cpx_im(BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6085,8 +6049,8 @@ mod tests {
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_x = BYTE_A;
         cpu.cpx_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6095,8 +6059,8 @@ mod tests {
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_x = BYTE_A;
         cpu.cpx_ab(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6104,8 +6068,8 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_y = BYTE_A;
         cpu.cpy_im(BYTE_A);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6114,8 +6078,8 @@ mod tests {
         cpu.memory.write_byte(0x10, BYTE_A);
         cpu.register_y = BYTE_A;
         cpu.cpy_zp(0x10);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6124,8 +6088,8 @@ mod tests {
         cpu.memory.write_byte(0x1400, BYTE_A);
         cpu.register_y = BYTE_A;
         cpu.cpy_ab(0x1400);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6133,8 +6097,8 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x20);
-        assert_eq!(cpu.get_status_flag(ZERO_FLAG), true);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Zero), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6142,7 +6106,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x10);
-        assert_eq!(cpu.get_status_flag(CARRY_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Carry), true);
     }
 
     #[test]
@@ -6150,7 +6114,7 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.register_a = 0x20;
         cpu.cmp_im(0x30);
-        assert_eq!(cpu.get_status_flag(NEGATIVE_FLAG), true);
+        assert_eq!(cpu.status.is_set(StatusFlag::Negative), true);
     }
 
     /* Jump & Branch */
@@ -6194,12 +6158,12 @@ mod tests {
     #[test]
     fn test_rti() {
         let mut cpu = CPU::new();
-        cpu.status = 0b1011_1010;
+        cpu.status.value = 0b1011_1010;
         cpu.program_counter = 0x1234;
         cpu.push_addr(cpu.program_counter);
-        cpu.push_byte(cpu.status);
+        cpu.push_byte(cpu.status.value);
         cpu.rti();
-        assert_eq!(cpu.status, 0b1010_1010);
+        assert_eq!(cpu.status.value, 0b1010_1010);
         assert_eq!(cpu.program_counter, 0x1234);
         assert_eq!(cpu.stack, 0xff);
         assert_eq!(cpu.memory.read_byte(0x01fd), 0b1011_1010);
@@ -6210,7 +6174,7 @@ mod tests {
     fn test_beq() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(ZERO_FLAG);
+        cpu.status.set(StatusFlag::Zero);
         cpu.beq(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6219,7 +6183,7 @@ mod tests {
     fn test_bne() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.clear_status_flag(ZERO_FLAG);
+        cpu.status.clear(StatusFlag::Zero);
         cpu.bne(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6228,7 +6192,7 @@ mod tests {
     fn test_bcs() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(CARRY_FLAG);
+        cpu.status.set(StatusFlag::Carry);
         cpu.bcs(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6237,7 +6201,7 @@ mod tests {
     fn test_bcc() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.clear_status_flag(CARRY_FLAG);
+        cpu.status.clear(StatusFlag::Carry);
         cpu.bcc(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6246,7 +6210,7 @@ mod tests {
     fn test_bmi() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(NEGATIVE_FLAG);
+        cpu.status.set(StatusFlag::Negative);
         cpu.bmi(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6255,7 +6219,7 @@ mod tests {
     fn test_bpl() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.clear_status_flag(NEGATIVE_FLAG);
+        cpu.status.clear(StatusFlag::Negative);
         cpu.bpl(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6264,7 +6228,7 @@ mod tests {
     fn test_bvs() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(OVERFLOW_FLAG);
+        cpu.status.set(StatusFlag::Overflow);
         cpu.bvs(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6273,7 +6237,7 @@ mod tests {
     fn test_bvc() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.clear_status_flag(OVERFLOW_FLAG);
+        cpu.status.clear(StatusFlag::Overflow);
         cpu.bvc(0x10);
         assert_eq!(cpu.program_counter, 0x90 + 1);
     }
@@ -6282,7 +6246,7 @@ mod tests {
     fn test_branch_zero_offset() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(ZERO_FLAG);
+        cpu.status.set(StatusFlag::Zero);
         cpu.beq(0);
         assert_eq!(cpu.program_counter, 0x80 + 1);
     }
@@ -6291,7 +6255,7 @@ mod tests {
     fn test_branch_negative_offset() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0x80;
-        cpu.set_status_flag(ZERO_FLAG);
+        cpu.status.set(StatusFlag::Zero);
         cpu.beq(-0x10);
         assert_eq!(cpu.program_counter, 0x70 + 1);
     }
@@ -6302,7 +6266,7 @@ mod tests {
     fn test_branch_cycles_when_no_branch() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0xc0;
-        cpu.clear_status_flag(ZERO_FLAG);
+        cpu.status.clear(StatusFlag::Zero);
         let cycles = cpu.beq(0x10);
         assert_eq!(cycles, 2);
     }
@@ -6311,7 +6275,7 @@ mod tests {
     fn test_branch_cycles_when_branch() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0xc0;
-        cpu.set_status_flag(ZERO_FLAG);
+        cpu.status.set(StatusFlag::Zero);
         let cycles = cpu.beq(0x10);
         assert_eq!(cycles, 3);
     }
@@ -6320,7 +6284,7 @@ mod tests {
     fn test_branch_cycles_when_branch_page_cross() {
         let mut cpu = CPU::new();
         cpu.program_counter = 0xc0;
-        cpu.set_status_flag(ZERO_FLAG);
+        cpu.status.set(StatusFlag::Zero);
         assert_eq!(cpu.beq(0x70), 4);
     }
 

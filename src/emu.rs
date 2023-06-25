@@ -319,8 +319,8 @@ mod tests {
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x05);
-        assert_eq!(cpu.status & 0b0000_0010, 0);
-        assert_eq!(cpu.status & 0b1000_0000, 0);
+        assert_eq!(cpu.status.value & 0b0000_0010, 0);
+        assert_eq!(cpu.status.value & 0b1000_0000, 0);
     }
 
     #[test]
@@ -330,7 +330,7 @@ mod tests {
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0);
-        assert_eq!(cpu.status & 0b0000_0010, 0b0000_0010);
+        assert_eq!(cpu.status.value & 0b0000_0010, 0b0000_0010);
     }
 
     #[test]
@@ -340,7 +340,7 @@ mod tests {
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0xff);
-        assert_eq!(cpu.status & 0b1000_0000, 0b1000_0000);
+        assert_eq!(cpu.status.value & 0b1000_0000, 0b1000_0000);
     }
 
     #[test]
@@ -384,7 +384,7 @@ mod tests {
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x08);
         assert_eq!(cpu.memory.read_byte(0x0202), 0x08);
-        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.status.value, 0b0010_0100);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -399,7 +399,7 @@ mod tests {
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x84);
         assert_eq!(cpu.register_x, 0xc1);
-        assert_eq!(cpu.status, 0b1010_0101);
+        assert_eq!(cpu.status.value, 0b1010_0101);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -415,7 +415,7 @@ mod tests {
         assert_eq!(cpu.register_a, 0xe2);
         assert_eq!(cpu.register_x, 0x00);
         assert_eq!(cpu.register_y, 0x00);
-        assert_eq!(cpu.status, 0b1110_0100);
+        assert_eq!(cpu.status.value, 0b1110_0100);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -429,7 +429,7 @@ mod tests {
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_a, 0x80);
-        assert_eq!(cpu.status, 0b1110_0100);
+        assert_eq!(cpu.status.value, 0b1110_0100);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -444,7 +444,7 @@ mod tests {
 
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_x, 0x03);
-        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.status.value, 0b0010_0111);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -461,7 +461,7 @@ mod tests {
         let mut cpu = &mut emu.nes.cpu;
         assert_eq!(cpu.register_x, 0x05);
         assert_eq!(cpu.stack, 0xfb);
-        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.status.value, 0b0010_0111);
         assert_eq!(cpu.program_counter, 0x600 + program.len() as u16);
     }
 
@@ -478,7 +478,7 @@ mod tests {
         assert_eq!(cpu.register_a, 0x0a);
         assert_eq!(cpu.register_x, 0x01);
         assert_eq!(cpu.register_y, 0x0a);
-        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.status.value, 0b0010_0100);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -495,7 +495,7 @@ mod tests {
         assert_eq!(cpu.register_a, 0x0a);
         assert_eq!(cpu.register_x, 0x0a);
         assert_eq!(cpu.register_y, 0x01);
-        assert_eq!(cpu.status, 0b0010_0100);
+        assert_eq!(cpu.status.value, 0b0010_0100);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -518,7 +518,7 @@ mod tests {
         assert_eq!(cpu.register_x, 0x10);
         assert_eq!(cpu.register_y, 0x20);
         assert_eq!(cpu.stack, 0xfd);
-        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.status.value, 0b0010_0111);
         assert_eq!(cpu.program_counter, Memory::PRG_ROM_START + program.len() as u16);
     }
 
@@ -566,7 +566,7 @@ mod tests {
         assert_eq!(cpu.register_x, 0xff);
         assert_eq!(cpu.register_y, 0x00);
         assert_eq!(cpu.stack, 0xf9);
-        assert_eq!(cpu.status, 0b0010_0111);
+        assert_eq!(cpu.status.value, 0b0010_0111);
         assert_eq!(cpu.program_counter, 0x0736);
     }
 }
