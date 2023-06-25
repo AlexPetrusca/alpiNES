@@ -47,7 +47,7 @@ pub struct CPU {
     pub register_y: u8,
     pub stack: u8,
     pub status: StatusRegister,
-    pub program_counter: u16, // todo: use ProgramCounter struct instead
+    pub program_counter: u16,
 
     pub memory: Memory,
 
@@ -608,8 +608,6 @@ impl CPU {
     fn tax(&mut self) -> u8 {
         self.register_x = self.register_a;
         self.update_zero_and_negative_flag(self.register_x);
-        /* todo: increment_program_counter should probably be moved outside of opcodes
-            implementations, so as to allow for reuse in other opcode implementations */
         self.increment_program_counter();
         return 2;
     }
