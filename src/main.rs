@@ -1,8 +1,7 @@
 use std::path::Path;
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use rand::Rng;
-use sdl2::audio::AudioSpecDesired;
 
 use sdl2::event::Event;
 use sdl2::EventPump;
@@ -12,12 +11,7 @@ use sdl2::pixels::PixelFormatEnum;
 
 use alpines::emu::Emulator;
 use alpines::nes::NES;
-use alpines::nes::cpu::CPU;
 use alpines::nes::io::frame::Frame;
-use alpines::nes::ppu::PPU;
-use alpines::util::logger::Logger;
-use alpines::util::bitvec::BitVector;
-use alpines::logln;
 use alpines::nes::rom::ROM;
 
 // snake - 6502 CPU game
@@ -128,7 +122,7 @@ fn render_tile(chr_rom: &Vec<u8>, bank: usize, tile_n: usize, frame: &mut Frame)
             };
             const TILE_SIZE: usize = 8;
             const PADDING: usize = 1;
-            const BOX_SIZE: usize = (TILE_SIZE + 2 * PADDING);
+            const BOX_SIZE: usize = TILE_SIZE + 2 * PADDING;
             const TILES_PER_ROW: usize = Frame::WIDTH / BOX_SIZE;
             const TILES_PER_COL_BANK: usize = 256 / TILES_PER_ROW + (256 % TILES_PER_ROW > 0) as usize;
             const MARGIN: usize = (Frame::WIDTH - BOX_SIZE * TILES_PER_ROW) / 2;
@@ -239,14 +233,14 @@ fn run_game(path: &str) {
 fn main() {
     // run_snake();
     // run_chrdump("rom/mapper66/super_mario_bros_duck_hunt.nes");
-    // run_game("rom/test/cpu/nestest.nes");
+    run_game("rom/test/cpu/nestest.nes");
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
     // run_game("rom/mapper0/super_mario_bros.nes");
     // run_game("rom/mapper1/chessmaster.nes");
     // run_game("rom/mapper2/metal_gear.nes");
-    run_game("rom/mapper3/friday_the_13th.nes");
+    // run_game("rom/mapper3/friday_the_13th.nes");
     // run_game("rom/mapper4/super_mario_bros_3.nes");
     // run_game("rom/mapper66/super_mario_bros_duck_hunt.nes");
     // run_game("rom/romhack/zelda_challenge_outlands.nes");

@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use crate::nes::rom::mappers::mapper::Mapper;
 use crate::nes::rom::ROM;
 

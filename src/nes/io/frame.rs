@@ -1,5 +1,3 @@
-use sdl2::keyboard::Keycode::F;
-
 pub struct Frame {
     pub background: Vec<u8>,
     pub background_priority: Vec<u8>,

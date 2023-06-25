@@ -3,9 +3,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use crate::nes::apu::APU;
-use crate::nes::cpu::CPU;
 use crate::nes::io::joycon::Joycon;
-use crate::nes::io::joycon::joycon_status::JoyconButton::Select;
 use crate::nes::ppu::PPU;
 use crate::nes::rom::ROM;
 
@@ -187,9 +185,6 @@ impl Memory {
             },
             prg_rom_range!() => {
                 self.rom.read_prg_byte(address)
-            },
-            _ => {
-                panic!("Attempt to read from unmapped memory: 0x{:0>4X}", address);
             }
         }
     }
@@ -290,7 +285,7 @@ impl Memory {
                 self.memory[address as usize] = data;
                 if self.rom.has_save_ram {
                     let pos = (address - 0x6000) as u64;
-                    let mut save_file = self.save_ram.as_mut().unwrap();
+                    let save_file = self.save_ram.as_mut().unwrap();
                     save_file.seek(SeekFrom::Start(pos)).expect("unable to seek in save file");
                     save_file.write(&[data]).expect("unable to write to save file");
                 }
@@ -298,9 +293,6 @@ impl Memory {
             prg_rom_range!() => {
                 self.rom.write_prg_byte(address, data);
                 self.ppu.memory.rom.write_prg_byte(address, data);
-            },
-            _ => {
-                panic!("Attempt to write to unmapped memory: 0x{:0>4X}", address);
             }
         }
     }

@@ -1,17 +1,11 @@
 use std::fs;
 use std::fs::File;
-use std::io::Write;
-use std::iter::ExactSizeIterator;
 use std::path::Path;
-use std::convert::TryFrom;
-use std::time::Instant;
 use serde::{Serialize, Deserialize};
-use serde_cbor::Value;
 use crate::nes::NES;
 use crate::nes::cpu::CPU;
 use crate::nes::ppu::PPU;
 use crate::nes::rom::{Mirroring, ROM};
-use crate::nes::rom::mappers::mapper0::Mapper0;
 use crate::nes::rom::mappers::mapper1::Mapper1;
 use crate::nes::rom::mappers::mapper2::Mapper2;
 use crate::nes::rom::mappers::mapper3::Mapper3;
@@ -269,7 +263,7 @@ impl SaveState {
 
     pub fn deserialize(path: &Path) -> Option<SaveState> {
         if path.exists() {
-            let mut save_file = fs::OpenOptions::new()
+            let save_file = fs::OpenOptions::new()
                 .read(true)
                 .write(true)
                 .open(path)
@@ -284,7 +278,7 @@ impl SaveState {
         let prefix_path = path.parent().unwrap();
         fs::create_dir_all(prefix_path).unwrap();
 
-        let mut save_file = File::create(path).expect("unable to create savestate file");
+        let save_file = File::create(path).expect("unable to create savestate file");
         serde_cbor::to_writer(save_file, save_state).expect("unable to write to savestate file");
     }
 

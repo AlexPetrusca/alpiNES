@@ -1,6 +1,5 @@
 use std::thread;
 use std::time::{Duration, Instant};
-use sdl2::libc::sleep;
 
 pub struct PreciseSleeper {
     estimate: f64,

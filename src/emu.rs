@@ -1,36 +1,16 @@
 use std::collections::HashMap;
-use std::fs;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::ops::Deref;
 use std::path::Path;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 use sdl2::event::Event;
 use sdl2::keyboard::{Keycode, Mod};
 use sdl2::pixels::PixelFormatEnum;
-use sdl2::render::{Canvas, Texture, WindowCanvas};
-use sdl2::{AudioSubsystem, EventPump, Sdl};
-use sdl2::libc::{DLT_NULL, nanosleep, time};
-use sdl2::sys::timespec;
-use sdl2::video::Window;
-use crate::nes::apu::APU;
+use sdl2::{EventPump};
 use crate::nes::NES;
-use crate::nes::cpu::CPU;
-use crate::nes::cpu::mem::Memory;
-use crate::nes::ppu::PPU;
-use crate::nes::ppu::mem::PPUMemory;
 use crate::nes::io::frame::Frame;
-use crate::nes::io::joycon::Joycon;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
-use crate::nes::io::viewport::Viewport;
-use crate::nes::ppu::registers::mask::MaskFlag;
 use crate::nes::rom::ROM;
-use crate::util::audio::AudioPlayer;
-use crate::util::bitvec::BitVector;
-use crate::util::savestate::{CPUState, PPUState, ROMState, SaveState};
+use crate::util::savestate::{SaveState};
 use crate::util::sleep::PreciseSleeper;
-use crate::{chr_rom_range, custom_ram_range, palletes_ram_range, prg_ram_range, ram_range, vram_range};
 
 pub struct Emulator {
     pub nes: NES,

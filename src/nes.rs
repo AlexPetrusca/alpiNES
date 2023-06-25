@@ -6,7 +6,6 @@ pub mod rom;
 
 use crate::nes::cpu::CPU;
 use crate::nes::cpu::mem::Memory;
-use crate::nes::ppu::PPU;
 use crate::nes::rom::ROM;
 
 pub struct NES {

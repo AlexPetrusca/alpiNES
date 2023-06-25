@@ -3,7 +3,6 @@ pub mod oam;
 pub mod registers;
 
 use crate::nes::io::frame::Frame;
-use crate::nes::io::viewport::Viewport;
 use crate::nes::NES;
 use crate::util::bitvec::BitVector;
 use crate::nes::ppu::mem::PPUMemory;
@@ -17,7 +16,6 @@ use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
 use crate::nes::ppu::registers::scrollctx::ScrollContext;
 use crate::nes::ppu::registers::status::StatusRegister;
 use crate::nes::ppu::registers::status::StatusFlag::{SpriteZeroHit, VerticalBlank};
-use crate::nes::rom::Mirroring;
 
 pub struct PPU {
     pub addr: AddressRegister,
@@ -213,8 +211,8 @@ impl PPU {
                 chr_y = chr_y % 8;
             }
 
-            let mut lower_chr = self.memory.read_byte(tile_addr + chr_y);
-            let mut upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
+            let lower_chr = self.memory.read_byte(tile_addr + chr_y);
+            let upper_chr = self.memory.read_byte(tile_addr + chr_y + 8);
             for x in 0..8 {
                 let screen_x = sprite_x + x;
                 let chr_x = if flip_horizontal { x } else { 7 - x };

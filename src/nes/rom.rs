@@ -3,7 +3,7 @@ pub mod mappers;
 
 use std::fs;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::Path;
 use serde::{Serialize, Deserialize};
 use crate::nes::cpu::mem::Memory;
@@ -14,7 +14,6 @@ use crate::nes::rom::mappers::mapper2::Mapper2;
 use crate::nes::rom::mappers::mapper3::Mapper3;
 use crate::nes::rom::mappers::mapper4::Mapper4;
 use crate::nes::rom::mappers::mapper66::Mapper66;
-use crate::nes::rom::registers::shift::ShiftRegister;
 
 #[derive(Serialize, Deserialize,Debug, PartialEq, Clone)]
 pub enum Mirroring {

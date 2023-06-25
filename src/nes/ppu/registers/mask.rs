@@ -33,12 +33,12 @@ impl BitVector for MaskRegister {
 
     #[inline]
     fn is_set(&self, flag: Self::Flag) -> bool {
-        self.value & (1 << (flag as u8)) != 0
+        self.value & 1 << (flag as u8) != 0
     }
 
     #[inline]
     fn set(&mut self, flag: Self::Flag) {
-        self.value |= (1 << (flag as u8))
+        self.value |= 1 << (flag as u8)
     }
 
     #[inline]

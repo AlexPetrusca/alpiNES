@@ -1,7 +1,5 @@
-use rand::{Rng, thread_rng};
-use sdl2::audio::{AudioCallback, AudioDevice, AudioQueue, AudioSpecDesired};
+use sdl2::audio::{AudioCallback, AudioDevice, AudioSpecDesired};
 use sdl2::AudioSubsystem;
-use crate::nes::cpu::mem::Memory;
 
 pub struct APUMixer {
     pub pulse_one: PulseWave,
@@ -433,7 +431,7 @@ impl AudioPlayer {
             channels: Some(1),
             samples: None
         };
-        let device = sdl_audio.open_playback(None, &spec, |spec| {
+        let device = sdl_audio.open_playback(None, &spec, |_| {
             APUMixer::new()
         }).unwrap();
         device.resume();

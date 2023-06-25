@@ -6,7 +6,6 @@ use crate::nes::apu::registers::pulse::PulseRegisters;
 use crate::nes::apu::registers::status::StatusFlag::{DmcEnable, FrameInterrupt, NoiseEnable, PulseOneEnable, PulseTwoEnable, TriangleEnable};
 use crate::nes::apu::registers::status::StatusRegister;
 use crate::nes::apu::registers::triangle::TriangleRegisters;
-use crate::nes::cpu::mem::Memory;
 use crate::util::audio::AudioPlayer;
 use crate::util::bitvec::BitVector;
 

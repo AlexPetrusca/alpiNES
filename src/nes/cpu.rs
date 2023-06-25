@@ -1048,9 +1048,6 @@ impl CPU {
         return 0;
     }
 
-    /* todo: other commands with IMMEDIATE addressing support can have their opcodes defined in
-        terms of their "_IM" variant
-     */
     fn adc(&mut self, opcode: u8) -> u8 {
         let cycles = match opcode {
             CPU::ADC_IM => {
