@@ -158,14 +158,19 @@ impl PPU {
                 pallete = self.bg_palette();
             }
 
-            let chr_x = 7 - (pixel_x % 8);
-            let lower = tile_lower_chr >> chr_x;
-            let upper = tile_upper_chr >> chr_x;
-            let palette_value = (1 & upper) << 1 | (1 & lower);
-            let palette_index = pallete[palette_value as usize];
-            let rgb = NES::SYSTEM_PALLETE[palette_index as usize];
-            let priority = if palette_value == 0 { Frame::BG_PRIORITY } else { Frame::FG_PRIORITY };
-            self.frame.set_background_pixel(screen_x, screen_y, rgb, priority);
+            if self.mask.is_set(MaskFlag::ShowBackgroundLeftmostEight) || screen_x >= 8 {
+                let chr_x = 7 - (pixel_x % 8);
+                let lower = tile_lower_chr >> chr_x;
+                let upper = tile_upper_chr >> chr_x;
+                let palette_value = (1 & upper) << 1 | (1 & lower);
+                let palette_index = pallete[palette_value as usize];
+                let rgb = NES::SYSTEM_PALLETE[palette_index as usize];
+                let priority = if palette_value == 0 { Frame::BG_PRIORITY } else { Frame::FG_PRIORITY };
+                self.frame.set_background_pixel(screen_x, screen_y, rgb, priority);
+            } else {
+                let rgb = NES::SYSTEM_PALLETE[pallete[0] as usize];
+                self.frame.set_background_pixel(screen_x, screen_y, rgb, Frame::BG_PRIORITY);
+            }
 
             if pixel_x % 8 == 7 {
                 self.scroll_ctx.scroll_x_increment();
@@ -216,11 +221,13 @@ impl PPU {
                 let lower = lower_chr >> chr_x;
                 let upper = upper_chr >> chr_x;
                 let value = (1 & upper) << 1 | (1 & lower);
-                if value != 0 {
+                let show_leftmost = self.mask.is_set(MaskFlag::ShowSpritesLeftmostEight) || screen_x >= 8;
+                if value != 0 && show_leftmost {
                     let rgb = NES::SYSTEM_PALLETE[sprite_palette[value as usize] as usize];
-                    // todo: "screen_y + 1" might be wrong here
                     self.frame.set_sprite_pixel(screen_x, screen_y + 1, rgb, priority);
                     if sprite_idx == 0 {
+                        // todo: more sprite zero debugging required
+                        //  - https://www.nesdev.org/wiki/PPU_registers - Status Register
                         self.status.set(SpriteZeroHit);
                     }
                 }

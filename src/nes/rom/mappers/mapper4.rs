@@ -247,11 +247,11 @@ impl Mapper for Mapper4 {
                 // todo: implement
                 if address % 2 == 0 {
                     // irq latch
-                    println!("mapper4: irq latch => {}", data);
+                    // println!("mapper4: irq latch => {}", data);
                     self.irq_latch = data;
                 } else {
                     // irq reload
-                    println!("mapper4: irq reload");
+                    // println!("mapper4: irq reload");
                     self.irq_reload = true;
                     self.irq_counter = 0;
                 }
@@ -260,12 +260,12 @@ impl Mapper for Mapper4 {
                 // todo: implement
                 if address % 2 == 0 {
                     // irq disable
-                    println!("mapper4: irq disable");
+                    // println!("mapper4: irq disable");
                     self.irq_enable = false;
                     self.clear_irq();
                 } else {
                     // irq enable
-                    println!("mapper4: irq enable");
+                    // println!("mapper4: irq enable");
                     self.irq_enable = true;
                 }
             },
