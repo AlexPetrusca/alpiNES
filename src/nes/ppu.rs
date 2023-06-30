@@ -87,7 +87,6 @@ impl PPU {
 
             if self.scanline == PPU::PRE_RENDER_SCANLINE {
                 self.clear_nmi();
-                self.update_mapper4();
                 self.status.clear(VerticalBlank);
                 self.status.clear(SpriteZeroHit);
                 self.frame.clear();
@@ -99,6 +98,7 @@ impl PPU {
             }
 
             if self.scanline == PPU::VBLANK_SCANLINE_START {
+                self.update_mapper4();
                 self.status.set(VerticalBlank);
                 if self.ctrl.is_set(GenerateNmi) {
                     // NMI is triggered when PPU enters VBLANK state
