@@ -133,8 +133,6 @@ impl PPU {
 
     #[inline]
     pub fn render_background_scanline(&mut self) {
-        if self.mask.is_clear(ShowBackground) { return }
-
         self.scroll_ctx.handle_scanline_start(self.scanline);
 
         let mut tile_lower_chr = 0;
@@ -180,8 +178,6 @@ impl PPU {
 
     #[inline]
     pub fn render_sprites_scanline(&mut self) {
-        if self.mask.is_clear(ShowSprites) { return }
-
         let sprites_bank = self.ctrl.get_sprite_chrtable_address();
         let sprite_size = if self.ctrl.is_set(SpriteSize) { 16 } else { 8 };
 

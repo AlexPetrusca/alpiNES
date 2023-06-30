@@ -5,10 +5,13 @@ use sdl2::event::Event;
 use sdl2::keyboard::{Keycode, Mod};
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::{EventPump};
+use sdl2::render::{Texture, WindowCanvas};
 use crate::nes::NES;
 use crate::nes::io::frame::Frame;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
+use crate::nes::ppu::registers::mask::MaskFlag::{ShowBackground, ShowSprites};
 use crate::nes::rom::ROM;
+use crate::util::bitvec::BitVector;
 use crate::util::savestate::{SaveState};
 use crate::util::sleep::PreciseSleeper;
 
@@ -76,12 +79,7 @@ impl Emulator {
                 self.nes.cpu.memory.ppu.clear_nmi();
 
                 self.handle_input(&mut event_pump);
-
-                // todo: self.nes.cpu.memory.ppu.frame.rgb is ridiculous...
-                texture.update(None, &self.nes.cpu.memory.ppu.frame.compose(), Frame::WIDTH * 3).unwrap();
-                canvas.copy(&texture, None, None).unwrap();
-                canvas.present();
-
+                self.render_frame(&mut canvas, &mut texture);
                 self.sleep_frame();
             } else if rom.mapper_id == 4 && self.nes.cpu.memory.ppu.memory.rom.mapper4.poll_irq() {
                self.nes.cpu.handle_irq();
@@ -89,6 +87,18 @@ impl Emulator {
 
             let Ok(_) = self.nes.step() else { return };
         }
+    }
+
+    fn render_frame(&mut self, canvas: &mut WindowCanvas, texture: &mut Texture) {
+        let ppu = &mut self.nes.cpu.memory.ppu;
+        match (ppu.mask.is_set(ShowBackground), ppu.mask.is_set(ShowSprites)) {
+            (true, true) => texture.update(None, ppu.frame.compose(), Frame::WIDTH * 3).unwrap(),
+            (true, false) => texture.update(None, &ppu.frame.background, Frame::WIDTH * 3).unwrap(),
+            (false, true) => texture.update(None, &ppu.frame.sprite, Frame::WIDTH * 3).unwrap(),
+            (false, false) => texture.update(None, &[0; 3 * Frame::WIDTH * Frame::HEIGHT], Frame::WIDTH * 3).unwrap(),
+        }
+        canvas.copy(&texture, None, None).unwrap();
+        canvas.present();
     }
 
     fn handle_input(&mut self, event_pump: &mut EventPump) {
