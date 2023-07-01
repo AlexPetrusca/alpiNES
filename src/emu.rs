@@ -31,6 +31,7 @@ pub struct Emulator {
     pub mute_triangle: bool,
     pub mute_noise: bool,
     pub mute_dmc: bool,
+    pub fast_forward: bool,
 }
 
 impl Emulator {
@@ -53,6 +54,7 @@ impl Emulator {
             mute_triangle: false,
             mute_noise: false,
             mute_dmc: false,
+            fast_forward: false,
         }
     }
 
@@ -107,7 +109,7 @@ impl Emulator {
         keymap_one.insert(Keycode::Up, JoyconButton::Up);
         keymap_one.insert(Keycode::Right, JoyconButton::Right);
         keymap_one.insert(Keycode::Left, JoyconButton::Left);
-        keymap_one.insert(Keycode::Space, JoyconButton::Select);
+        keymap_one.insert(Keycode::RShift, JoyconButton::Select);
         keymap_one.insert(Keycode::Return, JoyconButton::Start);
         keymap_one.insert(Keycode::Z, JoyconButton::A);
         keymap_one.insert(Keycode::X, JoyconButton::B);
@@ -175,6 +177,12 @@ impl Emulator {
                     self.mute = !self.mute;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute = self.mute;
                 },
+                Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                    self.fast_forward = true;
+                },
+                Event::KeyUp { keycode: Some(Keycode::Space), .. } => {
+                    self.fast_forward = false;
+                },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
                         let joycon1 = &mut self.nes.cpu.memory.joycon1;
@@ -210,9 +218,11 @@ impl Emulator {
 
     fn sleep_frame(&mut self) {
         self.tick_fps();
-        let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f64();
-        if sleep_time > 0.0 {
-            PreciseSleeper::new().precise_sleep(sleep_time);
+        if !self.fast_forward {
+            let mut sleep_time = 1.0 / Emulator::TARGET_FPS - self.frame_timestamp.elapsed().as_secs_f64();
+            if sleep_time > 0.0 {
+                PreciseSleeper::new().precise_sleep(sleep_time);
+            }
         }
         self.frame_timestamp = Instant::now();
     }
