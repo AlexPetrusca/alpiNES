@@ -32,6 +32,8 @@ pub struct Emulator {
     pub mute_noise: bool,
     pub mute_dmc: bool,
     pub fast_forward: bool,
+    pub hide_background: bool,
+    pub hide_sprites: bool,
 }
 
 impl Emulator {
@@ -55,6 +57,8 @@ impl Emulator {
             mute_noise: false,
             mute_dmc: false,
             fast_forward: false,
+            hide_background: false,
+            hide_sprites: false,
         }
     }
 
@@ -93,7 +97,9 @@ impl Emulator {
 
     fn render_frame(&mut self, canvas: &mut WindowCanvas, texture: &mut Texture) {
         let ppu = &mut self.nes.cpu.memory.ppu;
-        match (ppu.mask.is_set(ShowBackground), ppu.mask.is_set(ShowSprites)) {
+        let show_background = !self.hide_background && ppu.mask.is_set(ShowBackground);
+        let show_sprites = !self.hide_sprites && ppu.mask.is_set(ShowSprites);
+        match (show_background, show_sprites) {
             (true, true) => texture.update(None, ppu.frame.compose(), Frame::WIDTH * 3).unwrap(),
             (true, false) => texture.update(None, &ppu.frame.background, Frame::WIDTH * 3).unwrap(),
             (false, true) => texture.update(None, &ppu.frame.sprite, Frame::WIDTH * 3).unwrap(),
@@ -130,14 +136,6 @@ impl Emulator {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     std::process::exit(0)
                 },
-                // Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
-                //     let ppu = &mut self.nes.cpu.memory.ppu;
-                //     ppu.mask.update(MaskFlag::ShowBackground, !ppu.mask.is_set(MaskFlag::ShowBackground))
-                // },
-                // Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
-                //     let ppu = &mut self.nes.cpu.memory.ppu;
-                //     ppu.mask.update(MaskFlag::ShowSprites, !ppu.mask.is_set(MaskFlag::ShowSprites))
-                // },
                 Event::KeyDown { keycode: Some(Keycode::Num1), keymod, .. } => {
                     self.handle_savestate_input(keymod, 1);
                 },
@@ -188,9 +186,15 @@ impl Emulator {
                     self.mute_dmc = !self.mute_dmc;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_dmc = self.mute_dmc;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F12), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F6), .. } => {
                     self.mute = !self.mute;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute = self.mute;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F11), .. } => {
+                    self.hide_background = !self.hide_background;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F12), .. } => {
+                    self.hide_sprites = !self.hide_sprites;
                 },
                 Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
                     self.fast_forward = true;
@@ -200,22 +204,18 @@ impl Emulator {
                 },
                 Event::KeyDown { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        let joycon1 = &mut self.nes.cpu.memory.joycon1;
-                        joycon1.set_button((*key).clone());
+                        self.nes.cpu.memory.joycon1.set_button((*key).clone());
                     }
                     if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        let joycon2 = &mut self.nes.cpu.memory.joycon2;
-                        joycon2.set_button((*key).clone());
+                        self.nes.cpu.memory.joycon2.set_button((*key).clone());
                     }
                 }
                 Event::KeyUp { keycode, .. } => {
                     if let Some(key) = keymap_one.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        let joycon1 = &mut self.nes.cpu.memory.joycon1;
-                        joycon1.clear_button((*key).clone());
+                        self.nes.cpu.memory.joycon1.clear_button((*key).clone());
                     }
                     if let Some(key) = keymap_two.get(&keycode.unwrap_or(Keycode::Ampersand)) {
-                        let joycon2 = &mut self.nes.cpu.memory.joycon2;
-                        joycon2.clear_button((*key).clone());
+                        self.nes.cpu.memory.joycon2.clear_button((*key).clone());
                     }
                 }
                 _ => {}
@@ -265,12 +265,10 @@ impl Emulator {
     pub fn save_state(&mut self, save_idx: u8) {
         println!("saving state {}...", save_idx);
 
-        let state = SaveState::new(&self.nes);
-
         let game_title = &self.nes.cpu.memory.rom.game_title;
         let save_path_str = format!("Saves/{}/{}.savestate", game_title, save_idx);
         let save_path = Path::new(save_path_str.as_str());
-        SaveState::serialize(save_path, &state);
+        SaveState::serialize(save_path, &SaveState::new(&self.nes));
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
