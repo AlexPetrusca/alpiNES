@@ -153,6 +153,21 @@ impl Emulator {
                 Event::KeyDown { keycode: Some(Keycode::Num5), keymod, .. } => {
                     self.handle_savestate_input(keymod, 5);
                 },
+                Event::KeyDown { keycode: Some(Keycode::Num6), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 6);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num7), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 7);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num8), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 8);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num9), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 9);
+                },
+                Event::KeyDown { keycode: Some(Keycode::Num0), keymod, .. } => {
+                    self.handle_savestate_input(keymod, 0);
+                },
                 Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
                     self.mute_pulse_one = !self.mute_pulse_one;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_one = self.mute_pulse_one;
@@ -209,7 +224,7 @@ impl Emulator {
     }
 
     fn handle_savestate_input(&mut self, keymod: Mod, save_idx: u8) {
-        if keymod == Mod::LGUIMOD.union(Mod::LSHIFTMOD) {
+        if keymod == Mod::LGUIMOD.union(Mod::LALTMOD) {
             self.load_state(save_idx);
         } else if keymod == Mod::LGUIMOD {
             self.save_state(save_idx);
