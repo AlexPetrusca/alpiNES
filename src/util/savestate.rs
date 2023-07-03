@@ -339,6 +339,9 @@ impl SaveState {
             rom.chr_rom.copy_from_slice(chr_ram.as_slice());
         }
         match rom.mapper_id {
+            0 => {
+                // do nothing
+            },
             1 => {
                 rom.mapper1.shift_register.value = rom_state.mapper1.shift_reg_value;
                 rom.mapper1.shift_register.shift = rom_state.mapper1.shift_reg_shift;
@@ -383,7 +386,7 @@ impl SaveState {
                 rom.mapper66.prg_bank_select = rom_state.mapper66.prg_bank_select;
                 rom.mapper66.chr_bank_select = rom_state.mapper66.chr_bank_select;
             },
-            _ => panic!("save state for mapper is not supported: mapper {}", rom.mapper_id)
+            _ => panic!("Save state for mapper is not supported: mapper {}", rom.mapper_id)
         }
     }
 }
