@@ -270,7 +270,9 @@ impl Memory {
                         self.apu.write_status_register(data);
                     },
                     Memory::APU_FRAME_COUNTER_REGISTER => {
-                        // todo: implement or replace
+                        // todo: implement
+                        println!("APU_FRAME_COUNTER_REGISTER write -> 5-step: {}, IRQ enabled: {}",
+                            data & 0b1000_0000 != 0, data & 0b0100_0000 == 0)
                     },
                     _ => {
                         panic!("Attempt to write to unmapped APU/IO address memory: 0x{:0>4X}", address);
