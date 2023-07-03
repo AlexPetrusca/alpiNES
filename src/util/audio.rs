@@ -157,6 +157,14 @@ impl PulseWave {
         // self.sweep_phase = 0.0;
     }
 
+    // todo: is this actually the correct way to reset?
+    // pub fn reset(&mut self) {
+    //     self.phase = 0.0;
+    //     self.duration_counter = 0.0;
+    //     self.env_phase = 0.0;
+    //     self.volume = 15;
+    // }
+
     pub fn reset(&mut self) {
         self.phase = 0.0;
         if self.sweep_enable {
