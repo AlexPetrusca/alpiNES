@@ -121,8 +121,17 @@ impl APU {
             guard.pulse_one.set_duration(self.pulse_one.get_duration());
             guard.pulse_one.reset();
         }
-        // if !gu
-
+        // if !guard.mute_pulse_one {
+        //     println!("pulse_one: freq: {}, timer: {}, volume: {}, duty: {}, length_counter: {}, \
+        //       is_loop: {}, is_envelope: {}, is_sweep: {}, sweep_negate: {}, \
+        //       sweep_period: {}, sweep_shift: {}",
+        //         self.pulse_one.get_frequency(), self.pulse_one.get_timer(), self.pulse_one.get_volume(),
+        //         self.pulse_one.get_duty(), self.pulse_one.get_length_counter(), self.pulse_one.is_loop(),
+        //         self.pulse_one.is_envelope_volume(), self.pulse_one.is_sweep_enabled(),
+        //         self.pulse_one.is_sweep_negate(), self.pulse_one.get_sweep_period(),
+        //         self.pulse_one.get_sweep_shift()
+        //     );
+        // }
     }
 
     pub fn write_pulse_two_registers(&mut self, register_idx: u8, data: u8) {

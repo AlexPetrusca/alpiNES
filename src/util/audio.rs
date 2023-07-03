@@ -159,7 +159,9 @@ impl PulseWave {
 
     pub fn reset(&mut self) {
         self.phase = 0.0;
-        self.sweep_phase = 0.0; // todo: do I need to reset this?
+        if self.sweep_enable {
+            self.sweep_phase = 0.0; // todo: do I need to reset this?
+        }
         if self.envelope_enable {
             self.env_phase = 0.0;
             self.volume = 15;
@@ -181,7 +183,6 @@ impl PulseWave {
 
     fn set_frequency(&mut self, freq: f32) {
         self.phase_inc = freq / AudioPlayer::FREQ as f32;
-        self.phase = 0.0;
     }
 
     pub fn set_envelope_enable(&mut self, envelope_enable: bool) {
