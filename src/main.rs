@@ -202,6 +202,7 @@ fn run_game(path: &str) {
 
 // todo: test audio with different games
 //  - pacman: nothing sounds right
+//      - uses 5-Step Sequence which hasn't been implemented yet
 //  - duck hunt: is broken (also visually broken)
 //  - pinball: shouldn't have audio playing during demo
 //  - ice climber: breaking blocks (noise) doesn't sound right
@@ -237,7 +238,7 @@ fn main() {
     // run_game("rom/test/ppu/240pee.nes");
     // run_game("rom/test/apu/sndtest.nes");
 
-    run_game("rom/mapper0/pacman.nes");
+    // run_game("rom/mapper0/pacman.nes");
     // run_game("rom/mapper1/legend_of_zelda.nes");
     // run_game("rom/mapper2/metal_gear.nes");
     // run_game("rom/mapper3/friday_the_13th.nes");
