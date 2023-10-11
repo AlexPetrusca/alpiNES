@@ -2,7 +2,6 @@
 name = "alpines"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [dependencies]
 rand = "0.8.5"
@@ -14,5 +13,3 @@ features = ["derive"]
 
 [dependencies.sdl2]
 version = "0.35.2"
-default-features = false
-features = ["use_mac_framework"]
