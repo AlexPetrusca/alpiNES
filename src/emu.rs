@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::path::Path;
 use std::time::{Instant};
 use sdl2::event::Event;
@@ -7,6 +8,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::{EventPump};
 use sdl2::libc::printf;
 use sdl2::render::{Texture, WindowCanvas};
+use sdl2::sys::KeyCode;
 use crate::nes::NES;
 use crate::nes::io::frame::Frame;
 use crate::nes::io::joycon::joycon_status::JoyconButton;
@@ -171,28 +173,44 @@ impl Emulator {
                     self.load_backup_state();
                 },
                 Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
+                    self.mute = !self.mute;
+                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute = self.mute;
+                },
+                Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
                     self.mute_pulse_one = !self.mute_pulse_one;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_one = self.mute_pulse_one;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F2), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F3), .. } => {
                     self.mute_pulse_two = !self.mute_pulse_two;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_two = self.mute_pulse_two;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F3), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F4), .. } => {
                     self.mute_triangle = !self.mute_triangle;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_triangle = self.mute_triangle;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F4), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
                     self.mute_noise = !self.mute_noise;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_noise = self.mute_noise;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F5), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::F6), .. } => {
                     self.mute_dmc = !self.mute_dmc;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_dmc = self.mute_dmc;
                 },
-                Event::KeyDown { keycode: Some(Keycode::F6), .. } => {
-                    self.mute = !self.mute;
-                    self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute = self.mute;
+                Event::KeyDown { keycode: Some(Keycode::F9), .. } => {
+                    self.nes.cpu.memory.joycon1.toggle_turbo_control_a();
+                    self.nes.cpu.memory.joycon2.toggle_turbo_control_a();
+                },
+                Event::KeyDown { keycode: Some(Keycode::F10), .. } => {
+                    self.nes.cpu.memory.joycon1.toggle_turbo_control_b();
+                    self.nes.cpu.memory.joycon2.toggle_turbo_control_b();
+                },
+                Event::KeyDown { keycode: Some(Keycode::Minus), .. } => {
+                    self.nes.cpu.memory.joycon1.slow_down_turbo_control();
+                    self.nes.cpu.memory.joycon2.slow_down_turbo_control();
+                },
+                Event::KeyDown { keycode: Some(Keycode::Equals), .. } => {
+                    self.nes.cpu.memory.joycon1.speed_up_turbo_control();
+                    self.nes.cpu.memory.joycon2.speed_up_turbo_control();
                 },
                 Event::KeyDown { keycode: Some(Keycode::F11), .. } => {
                     self.hide_background = !self.hide_background;
