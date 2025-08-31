@@ -5,6 +5,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::{Keycode, Mod};
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::{EventPump};
+use sdl2::libc::printf;
 use sdl2::render::{Texture, WindowCanvas};
 use crate::nes::NES;
 use crate::nes::io::frame::Frame;
@@ -166,6 +167,9 @@ impl Emulator {
                 Event::KeyDown { keycode: Some(Keycode::Num0), keymod, .. } => {
                     self.handle_savestate_input(keymod, 0);
                 },
+                Event::KeyDown { keycode: Some(Keycode::Backquote), keymod: Mod::LALTMOD, .. } => {
+                    self.load_backup();
+                },
                 Event::KeyDown { keycode: Some(Keycode::F1), .. } => {
                     self.mute_pulse_one = !self.mute_pulse_one;
                     self.nes.cpu.memory.apu.audio_player.as_mut().unwrap().device.lock().mute_pulse_one = self.mute_pulse_one;
@@ -224,7 +228,7 @@ impl Emulator {
     }
 
     fn handle_savestate_input(&mut self, keymod: Mod, save_idx: u8) {
-        if keymod == Mod::LGUIMOD.union(Mod::LALTMOD) {
+        if keymod == Mod::LALTMOD {
             self.load_state(save_idx);
         } else if keymod == Mod::LGUIMOD {
             self.save_state(save_idx);
@@ -255,7 +259,8 @@ impl Emulator {
     pub fn load_state(&mut self, save_idx: u8) {
         println!("loading state {}...", save_idx);
 
-        let save_path_str = format!("Saves/{}/{}.savestate", self.nes.cpu.memory.rom.game_title, save_idx);
+        let game_title = &self.nes.cpu.memory.rom.game_title;
+        let save_path_str = format!("Saves/{}/{}.savestate", game_title, save_idx);
         let save_path = Path::new(save_path_str.as_str());
         if let Some(save_state) = SaveState::deserialize(save_path) {
             SaveState::load_nes_state(&mut self.nes, &save_state);
@@ -268,7 +273,26 @@ impl Emulator {
         let game_title = &self.nes.cpu.memory.rom.game_title;
         let save_path_str = format!("Saves/{}/{}.savestate", game_title, save_idx);
         let save_path = Path::new(save_path_str.as_str());
+        if let Some(save_state) = SaveState::deserialize(save_path) {
+            self.save_backup(&save_state);
+        }
         SaveState::serialize(save_path, &SaveState::new(&self.nes));
+    }
+
+    pub fn save_backup(&mut self, save_state: &SaveState) {
+        let game_title = &self.nes.cpu.memory.rom.game_title;
+        let save_path_str = format!("Saves/{}/backup.savestate", game_title);
+        let save_path = Path::new(save_path_str.as_str());
+        SaveState::serialize(save_path, save_state);
+    }
+
+    pub fn load_backup(&mut self) {
+        let game_title = &self.nes.cpu.memory.rom.game_title;
+        let save_path_str = format!("Saves/{}/backup.savestate", game_title);
+        let save_path = Path::new(save_path_str.as_str());
+        if let Some(save_state) = SaveState::deserialize(save_path) {
+            SaveState::load_nes_state(&mut self.nes, &save_state);
+        }
     }
 
     pub fn load_rom(&mut self, rom: &ROM) {
